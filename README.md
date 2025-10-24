@@ -7,6 +7,7 @@ Nhóm 12 bao gồm các thành viên:
   - Trương Minh Thái - 24521599
   - Nguyễn Võ Minh Trí - 24521840
   - Nguyễn Văn Nam - 24521120
+
 📖 Giới thiệu
 
 Ứng dụng Quản Lý Nhập Xuất Kho là phần mềm desktop được xây dựng bằng C# WinForms, nhằm hỗ trợ việc quản lý hàng hóa, nhà cung cấp và phiếu nhập/xuất trong kho một cách trực quan và tiện lợi.
