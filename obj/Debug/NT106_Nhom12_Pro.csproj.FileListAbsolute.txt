@@ -1,7 +1,0 @@
-C:\Users\Siinn\Downloads\SimpleAuthDemo_Clean\SimpleAuthDemo_Clean\bin\Debug\SimpleAuthDemo.exe.config
-C:\Users\Siinn\Downloads\SimpleAuthDemo_Clean\SimpleAuthDemo_Clean\bin\Debug\SimpleAuthDemo.exe
-C:\Users\Siinn\Downloads\SimpleAuthDemo_Clean\SimpleAuthDemo_Clean\bin\Debug\SimpleAuthDemo.pdb
-C:\Users\Siinn\Downloads\SimpleAuthDemo_Clean\SimpleAuthDemo_Clean\obj\Debug\SimpleAuthDemo.csproj.AssemblyReference.cache
-C:\Users\Siinn\Downloads\SimpleAuthDemo_Clean\SimpleAuthDemo_Clean\obj\Debug\SimpleAuthDemo.csproj.CoreCompileInputs.cache
-C:\Users\Siinn\Downloads\SimpleAuthDemo_Clean\SimpleAuthDemo_Clean\obj\Debug\SimpleAuthDemo.exe
-C:\Users\Siinn\Downloads\SimpleAuthDemo_Clean\SimpleAuthDemo_Clean\obj\Debug\SimpleAuthDemo.pdb
