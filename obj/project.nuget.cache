@@ -1,8 +1,14 @@
 {
   "version": 2,
-  "dgSpecHash": "hsxLaUf12K8=",
+  "dgSpecHash": "0rz4qMH9QPg=",
   "success": true,
-  "projectFilePath": "C:\\Users\\Siinn\\source\\repos\\NT106_Nhom12_Pro\\NT106_Nhom12_Pro.csproj",
-  "expectedPackageFiles": [],
+  "projectFilePath": "C:\\Users\\namng\\Downloads\\NT106_Nhom12_Pro_Comments_VN_v4\\NT106_Nhom12_Pro\\NT106_Nhom12_Pro.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\namng\\.nuget\\packages\\excss\\4.2.3\\excss.4.2.3.nupkg.sha512",
+    "C:\\Users\\namng\\.nuget\\packages\\microsoft.netcore.platforms\\5.0.0\\microsoft.netcore.platforms.5.0.0.nupkg.sha512",
+    "C:\\Users\\namng\\.nuget\\packages\\microsoft.win32.systemevents\\5.0.0\\microsoft.win32.systemevents.5.0.0.nupkg.sha512",
+    "C:\\Users\\namng\\.nuget\\packages\\svg\\3.4.7\\svg.3.4.7.nupkg.sha512",
+    "C:\\Users\\namng\\.nuget\\packages\\system.drawing.common\\5.0.3\\system.drawing.common.5.0.3.nupkg.sha512"
+  ],
   "logs": []
 }
