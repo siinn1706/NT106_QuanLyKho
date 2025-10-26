@@ -11,7 +11,7 @@ namespace NT106_Nhom12_Pro
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new LoginForm());
+            Application.Run(new Login_Form());
         }
     }
 }
