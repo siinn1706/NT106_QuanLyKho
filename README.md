@@ -6,7 +6,11 @@
 
 Đây là dự án học phần Lập trình Mạng Căn bản, xây dựng một ứng dụng desktop (WinForms) hoàn chỉnh để quản lý nghiệp vụ nhập, xuất, và tồn kho. Hệ thống sử dụng C# WinForms cho giao diện và Google Firebase (Cloud Firestore, Authentication) làm backend và cơ sở dữ liệu thời gian thực.
 
-``
+Nhóm 12 bao gồm các thành viên:
+  - Hoàng Xuân Minh Trí - 24521829
+  - Trương Minh Thái - 24521599
+  - Nguyễn Võ Minh Trí - 24521840
+  - Nguyễn Văn Nam - 24521120
 
 ---
 
