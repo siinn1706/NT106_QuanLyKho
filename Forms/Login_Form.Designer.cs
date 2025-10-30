@@ -50,11 +50,13 @@ namespace NT106_Nhom12_Pro.Forms
             logo_Label = new Label();
             logo_Picture = new PictureBox();
             theme_Toggle_Button = new Button();
-            carousel_Panel = new NT106_Nhom12_Pro.Utils.Carousel_Panel();
             left_Panel.SuspendLayout();
             password_TextBox.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)logo_Picture).BeginInit();
             SuspendLayout();
+            // 
+            // left_Panel
+            // 
             left_Panel.BackColor = Color.White;
             left_Panel.Controls.Add(register_Text_Label);
             left_Panel.Controls.Add(register_Link_Label);
@@ -74,6 +76,9 @@ namespace NT106_Nhom12_Pro.Forms
             left_Panel.Name = "left_Panel";
             left_Panel.Size = new Size(800, 1055);
             left_Panel.TabIndex = 0;
+            // 
+            // register_Text_Label
+            // 
             register_Text_Label.BackColor = Color.Transparent;
             register_Text_Label.Font = new Font("Segoe UI", 10F);
             register_Text_Label.ForeColor = Color.FromArgb(120, 120, 120);
@@ -84,6 +89,9 @@ namespace NT106_Nhom12_Pro.Forms
             register_Text_Label.TabIndex = 10;
             register_Text_Label.Text = "Don't have an account? ";
             register_Text_Label.TextAlign = ContentAlignment.MiddleRight;
+            // 
+            // register_Link_Label
+            // 
             register_Link_Label.BackColor = Color.Transparent;
             register_Link_Label.Cursor = Cursors.Hand;
             register_Link_Label.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
@@ -95,6 +103,9 @@ namespace NT106_Nhom12_Pro.Forms
             register_Link_Label.TabIndex = 11;
             register_Link_Label.Text = "Register";
             register_Link_Label.TextAlign = ContentAlignment.MiddleLeft;
+            // 
+            // login_Button
+            // 
             login_Button.BackColor = Color.FromArgb(124, 58, 237);
             login_Button.Cursor = Cursors.Hand;
             login_Button.FlatAppearance.BorderSize = 0;
@@ -108,6 +119,9 @@ namespace NT106_Nhom12_Pro.Forms
             login_Button.TabIndex = 9;
             login_Button.Text = "Login";
             login_Button.UseVisualStyleBackColor = false;
+            // 
+            // password_TextBox
+            // 
             password_TextBox.BorderStyle = BorderStyle.FixedSingle;
             password_TextBox.Controls.Add(toggle_Password_Button);
             password_TextBox.Font = new Font("Segoe UI", 12F);
@@ -117,6 +131,9 @@ namespace NT106_Nhom12_Pro.Forms
             password_TextBox.Size = new Size(612, 34);
             password_TextBox.TabIndex = 7;
             password_TextBox.UseSystemPasswordChar = true;
+            // 
+            // toggle_Password_Button
+            // 
             toggle_Password_Button.BackColor = Color.Transparent;
             toggle_Password_Button.Cursor = Cursors.Hand;
             toggle_Password_Button.FlatAppearance.BorderSize = 0;
@@ -129,6 +146,9 @@ namespace NT106_Nhom12_Pro.Forms
             toggle_Password_Button.Size = new Size(37, 33);
             toggle_Password_Button.TabIndex = 8;
             toggle_Password_Button.UseVisualStyleBackColor = true;
+            // 
+            // password_Label
+            // 
             password_Label.BackColor = Color.Transparent;
             password_Label.Font = new Font("Segoe UI", 10F);
             password_Label.Location = new Point(94, 631);
@@ -137,6 +157,9 @@ namespace NT106_Nhom12_Pro.Forms
             password_Label.Size = new Size(614, 33);
             password_Label.TabIndex = 6;
             password_Label.Text = "Password";
+            // 
+            // email_TextBox
+            // 
             email_TextBox.BorderStyle = BorderStyle.FixedSingle;
             email_TextBox.Font = new Font("Segoe UI", 12F);
             email_TextBox.Location = new Point(94, 523);
@@ -145,6 +168,9 @@ namespace NT106_Nhom12_Pro.Forms
             email_TextBox.Size = new Size(612, 34);
             email_TextBox.TabIndex = 5;
             email_TextBox.Text = "Enter your email";
+            // 
+            // email_Label
+            // 
             email_Label.BackColor = Color.Transparent;
             email_Label.Font = new Font("Segoe UI", 10F);
             email_Label.Location = new Point(94, 477);
@@ -153,6 +179,9 @@ namespace NT106_Nhom12_Pro.Forms
             email_Label.Size = new Size(614, 33);
             email_Label.TabIndex = 4;
             email_Label.Text = "Email Address";
+            // 
+            // subtitle_Label
+            // 
             subtitle_Label.BackColor = Color.Transparent;
             subtitle_Label.Font = new Font("Segoe UI", 11F);
             subtitle_Label.Location = new Point(94, 361);
@@ -161,6 +190,9 @@ namespace NT106_Nhom12_Pro.Forms
             subtitle_Label.Size = new Size(600, 39);
             subtitle_Label.TabIndex = 3;
             subtitle_Label.Text = "Login to your account to continue";
+            // 
+            // welcome_Label
+            // 
             welcome_Label.BackColor = Color.Transparent;
             welcome_Label.Font = new Font("Segoe UI", 28F, FontStyle.Bold);
             welcome_Label.Location = new Point(94, 277);
@@ -169,6 +201,9 @@ namespace NT106_Nhom12_Pro.Forms
             welcome_Label.Size = new Size(614, 77);
             welcome_Label.TabIndex = 2;
             welcome_Label.Text = "Welcome Back! 👋";
+            // 
+            // logo_Label
+            // 
             logo_Label.AutoSize = true;
             logo_Label.BackColor = Color.Transparent;
             logo_Label.Font = new Font("Segoe UI", 14F, FontStyle.Bold);
@@ -178,6 +213,9 @@ namespace NT106_Nhom12_Pro.Forms
             logo_Label.Size = new Size(114, 32);
             logo_Label.TabIndex = 1;
             logo_Label.Text = "NetWare";
+            // 
+            // logo_Picture
+            // 
             logo_Picture.BackColor = Color.Transparent;
             logo_Picture.Location = new Point(94, 92);
             logo_Picture.Margin = new Padding(6, 5, 6, 5);
@@ -185,6 +223,9 @@ namespace NT106_Nhom12_Pro.Forms
             logo_Picture.Size = new Size(66, 77);
             logo_Picture.TabIndex = 0;
             logo_Picture.TabStop = false;
+            // 
+            // theme_Toggle_Button
+            // 
             theme_Toggle_Button.BackColor = Color.FromArgb(124, 58, 237);
             theme_Toggle_Button.Cursor = Cursors.Hand;
             theme_Toggle_Button.FlatAppearance.BorderSize = 0;
@@ -195,18 +236,13 @@ namespace NT106_Nhom12_Pro.Forms
             theme_Toggle_Button.Size = new Size(54, 61);
             theme_Toggle_Button.TabIndex = 12;
             theme_Toggle_Button.UseVisualStyleBackColor = false;
-            carousel_Panel.BackColor = Color.Transparent;
-            carousel_Panel.Dock = DockStyle.Fill;
-            carousel_Panel.Location = new Point(800, 0);
-            carousel_Panel.Margin = new Padding(6, 5, 6, 5);
-            carousel_Panel.Name = "carousel_Panel";
-            carousel_Panel.Size = new Size(934, 1055);
-            carousel_Panel.TabIndex = 1;
+            // 
+            // Login_Form
+            // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = Color.White;
             ClientSize = new Size(1734, 1055);
-            Controls.Add(carousel_Panel);
             Controls.Add(left_Panel);
             Icon = (Icon)resources.GetObject("$this.Icon");
             Margin = new Padding(6, 5, 6, 5);
