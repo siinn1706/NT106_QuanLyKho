@@ -4,6 +4,8 @@ using System.Drawing.Drawing2D;
 using System.IO;
 using System.Windows.Forms;
 using NT106_Nhom12_Pro.Utils;
+using Firebase.Auth;
+using System.Threading.Tasks;
 
 namespace NT106_Nhom12_Pro.Forms
 {
@@ -306,7 +308,7 @@ logo_Picture.Invalidate();
         }
 
         // Phương thức Register_Button_Click
-        private void Register_Button_Click(object sender, EventArgs e)
+        private async void Register_Button_Click(object sender, EventArgs e)
         {
             if (string.IsNullOrWhiteSpace(email_TextBox.Text) || email_TextBox.Text == "Enter your email")
             {
@@ -322,8 +324,55 @@ logo_Picture.Invalidate();
                 return;
             }
 
-            MessageBox.Show("Registration successful!", "Success",
-                MessageBoxButtons.OK, MessageBoxIcon.Information);
+            try
+            {
+                // Hiển thị con trỏ chuột "đang chờ"
+                this.Cursor = Cursors.WaitCursor;
+
+                // Khởi tạo trình xác thực Firebase
+                var authClient = new FirebaseAuthClient(new Firebase.Auth.FirebaseAuthConfig()
+                {
+                    ApiKey = NT106_Nhom12_Pro.Utils.FirebaseConfig.apiKey,
+                    AuthDomain = NT106_Nhom12_Pro.Utils.FirebaseConfig.authDomain
+                });
+
+                // Đăng ký người dùng mới bằng Email và Mật khẩu
+                var createUser = await authClient.CreateUserWithEmailAndPasswordAsync(
+                    email_TextBox.Text.Trim(),
+                    password_TextBox.Text
+                );
+
+                // ĐĂNG KÝ THÀNH CÔNG!
+                MessageBox.Show("Đăng ký thành công! Bạn có thể đăng nhập ngay.", "Thành công",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                // xóa dữ liệu đầu vào
+                email_TextBox.Text = "";
+                password_TextBox.Text = "";
+
+                // điều hướng đến form đăng nhập (bỏ comment nếu muốn)
+                this.Hide();
+                var login_Form = new Login_Form();
+                login_Form.FormClosed += (s, args) => this.Close();
+                login_Form.Show();
+            }
+            catch (FirebaseAuthException fex)
+            {
+                // FirebaseAuthException có thể chứa thông tin chi tiết; hiển thị thông báo lỗi
+                MessageBox.Show($"Đăng ký thất bại: {fex.Message}", "Lỗi đăng ký",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (Exception ex)
+            {
+                // Xử lý chung cho các lỗi không mong muốn
+                MessageBox.Show($"Đã xảy ra lỗi không mong muốn: {ex.Message}", "Lỗi",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                // Luôn luôn đặt lại con trỏ chuột
+                this.Cursor = Cursors.Default;
+            }
         }
 
         // Phương thức Login_Link_Label_Click
