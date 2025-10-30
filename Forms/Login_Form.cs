@@ -4,6 +4,8 @@ using System.Drawing.Drawing2D;
 using System.IO;
 using System.Windows.Forms;
 using NT106_Nhom12_Pro.Utils;
+using Firebase.Auth;
+using System.Threading.Tasks;
 
 namespace NT106_Nhom12_Pro.Forms
 {
@@ -306,8 +308,9 @@ namespace NT106_Nhom12_Pro.Forms
         }
 
         // Phương thức Login_Button_Click
-        private void Login_Button_Click(object sender, EventArgs e)
+        private async void Login_Button_Click(object sender, EventArgs e)
         {
+            // Kiểm tra dữ liệu đầu vào
             if (string.IsNullOrWhiteSpace(email_TextBox.Text) || email_TextBox.Text == "Enter your email")
             {
                 MessageBox.Show("Please enter your email address", "Validation",
@@ -322,10 +325,85 @@ namespace NT106_Nhom12_Pro.Forms
                 return;
             }
 
-            this.Hide();
-            Main_Form main_Form = new Main_Form();
-            main_Form.FormClosed += (s, args) => this.Close();
-            main_Form.Show();
+            bool loginSuccessful = false;
+
+            try
+            {
+                // Hiển thị con trỏ đang chờ (feedback cho người dùng)
+                this.Cursor = Cursors.WaitCursor;
+
+                // Khởi tạo FirebaseAuthClient với cấu hình từ FirebaseConfig
+                var authClient = new FirebaseAuthClient(new Firebase.Auth.FirebaseAuthConfig()
+                {
+                    ApiKey = NT106_Nhom12_Pro.Utils.FirebaseConfig.apiKey,
+                    AuthDomain = NT106_Nhom12_Pro.Utils.FirebaseConfig.authDomain
+                });
+
+                // Gọi API đăng nhập (await để chờ kết quả bất đồng bộ)
+                var authLink = await authClient.SignInWithEmailAndPasswordAsync(
+                    email_TextBox.Text.Trim(),
+                    password_TextBox.Text
+                );
+
+                // Nếu không có exception, coi như đăng nhập thành công
+                loginSuccessful = true;
+                MessageBox.Show("Login successful!", "Success",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (FirebaseAuthException ex)
+            {
+                // Xử lý lỗi xác thực từ Firebase
+                // Lấy lý do trả về (nếu có) và chuyển thành thông báo thân thiện
+                string reason = ex.Reason.ToString() ?? string.Empty;
+                string friendly = "Authentication failed. Please try again.";
+
+                // Chuẩn hoá để so sánh không phân biệt hoa thường
+                string reasonUpper = reason.ToUpperInvariant();
+
+                if (reasonUpper.Contains("INVALID_PASSWORD") || reasonUpper.Contains("INVALID_EMAIL"))
+                {
+                    friendly = "Invalid email or password. Please try again.";
+                }
+                else if (reasonUpper.Contains("EMAIL_NOT_FOUND") || reasonUpper.Contains("USER_NOT_FOUND") || reasonUpper.Contains("USER_DISABLED"))
+                {
+                    friendly = "Account not found. Please check your email or register a new account.";
+                }
+                else if (!string.IsNullOrEmpty(reason))
+                {
+                    // Nếu có reason khác, hiển thị reason đó
+                    friendly = reason;
+                }
+                else if (!string.IsNullOrEmpty(ex.Message))
+                {
+                    // Fallback: sử dụng message từ exception
+                    friendly = ex.Message;
+                }
+
+                // Đặt lại con trỏ và thông báo lỗi
+                this.Cursor = Cursors.Default;
+                MessageBox.Show(friendly, "Authentication Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch (Exception ex)
+            {
+                // Bắt lỗi khác (ví dụ: lỗi mạng)
+                this.Cursor = Cursors.Default;
+                MessageBox.Show($"Error: {ex.Message}", "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                // Luôn đảm bảo con trỏ được đặt về mặc định
+                this.Cursor = Cursors.Default;
+            }
+
+            // Chỉ chuyển sang Main_Form khi đăng nhập thành công
+            if (loginSuccessful)
+            {
+                this.Hide();
+                Main_Form main_Form = new Main_Form();
+                main_Form.FormClosed += (s, args) => this.Close();
+                main_Form.Show();
+            }
         }
 
         // Phương thức Register_Link_Label_Click
