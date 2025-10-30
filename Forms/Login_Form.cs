@@ -193,7 +193,7 @@ namespace NT106_Nhom12_Pro.Forms
 
             theme_Toggle_Button.Invalidate();
             toggle_Password_Button.Invalidate();
-logo_Picture.Invalidate();
+            logo_Picture.Invalidate();
 
             this.Invalidate(true);
         }
@@ -322,8 +322,10 @@ logo_Picture.Invalidate();
                 return;
             }
 
-            MessageBox.Show("Login successful!", "Success",
-                MessageBoxButtons.OK, MessageBoxIcon.Information);
+            this.Hide();
+            Main_Form main_Form = new Main_Form();
+            main_Form.FormClosed += (s, args) => this.Close();
+            main_Form.Show();
         }
 
         // Phương thức Register_Link_Label_Click
