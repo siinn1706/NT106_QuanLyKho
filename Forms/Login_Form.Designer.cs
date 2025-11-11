@@ -1,27 +1,26 @@
-﻿using System.Drawing;
+﻿// File: Forms/Login_Form.Designer.cs
+
+#nullable enable
+
+using System;
+using System.Drawing;
 using System.Windows.Forms;
+using Guna.UI2.WinForms;
+using NT106_Nhom12_Pro.Utils;
 
 namespace NT106_Nhom12_Pro.Forms
 {
     partial class Login_Form
     {
-        // Khai báo controls giao diện
-        private System.ComponentModel.IContainer components = null;
-        private System.Windows.Forms.Panel left_Panel;
-        private System.Windows.Forms.PictureBox logo_Picture;
-        private System.Windows.Forms.Label logo_Label;
-        private System.Windows.Forms.Label welcome_Label;
-        private System.Windows.Forms.Label subtitle_Label;
-        private System.Windows.Forms.Label email_Label;
-        private System.Windows.Forms.Label password_Label;
-        private System.Windows.Forms.TextBox email_TextBox;
-        private System.Windows.Forms.TextBox password_TextBox;
-        private System.Windows.Forms.Button toggle_Password_Button;
-        private System.Windows.Forms.Button login_Button;
-        private System.Windows.Forms.Label register_Text_Label;
-        private System.Windows.Forms.Label register_Link_Label;
-        private System.Windows.Forms.Button theme_Toggle_Button;
-        private NT106_Nhom12_Pro.Utils.Carousel_Panel carousel_Panel;
+        private System.ComponentModel.IContainer? components = null;
+        private Guna2Panel panel_Left = null!;
+        private Guna2Panel panel_Right = null!;
+        private Label lbl_Title = null!;
+        private Label lbl_Subtitle = null!;
+        private Guna2TextBox txt_Username = null!;
+        private Guna2TextBox txt_Password = null!;
+        private Guna2Button btn_Login = null!;
+        private Guna2Button btn_Register = null!;
 
         protected override void Dispose(bool disposing)
         {
@@ -32,229 +31,151 @@ namespace NT106_Nhom12_Pro.Forms
             base.Dispose(disposing);
         }
 
-        // Thiết lập thuộc tính điều khiển và bố cục giao diện
         private void InitializeComponent()
         {
-            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Login_Form));
-            left_Panel = new Panel();
-            register_Text_Label = new Label();
-            register_Link_Label = new Label();
-            login_Button = new Button();
-            password_TextBox = new TextBox();
-            toggle_Password_Button = new Button();
-            password_Label = new Label();
-            email_TextBox = new TextBox();
-            email_Label = new Label();
-            subtitle_Label = new Label();
-            welcome_Label = new Label();
-            logo_Label = new Label();
-            logo_Picture = new PictureBox();
-            theme_Toggle_Button = new Button();
-            left_Panel.SuspendLayout();
-            password_TextBox.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)logo_Picture).BeginInit();
-            SuspendLayout();
-            // 
-            // left_Panel
-            // 
-            left_Panel.BackColor = Color.White;
-            left_Panel.Controls.Add(register_Text_Label);
-            left_Panel.Controls.Add(register_Link_Label);
-            left_Panel.Controls.Add(login_Button);
-            left_Panel.Controls.Add(password_TextBox);
-            left_Panel.Controls.Add(password_Label);
-            left_Panel.Controls.Add(email_TextBox);
-            left_Panel.Controls.Add(email_Label);
-            left_Panel.Controls.Add(subtitle_Label);
-            left_Panel.Controls.Add(welcome_Label);
-            left_Panel.Controls.Add(logo_Label);
-            left_Panel.Controls.Add(logo_Picture);
-            left_Panel.Controls.Add(theme_Toggle_Button);
-            left_Panel.Dock = DockStyle.Left;
-            left_Panel.Location = new Point(0, 0);
-            left_Panel.Margin = new Padding(6, 5, 6, 5);
-            left_Panel.Name = "left_Panel";
-            left_Panel.Size = new Size(800, 1055);
-            left_Panel.TabIndex = 0;
-            // 
-            // register_Text_Label
-            // 
-            register_Text_Label.BackColor = Color.Transparent;
-            register_Text_Label.Font = new Font("Segoe UI", 10F);
-            register_Text_Label.ForeColor = Color.FromArgb(120, 120, 120);
-            register_Text_Label.Location = new Point(94, 908);
-            register_Text_Label.Margin = new Padding(6, 0, 6, 0);
-            register_Text_Label.Name = "register_Text_Label";
-            register_Text_Label.Size = new Size(346, 39);
-            register_Text_Label.TabIndex = 10;
-            register_Text_Label.Text = "Don't have an account? ";
-            register_Text_Label.TextAlign = ContentAlignment.MiddleRight;
-            // 
-            // register_Link_Label
-            // 
-            register_Link_Label.BackColor = Color.Transparent;
-            register_Link_Label.Cursor = Cursors.Hand;
-            register_Link_Label.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-            register_Link_Label.ForeColor = Color.FromArgb(0, 102, 204);
-            register_Link_Label.Location = new Point(449, 908);
-            register_Link_Label.Margin = new Padding(6, 0, 6, 0);
-            register_Link_Label.Name = "register_Link_Label";
-            register_Link_Label.Size = new Size(257, 39);
-            register_Link_Label.TabIndex = 11;
-            register_Link_Label.Text = "Register";
-            register_Link_Label.TextAlign = ContentAlignment.MiddleLeft;
-            // 
-            // login_Button
-            // 
-            login_Button.BackColor = Color.FromArgb(124, 58, 237);
-            login_Button.Cursor = Cursors.Hand;
-            login_Button.FlatAppearance.BorderSize = 0;
-            login_Button.FlatStyle = FlatStyle.Flat;
-            login_Button.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            login_Button.ForeColor = Color.White;
-            login_Button.Location = new Point(94, 800);
-            login_Button.Margin = new Padding(6, 5, 6, 5);
-            login_Button.Name = "login_Button";
-            login_Button.Size = new Size(614, 77);
-            login_Button.TabIndex = 9;
-            login_Button.Text = "Login";
-            login_Button.UseVisualStyleBackColor = false;
-            // 
-            // password_TextBox
-            // 
-            password_TextBox.BorderStyle = BorderStyle.FixedSingle;
-            password_TextBox.Controls.Add(toggle_Password_Button);
-            password_TextBox.Font = new Font("Segoe UI", 12F);
-            password_TextBox.Location = new Point(94, 677);
-            password_TextBox.Margin = new Padding(6, 5, 6, 5);
-            password_TextBox.Name = "password_TextBox";
-            password_TextBox.Size = new Size(612, 34);
-            password_TextBox.TabIndex = 7;
-            password_TextBox.UseSystemPasswordChar = true;
-            // 
-            // toggle_Password_Button
-            // 
-            toggle_Password_Button.BackColor = Color.Transparent;
-            toggle_Password_Button.Cursor = Cursors.Hand;
-            toggle_Password_Button.FlatAppearance.BorderSize = 0;
-            toggle_Password_Button.FlatAppearance.MouseDownBackColor = Color.Transparent;
-            toggle_Password_Button.FlatAppearance.MouseOverBackColor = Color.Transparent;
-            toggle_Password_Button.FlatStyle = FlatStyle.Flat;
-            toggle_Password_Button.Location = new Point(571, 3);
-            toggle_Password_Button.Margin = new Padding(0);
-            toggle_Password_Button.Name = "toggle_Password_Button";
-            toggle_Password_Button.Size = new Size(37, 33);
-            toggle_Password_Button.TabIndex = 8;
-            toggle_Password_Button.UseVisualStyleBackColor = true;
-            // 
-            // password_Label
-            // 
-            password_Label.BackColor = Color.Transparent;
-            password_Label.Font = new Font("Segoe UI", 10F);
-            password_Label.Location = new Point(94, 631);
-            password_Label.Margin = new Padding(6, 0, 6, 0);
-            password_Label.Name = "password_Label";
-            password_Label.Size = new Size(614, 33);
-            password_Label.TabIndex = 6;
-            password_Label.Text = "Password";
-            // 
-            // email_TextBox
-            // 
-            email_TextBox.BorderStyle = BorderStyle.FixedSingle;
-            email_TextBox.Font = new Font("Segoe UI", 12F);
-            email_TextBox.Location = new Point(94, 523);
-            email_TextBox.Margin = new Padding(6, 5, 6, 5);
-            email_TextBox.Name = "email_TextBox";
-            email_TextBox.Size = new Size(612, 34);
-            email_TextBox.TabIndex = 5;
-            email_TextBox.Text = "Enter your email";
-            // 
-            // email_Label
-            // 
-            email_Label.BackColor = Color.Transparent;
-            email_Label.Font = new Font("Segoe UI", 10F);
-            email_Label.Location = new Point(94, 477);
-            email_Label.Margin = new Padding(6, 0, 6, 0);
-            email_Label.Name = "email_Label";
-            email_Label.Size = new Size(614, 33);
-            email_Label.TabIndex = 4;
-            email_Label.Text = "Email Address";
-            // 
-            // subtitle_Label
-            // 
-            subtitle_Label.BackColor = Color.Transparent;
-            subtitle_Label.Font = new Font("Segoe UI", 11F);
-            subtitle_Label.Location = new Point(94, 361);
-            subtitle_Label.Margin = new Padding(6, 0, 6, 0);
-            subtitle_Label.Name = "subtitle_Label";
-            subtitle_Label.Size = new Size(600, 39);
-            subtitle_Label.TabIndex = 3;
-            subtitle_Label.Text = "Login to your account to continue";
-            // 
-            // welcome_Label
-            // 
-            welcome_Label.BackColor = Color.Transparent;
-            welcome_Label.Font = new Font("Segoe UI", 28F, FontStyle.Bold);
-            welcome_Label.Location = new Point(94, 277);
-            welcome_Label.Margin = new Padding(6, 0, 6, 0);
-            welcome_Label.Name = "welcome_Label";
-            welcome_Label.Size = new Size(614, 77);
-            welcome_Label.TabIndex = 2;
-            welcome_Label.Text = "Welcome Back! 👋";
-            // 
-            // logo_Label
-            // 
-            logo_Label.AutoSize = true;
-            logo_Label.BackColor = Color.Transparent;
-            logo_Label.Font = new Font("Segoe UI", 14F, FontStyle.Bold);
-            logo_Label.Location = new Point(174, 111);
-            logo_Label.Margin = new Padding(6, 0, 6, 0);
-            logo_Label.Name = "logo_Label";
-            logo_Label.Size = new Size(114, 32);
-            logo_Label.TabIndex = 1;
-            logo_Label.Text = "NetWare";
-            // 
-            // logo_Picture
-            // 
-            logo_Picture.BackColor = Color.Transparent;
-            logo_Picture.Location = new Point(94, 92);
-            logo_Picture.Margin = new Padding(6, 5, 6, 5);
-            logo_Picture.Name = "logo_Picture";
-            logo_Picture.Size = new Size(66, 77);
-            logo_Picture.TabIndex = 0;
-            logo_Picture.TabStop = false;
-            // 
-            // theme_Toggle_Button
-            // 
-            theme_Toggle_Button.BackColor = Color.FromArgb(124, 58, 237);
-            theme_Toggle_Button.Cursor = Cursors.Hand;
-            theme_Toggle_Button.FlatAppearance.BorderSize = 0;
-            theme_Toggle_Button.FlatStyle = FlatStyle.Flat;
-            theme_Toggle_Button.Location = new Point(720, 31);
-            theme_Toggle_Button.Margin = new Padding(6, 5, 6, 5);
-            theme_Toggle_Button.Name = "theme_Toggle_Button";
-            theme_Toggle_Button.Size = new Size(54, 61);
-            theme_Toggle_Button.TabIndex = 12;
-            theme_Toggle_Button.UseVisualStyleBackColor = false;
-            // 
-            // Login_Form
-            // 
-            AutoScaleDimensions = new SizeF(8F, 20F);
-            AutoScaleMode = AutoScaleMode.Font;
-            BackColor = Color.White;
-            ClientSize = new Size(1734, 1055);
-            Controls.Add(left_Panel);
-            Icon = (Icon)resources.GetObject("$this.Icon");
-            Margin = new Padding(6, 5, 6, 5);
-            MinimumSize = new Size(1369, 784);
-            Name = "Login_Form";
-            StartPosition = FormStartPosition.CenterScreen;
-            Text = "Login - NetWare";
-            left_Panel.ResumeLayout(false);
-            left_Panel.PerformLayout();
-            password_TextBox.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)logo_Picture).EndInit();
-            ResumeLayout(false);
+            this.components = new System.ComponentModel.Container();
+
+            // Form
+            this.AutoScaleDimensions = new SizeF(96F, 96F);
+            this.AutoScaleMode = AutoScaleMode.Dpi;
+            this.ClientSize = new Size(1000, 600);
+            this.StartPosition = FormStartPosition.CenterScreen;
+            this.Text = "N3T - Quản Lý Kho - Đăng Nhập";
+            this.FormBorderStyle = FormBorderStyle.FixedSingle;
+            this.MaximizeBox = false;
+            this.BackColor = Theme_Colors.Get_Background();
+
+            // Left Panel - Branding
+            panel_Left = new Guna2Panel
+            {
+                Dock = DockStyle.Left,
+                Width = 400,
+                FillColor = Theme_Colors.Accent.Cyan
+            };
+
+            var lbl_Brand = new Label
+            {
+                Text = "N3T",
+                Font = new Font(new FontFamily("Segoe UI"), 48F, FontStyle.Bold),
+                ForeColor = Color.White,
+                AutoSize = true,
+                Location = new Point(100, 200),
+                BackColor = Color.Transparent // BỎ SHADOW
+            };
+
+            var lbl_Brand_Sub = new Label
+            {
+                Text = "Hệ Thống Quản Lý Kho",
+                Font = new Font(new FontFamily("Segoe UI"), 16F),
+                ForeColor = Color.White,
+                AutoSize = true,
+                Location = new Point(100, 280),
+                BackColor = Color.Transparent // BỎ SHADOW
+            };
+
+            panel_Left.Controls.AddRange(new Control[] { lbl_Brand, lbl_Brand_Sub });
+
+            // Right Panel - Login Form
+            panel_Right = new Guna2Panel
+            {
+                Dock = DockStyle.Fill,
+                FillColor = Theme_Colors.Get_Card_Background(),
+                Padding = new Padding(60)
+            };
+
+            lbl_Title = new Label
+            {
+                Text = "Đăng Nhập",
+                Font = new Font(new FontFamily("Segoe UI"), 28F, FontStyle.Bold),
+                ForeColor = Theme_Colors.Get_Text_Primary(),
+                AutoSize = true,
+                Location = new Point(60, 100),
+                BackColor = Color.Transparent // BỎ SHADOW
+            };
+
+            lbl_Subtitle = new Label
+            {
+                Text = "Chào mừng trở lại! Vui lòng đăng nhập để tiếp tục.",
+                Font = new Font(new FontFamily("Segoe UI"), 10F),
+                ForeColor = Theme_Colors.Get_Text_Secondary(),
+                AutoSize = true,
+                Location = new Point(60, 150),
+                BackColor = Color.Transparent // BỎ SHADOW
+            };
+
+            txt_Username = new Guna2TextBox
+            {
+                Location = new Point(60, 210),
+                Size = new Size(480, 45),
+                PlaceholderText = "Tên đăng nhập",
+                Font = new Font(new FontFamily("Segoe UI"), 11F),
+                BorderRadius = 8,
+                BorderColor = Theme_Colors.Get_Border()
+            };
+
+            txt_Password = new Guna2TextBox
+            {
+                Location = new Point(60, 275),
+                Size = new Size(480, 45),
+                PlaceholderText = "Mật khẩu",
+                Font = new Font(new FontFamily("Segoe UI"), 11F),
+                BorderRadius = 8,
+                PasswordChar = '●',
+                BorderColor = Theme_Colors.Get_Border()
+            };
+
+            btn_Login = new Guna2Button
+            {
+                Text = "Đăng Nhập",
+                Location = new Point(60, 350),
+                Size = new Size(480, 50),
+                FillColor = Theme_Colors.Accent.Cyan,
+                Font = new Font(new FontFamily("Segoe UI"), 12F, FontStyle.Bold),
+                BorderRadius = 10
+            };
+            btn_Login.Click += Btn_Login_Click;
+
+            btn_Register = new Guna2Button
+            {
+                Text = "Tạo tài khoản mới",
+                Location = new Point(60, 415),
+                Size = new Size(480, 50),
+                FillColor = Color.Transparent,
+                ForeColor = Theme_Colors.Accent.Cyan,
+                Font = new Font(new FontFamily("Segoe UI"), 11F),
+                BorderRadius = 10,
+                BorderColor = Theme_Colors.Accent.Cyan,
+                BorderThickness = 2
+            };
+            btn_Register.Click += Btn_Register_Click;
+
+            panel_Right.Controls.AddRange(new Control[] {
+                lbl_Title, lbl_Subtitle, txt_Username, txt_Password, btn_Login, btn_Register
+            });
+
+            this.Controls.AddRange(new Control[] { panel_Right, panel_Left });
+        }
+
+        private void Btn_Login_Click(object? sender, EventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(txt_Username.Text) ||
+                string.IsNullOrWhiteSpace(txt_Password.Text))
+            {
+                MessageBox.Show("Vui lòng nhập đầy đủ thông tin!", "Thông báo",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            this.Hide();
+            var mainForm = new Main_Form();
+            mainForm.FormClosed += (s, args) => this.Close();
+            mainForm.Show();
+        }
+
+        private void Btn_Register_Click(object? sender, EventArgs e)
+        {
+            var registerForm = new Register_Form();
+            registerForm.ShowDialog();
         }
     }
 }
