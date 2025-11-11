@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "dgSpecHash": "Uai1cYSIVEo=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\Siinn\\Downloads\\NT106_Nhom12\\NT106_Nhom12_Pro.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Siinn\\.nuget\\packages\\fontawesome\\4.7.0\\fontawesome.4.7.0.nupkg.sha512",
+    "C:\\Users\\Siinn\\.nuget\\packages\\fontawesome.sharp\\6.6.0\\fontawesome.sharp.6.6.0.nupkg.sha512",
+    "C:\\Users\\Siinn\\.nuget\\packages\\guna.charts.winforms\\1.1.0\\guna.charts.winforms.1.1.0.nupkg.sha512",
+    "C:\\Users\\Siinn\\.nuget\\packages\\guna.ui2.winforms\\2.0.4.7\\guna.ui2.winforms.2.0.4.7.nupkg.sha512",
+    "C:\\Users\\Siinn\\.nuget\\packages\\system.codedom\\7.0.0\\system.codedom.7.0.0.nupkg.sha512",
+    "C:\\Users\\Siinn\\.nuget\\packages\\system.management\\7.0.0\\system.management.7.0.0.nupkg.sha512"
+  ],
+  "logs": []
+}

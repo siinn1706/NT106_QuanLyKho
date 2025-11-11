@@ -1,41 +1,29 @@
-﻿using System;
+﻿// File: Utils/Theme_Manager.cs
+
+#nullable enable
+
+using System.Collections.Generic;
+using System.Windows.Forms;
 
 namespace NT106_Nhom12_Pro.Utils
 {
-    public enum Theme_Mode
-    {
-        Light,
-        Dark
-    }
-
+    // BỎ LUÔN - Không cần theme manager nữa vì chỉ có light theme
     public static class Theme_Manager
     {
-        // Khai báo controls giao diện
-        private static Theme_Mode _current_Mode = Theme_Mode.Light;
-
-        public static event Action On_Theme_Changed;
-
-        public static Theme_Mode Current_Mode
+        // Giữ lại để tránh lỗi compile, nhưng không làm gì
+        public static void Register_Form(Form form)
         {
-            get => _current_Mode;
-            set
-            {
-                if (_current_Mode != value)
-                {
-                    _current_Mode = value;
-                    On_Theme_Changed?.Invoke();
-                }
-            }
+            // Do nothing
         }
 
-        public static bool Is_Light_Mode => _current_Mode == Theme_Mode.Light;
+        public static void Apply_Theme_To_All_Forms()
+        {
+            // Do nothing
+        }
 
-        public static bool Is_Dark_Mode => _current_Mode == Theme_Mode.Dark;
-
-        // Phương thức Toggle_Theme
         public static void Toggle_Theme()
         {
-            Current_Mode = _current_Mode == Theme_Mode.Light ? Theme_Mode.Dark : Theme_Mode.Light;
+            // Do nothing
         }
     }
 }
