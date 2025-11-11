@@ -21,6 +21,7 @@ namespace NT106_Nhom12_Pro.Forms
         private Guna2TextBox txt_Password = null!;
         private Guna2Button btn_Login = null!;
         private Guna2Button btn_Register = null!;
+        private LinkLabel lnk_ForgotPassword = null!;
 
         protected override void Dispose(bool disposing)
         {
@@ -60,7 +61,7 @@ namespace NT106_Nhom12_Pro.Forms
                 ForeColor = Color.White,
                 AutoSize = true,
                 Location = new Point(100, 200),
-                BackColor = Color.Transparent // BỎ SHADOW
+                BackColor = Color.Transparent
             };
 
             var lbl_Brand_Sub = new Label
@@ -70,7 +71,7 @@ namespace NT106_Nhom12_Pro.Forms
                 ForeColor = Color.White,
                 AutoSize = true,
                 Location = new Point(100, 280),
-                BackColor = Color.Transparent // BỎ SHADOW
+                BackColor = Color.Transparent
             };
 
             panel_Left.Controls.AddRange(new Control[] { lbl_Brand, lbl_Brand_Sub });
@@ -90,7 +91,7 @@ namespace NT106_Nhom12_Pro.Forms
                 ForeColor = Theme_Colors.Get_Text_Primary(),
                 AutoSize = true,
                 Location = new Point(60, 100),
-                BackColor = Color.Transparent // BỎ SHADOW
+                BackColor = Color.Transparent
             };
 
             lbl_Subtitle = new Label
@@ -100,7 +101,7 @@ namespace NT106_Nhom12_Pro.Forms
                 ForeColor = Theme_Colors.Get_Text_Secondary(),
                 AutoSize = true,
                 Location = new Point(60, 150),
-                BackColor = Color.Transparent // BỎ SHADOW
+                BackColor = Color.Transparent
             };
 
             txt_Username = new Guna2TextBox
@@ -124,10 +125,25 @@ namespace NT106_Nhom12_Pro.Forms
                 BorderColor = Theme_Colors.Get_Border()
             };
 
+            // Forgot Password Link
+            lnk_ForgotPassword = new LinkLabel
+            {
+                Text = "Quên mật khẩu?",
+                Location = new Point(440, 330),
+                AutoSize = true,
+                Font = new Font(new FontFamily("Segoe UI"), 9.5F),
+                LinkColor = Theme_Colors.Accent.Cyan,
+                ActiveLinkColor = Theme_Colors.Accent.Cyan,
+                VisitedLinkColor = Theme_Colors.Accent.Cyan,
+                BackColor = Color.Transparent,
+                LinkBehavior = LinkBehavior.HoverUnderline
+            };
+            lnk_ForgotPassword.LinkClicked += Lnk_ForgotPassword_LinkClicked;
+
             btn_Login = new Guna2Button
             {
                 Text = "Đăng Nhập",
-                Location = new Point(60, 350),
+                Location = new Point(60, 365),
                 Size = new Size(480, 50),
                 FillColor = Theme_Colors.Accent.Cyan,
                 Font = new Font(new FontFamily("Segoe UI"), 12F, FontStyle.Bold),
@@ -138,7 +154,7 @@ namespace NT106_Nhom12_Pro.Forms
             btn_Register = new Guna2Button
             {
                 Text = "Tạo tài khoản mới",
-                Location = new Point(60, 415),
+                Location = new Point(60, 430),
                 Size = new Size(480, 50),
                 FillColor = Color.Transparent,
                 ForeColor = Theme_Colors.Accent.Cyan,
@@ -150,7 +166,8 @@ namespace NT106_Nhom12_Pro.Forms
             btn_Register.Click += Btn_Register_Click;
 
             panel_Right.Controls.AddRange(new Control[] {
-                lbl_Title, lbl_Subtitle, txt_Username, txt_Password, btn_Login, btn_Register
+                lbl_Title, lbl_Subtitle, txt_Username, txt_Password,
+                lnk_ForgotPassword, btn_Login, btn_Register
             });
 
             this.Controls.AddRange(new Control[] { panel_Right, panel_Left });
@@ -176,6 +193,17 @@ namespace NT106_Nhom12_Pro.Forms
         {
             var registerForm = new Register_Form();
             registerForm.ShowDialog();
+        }
+
+        private void Lnk_ForgotPassword_LinkClicked(object? sender, LinkLabelLinkClickedEventArgs e)
+        {
+            // TODO: Implement forgot password functionality
+            MessageBox.Show("Chức năng khôi phục mật khẩu đang được phát triển.",
+                "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+            // Hoặc mở form Forgot Password nếu đã có:
+            // var forgotPasswordForm = new ForgotPassword_Form();
+            // forgotPasswordForm.ShowDialog();
         }
     }
 }

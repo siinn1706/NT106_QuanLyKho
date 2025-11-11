@@ -250,23 +250,23 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\Siinn\\.nuget\\packages\\": {},
+    "C:\\Users\\THAI\\.nuget\\packages\\": {},
     "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\Siinn\\Downloads\\NT106_Nhom12\\NT106_Nhom12_Pro.csproj",
+      "projectUniqueName": "C:\\Users\\THAI\\Source\\Repos\\NT106_QuanLyKho\\NT106_Nhom12_Pro.csproj",
       "projectName": "NT106_Nhom12_Pro",
-      "projectPath": "C:\\Users\\Siinn\\Downloads\\NT106_Nhom12\\NT106_Nhom12_Pro.csproj",
-      "packagesPath": "C:\\Users\\Siinn\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\Siinn\\Downloads\\NT106_Nhom12\\obj\\",
+      "projectPath": "C:\\Users\\THAI\\Source\\Repos\\NT106_QuanLyKho\\NT106_Nhom12_Pro.csproj",
+      "packagesPath": "C:\\Users\\THAI\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\THAI\\Source\\Repos\\NT106_QuanLyKho\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
       ],
       "configFilePaths": [
-        "C:\\Users\\Siinn\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Users\\THAI\\AppData\\Roaming\\NuGet\\NuGet.Config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
@@ -275,7 +275,6 @@
       ],
       "sources": {
         "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-        "C:\\Program Files\\dotnet\\library-packs": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
