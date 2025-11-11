@@ -43,7 +43,7 @@ Dự án được xây dựng với các lớp tính năng từ cơ bản đến
 * **Giao diện (Frontend):** Windows Forms (WinForms)
 * **Backend & Cơ sở dữ liệu:** Google Firebase
     * **Firebase Authentication:** Xử lý đăng nhập, đăng ký, khôi phục mật khẩu.
-    * **Cloud Firestore:** Lưu trữ toàn bộ dữ liệu (người dùng, sản phẩm, kho, phiếu nhập/xuất) dưới dạng NoSQL.
+    * **RTDB:** Lưu trữ toàn bộ dữ liệu (người dùng, sản phẩm, kho, phiếu nhập/xuất) dưới dạng NoSQL.
 * **Thư viện (Libraries):**
     * `Google.Cloud.Firestore`: Thư viện chính thức để kết nối C# với Cloud Firestore.
     * `LiveChartsCore.SkiaSharpView.WinForms`: Thư viện vẽ biểu đồ cho Dashboard.
