@@ -1,0 +1,20 @@
+{
+  "version": 2,
+  "dgSpecHash": "Q95JSO1naE0=",
+  "success": true,
+  "projectFilePath": "D:\\NT106_QuanLyKho-main\\NT106_QuanLyKho-main\\NT106_Nhom12_Pro.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\LOQ\\.nuget\\packages\\firebaseauthentication.net\\4.1.0\\firebaseauthentication.net.4.1.0.nupkg.sha512",
+    "C:\\Users\\LOQ\\.nuget\\packages\\firebasedatabase.net\\5.0.0\\firebasedatabase.net.5.0.0.nupkg.sha512",
+    "C:\\Users\\LOQ\\.nuget\\packages\\fontawesome\\4.7.0\\fontawesome.4.7.0.nupkg.sha512",
+    "C:\\Users\\LOQ\\.nuget\\packages\\fontawesome.sharp\\6.6.0\\fontawesome.sharp.6.6.0.nupkg.sha512",
+    "C:\\Users\\LOQ\\.nuget\\packages\\guna.charts.winforms\\1.1.0\\guna.charts.winforms.1.1.0.nupkg.sha512",
+    "C:\\Users\\LOQ\\.nuget\\packages\\guna.ui2.winforms\\2.0.4.7\\guna.ui2.winforms.2.0.4.7.nupkg.sha512",
+    "C:\\Users\\LOQ\\.nuget\\packages\\litedb\\5.0.17\\litedb.5.0.17.nupkg.sha512",
+    "C:\\Users\\LOQ\\.nuget\\packages\\newtonsoft.json\\13.0.3\\newtonsoft.json.13.0.3.nupkg.sha512",
+    "C:\\Users\\LOQ\\.nuget\\packages\\system.codedom\\7.0.0\\system.codedom.7.0.0.nupkg.sha512",
+    "C:\\Users\\LOQ\\.nuget\\packages\\system.management\\7.0.0\\system.management.7.0.0.nupkg.sha512",
+    "C:\\Users\\LOQ\\.nuget\\packages\\system.reactive\\6.0.0\\system.reactive.6.0.0.nupkg.sha512"
+  ],
+  "logs": []
+}
