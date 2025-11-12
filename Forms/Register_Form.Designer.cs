@@ -2,11 +2,13 @@
 
 #nullable enable
 
+using Guna.UI2.WinForms;
+using NT106_Nhom12_Pro.Helpers;
+using NT106_Nhom12_Pro.Utils;
 using System;
 using System.Drawing;
+using System.Text.RegularExpressions;
 using System.Windows.Forms;
-using Guna.UI2.WinForms;
-using NT106_Nhom12_Pro.Utils;
 
 namespace NT106_Nhom12_Pro.Forms
 {
@@ -21,6 +23,8 @@ namespace NT106_Nhom12_Pro.Forms
         private Guna2TextBox txt_Email = null!;
         private Guna2Button btn_Register = null!;
         private Guna2Button btn_Back = null!;
+
+        public string? RegisteredEmail { get; private set; }
 
         protected override void Dispose(bool disposing)
         {
@@ -132,27 +136,111 @@ namespace NT106_Nhom12_Pro.Forms
             this.Controls.Add(panel_Main);
         }
 
-        private void Btn_Register_Click(object? sender, EventArgs e)
+        private async void Btn_Register_Click(object? sender, EventArgs e)
         {
-            if (string.IsNullOrWhiteSpace(txt_Username.Text) ||
-                string.IsNullOrWhiteSpace(txt_Email.Text) ||
-                string.IsNullOrWhiteSpace(txt_Password.Text))
+            // Validate Username
+            if (string.IsNullOrWhiteSpace(txt_Username.Text))
             {
-                MessageBox.Show("Vui lòng nhập đầy đủ thông tin!", "Thông báo",
+                MessageBox.Show("Vui lòng nhập tên đăng nhập!", "Thông báo",
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txt_Username.Focus();
                 return;
             }
 
+            // Validate Email
+            if (string.IsNullOrWhiteSpace(txt_Email.Text))
+            {
+                MessageBox.Show("Vui lòng nhập email!", "Thông báo",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txt_Email.Focus();
+                return;
+            }
+
+            if (!IsValidEmail(txt_Email.Text))
+            {
+                MessageBox.Show("Email không hợp lệ!", "Thông báo",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txt_Email.Focus();
+                return;
+            }
+
+            // Validate Password
+            if (string.IsNullOrWhiteSpace(txt_Password.Text))
+            {
+                MessageBox.Show("Vui lòng nhập mật khẩu!", "Thông báo",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txt_Password.Focus();
+                return;
+            }
+
+            if (txt_Password.Text.Length < 6)
+            {
+                MessageBox.Show("Mật khẩu phải có ít nhất 6 ký tự!", "Thông báo",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txt_Password.Focus();
+                return;
+            }
+
+            // Validate Confirm Password
             if (txt_Password.Text != txt_Confirm_Password.Text)
             {
                 MessageBox.Show("Mật khẩu xác nhận không khớp!", "Thông báo",
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txt_Confirm_Password.Focus();
                 return;
             }
 
-            MessageBox.Show("Đăng ký thành công!", "Thông báo",
-                MessageBoxButtons.OK, MessageBoxIcon.Information);
-            this.Close();
+            // Disable buttons và show loading
+            btn_Register.Enabled = false;
+            btn_Back.Enabled = false;
+            btn_Register.Text = "Đang đăng ký...";
+            this.Cursor = Cursors.WaitCursor;
+
+            try
+            {
+                // Đăng ký với Firebase
+                var userCredential = await FirebaseAuthHelper.RegisterAsync(
+                    txt_Email.Text.Trim(),
+                    txt_Password.Text
+                );
+
+                MessageBox.Show(
+                    $"Đăng ký thành công!\n\nTên: {txt_Username.Text}\nEmail: {txt_Email.Text}\n\nVui lòng đăng nhập.",
+                    "Thành công",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+
+                RegisteredEmail = txt_Email.Text.Trim();
+                this.DialogResult = DialogResult.OK;
+                this.Close();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Lỗi đăng ký",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+
+                txt_Email.Focus();
+            }
+            finally
+            {
+                btn_Register.Enabled = true;
+                btn_Back.Enabled = true;
+                btn_Register.Text = "Đăng Ký";
+                this.Cursor = Cursors.Default;
+            }
+        }
+
+        private bool IsValidEmail(string email)
+        {
+            try
+            {
+                var regex = new Regex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$");
+                return regex.IsMatch(email);
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         private void Btn_Back_Click(object? sender, EventArgs e)
