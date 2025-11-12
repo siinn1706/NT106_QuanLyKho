@@ -267,13 +267,8 @@ namespace NT106_Nhom12_Pro.Forms
 
         private void Lnk_ForgotPassword_LinkClicked(object? sender, LinkLabelLinkClickedEventArgs e)
         {
-            // TODO: Implement forgot password functionality
-            MessageBox.Show("Chức năng khôi phục mật khẩu đang được phát triển.",
-                "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
-
-            // Hoặc mở form Forgot Password nếu đã có:
-            // var forgotPasswordForm = new ForgotPassword_Form();
-            // forgotPasswordForm.ShowDialog();
+            var forgotPassword = new ForgotPassword_Form();
+            forgotPassword.ShowDialog();
         }
     }
 }
