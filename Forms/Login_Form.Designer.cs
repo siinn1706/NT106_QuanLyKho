@@ -2,11 +2,12 @@
 
 #nullable enable
 
+using Guna.UI2.WinForms;
+using NT106_Nhom12_Pro.Helpers;
+using NT106_Nhom12_Pro.Utils;
 using System;
 using System.Drawing;
 using System.Windows.Forms;
-using Guna.UI2.WinForms;
-using NT106_Nhom12_Pro.Utils;
 
 namespace NT106_Nhom12_Pro.Forms
 {
@@ -173,26 +174,95 @@ namespace NT106_Nhom12_Pro.Forms
             this.Controls.AddRange(new Control[] { panel_Right, panel_Left });
         }
 
-        private void Btn_Login_Click(object? sender, EventArgs e)
+        private async void Btn_Login_Click(object? sender, EventArgs e)
         {
-            if (string.IsNullOrWhiteSpace(txt_Username.Text) ||
-                string.IsNullOrWhiteSpace(txt_Password.Text))
+            // Validate input
+            if (string.IsNullOrWhiteSpace(txt_Username.Text))
             {
-                MessageBox.Show("Vui lòng nhập đầy đủ thông tin!", "Thông báo",
+                MessageBox.Show("Vui lòng nhập email!", "Thông báo",
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txt_Username.Focus();
                 return;
             }
 
-            this.Hide();
-            var mainForm = new Main_Form();
-            mainForm.FormClosed += (s, args) => this.Close();
-            mainForm.Show();
+            if (string.IsNullOrWhiteSpace(txt_Password.Text))
+            {
+                MessageBox.Show("Vui lòng nhập mật khẩu!", "Thông báo",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                txt_Password.Focus();
+                return;
+            }
+
+            // Disable buttons và show loading
+            btn_Login.Enabled = false;
+            btn_Register.Enabled = false;
+            lnk_ForgotPassword.Enabled = false;
+            btn_Login.Text = "Đang đăng nhập...";
+            this.Cursor = Cursors.WaitCursor;
+
+            try
+            {
+                // Gọi Firebase Authentication
+                var userCredential = await FirebaseAuthHelper.LoginAsync(
+                    txt_Username.Text.Trim(),
+                    txt_Password.Text
+                );
+
+                // Lưu thông tin user
+                CurrentUserID = userCredential.User.Uid;
+                CurrentUserEmail = userCredential.User.Info.Email;
+                CurrentUserToken = await userCredential.User.GetIdTokenAsync();
+
+                MessageBox.Show($"Đăng nhập thành công!\nChào mừng {CurrentUserEmail}",
+                    "Thành công",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+
+                // Chuyển sang Main Form
+                this.Hide();
+                var mainForm = new Main_Form();
+                mainForm.FormClosed += (s, args) =>
+                {
+                    // Clear session khi đóng main form
+                    CurrentUserID = null;
+                    CurrentUserEmail = null;
+                    CurrentUserToken = null;
+                    this.Close();
+                };
+                mainForm.Show();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Lỗi đăng nhập",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+
+                // Focus lại password field
+                txt_Password.SelectAll();
+                txt_Password.Focus();
+            }
+            finally
+            {
+                // Reset UI
+                btn_Login.Enabled = true;
+                btn_Register.Enabled = true;
+                lnk_ForgotPassword.Enabled = true;
+                btn_Login.Text = "Đăng Nhập";
+                this.Cursor = Cursors.Default;
+            }
         }
 
         private void Btn_Register_Click(object? sender, EventArgs e)
         {
+
             var registerForm = new Register_Form();
-            registerForm.ShowDialog();
+            if (registerForm.ShowDialog() == DialogResult.OK)
+            {
+                if (!string.IsNullOrEmpty(registerForm.RegisteredEmail))
+                {
+                    txt_Username.Text = registerForm.RegisteredEmail;
+                    txt_Password.Focus();
+                }
+            }
         }
 
         private void Lnk_ForgotPassword_LinkClicked(object? sender, LinkLabelLinkClickedEventArgs e)

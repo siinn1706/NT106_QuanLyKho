@@ -9,7 +9,7 @@ namespace NT106_Nhom12_Pro.Utils
 {
     public static class FirebaseConfig
     {
-        public const string apiKey = "";
-        public const string authDomain = "";
+        public static string apiKey = "AIzaSyCCq_2V9JxjA5GHoXiIpORUBR83GNR2UBk";
+        public static string authDomain = "nt106-quanlykho.firebaseapp.com";
     }
 }
