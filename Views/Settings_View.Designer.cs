@@ -8,6 +8,7 @@ using System.Windows.Forms;
 using Guna.UI2.WinForms;
 using FontAwesome.Sharp;
 using NT106_Nhom12_Pro.Utils;
+using NT106_Nhom12_Pro.Forms;
 
 namespace NT106_Nhom12_Pro.Views
 {
@@ -66,7 +67,7 @@ namespace NT106_Nhom12_Pro.Views
 
             var lbl_Username = new Label
             {
-                Text = "Tên đăng nhập: Admin",
+                Text = "Tên đăng nhập: cái gì đây",
                 Font = new Font(new FontFamily("Segoe UI"), 10F),
                 ForeColor = Theme_Colors.Light.TextSecondary,
                 Location = new Point(60, 70),
@@ -76,7 +77,7 @@ namespace NT106_Nhom12_Pro.Views
 
             var lbl_Email = new Label
             {
-                Text = "Email: admin@n3t.com",
+                Text = $"Email: {Login_Form.CurrentUserEmail}",
                 Font = new Font(new FontFamily("Segoe UI"), 10F),
                 ForeColor = Theme_Colors.Light.TextSecondary,
                 Location = new Point(60, 95),
@@ -93,11 +94,7 @@ namespace NT106_Nhom12_Pro.Views
                 BorderRadius = 8,
                 Font = new Font(new FontFamily("Segoe UI"), 10F, FontStyle.Bold)
             };
-            btn_Change_Password.Click += (s, e) =>
-            {
-                MessageBox.Show("Tính năng đổi mật khẩu đang được phát triển!", "Thông báo",
-                    MessageBoxButtons.OK, MessageBoxIcon.Information);
-            };
+            btn_Change_Password.Click += Btn_ChangePassword_Click;
 
             var btn_Edit_Profile = new Guna2Button
             {
@@ -307,22 +304,14 @@ namespace NT106_Nhom12_Pro.Views
         private void Btn_Logout_Click(object? sender, EventArgs e)
         {
             var result = MessageBox.Show(
-                "Bạn có chắc chắn muốn đăng xuất?",
-                "Xác Nhận Đăng Xuất",
+                "Bạn có chắc muốn đăng xuất?",
+                "Xác nhận đăng xuất",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Question);
 
             if (result == DialogResult.Yes)
             {
-                // Đóng Main Form và quay về Login Form
-                var mainForm = this.FindForm();
-                if (mainForm != null)
-                {
-                    mainForm.Hide();
-                    var loginForm = new Forms.Login_Form();
-                    loginForm.FormClosed += (s, args) => Application.Exit();
-                    loginForm.Show();
-                }
+                Logout();
             }
         }
 
@@ -369,6 +358,40 @@ namespace NT106_Nhom12_Pro.Views
 
             panel.Controls.AddRange(new Control[] { iconPic, lbl_Title, lbl_Description });
             return panel;
+        }
+
+        private void Btn_ChangePassword_Click(object sender, EventArgs e)
+        {
+            var changePasswordForm = new ChangePassword_Form();
+            if(changePasswordForm.ShowDialog() == DialogResult.OK)
+            {
+                MessageBox.Show(
+                    "Đổi mật khẩu thành công!\nBạn sẽ được đăng xuất để đăng nhập lại.",
+                    "Thành công",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+
+                Logout();
+            }    
+        }
+
+        private void Logout()
+        {
+            // Clear session
+            Login_Form.CurrentUserID = null;
+            Login_Form.CurrentUserEmail = null;
+            Login_Form.CurrentUserToken = null;
+            Login_Form.CurrentUserRefreshToken = null;
+
+            // Đóng Main Form và quay về Login
+            var mainForm = this.FindForm();
+            if (mainForm != null)
+            {
+                mainForm.Hide();
+                var loginForm = new Login_Form();
+                loginForm.Show();
+                mainForm.Close();
+            }
         }
     }
 }

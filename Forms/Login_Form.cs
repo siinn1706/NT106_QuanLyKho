@@ -16,6 +16,7 @@ namespace NT106_Nhom12_Pro.Forms
         public static string? CurrentUserID { get; set; }
         public static string? CurrentUserEmail { get; set; }
         public static string? CurrentUserToken { get; set; }
+        public static string? CurrentUserRefreshToken { get; set; }
 
         public Login_Form()
         {
