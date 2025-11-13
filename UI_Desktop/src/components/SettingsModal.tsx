@@ -1,0 +1,405 @@
+import { useState } from 'react';
+import { FaTimes, FaMoon, FaSun, FaBell, FaLanguage, FaDownload, FaInfoCircle, FaKey, FaDatabase, FaTrash, FaSync, FaShieldAlt } from 'react-icons/fa';
+import { useUIStore } from '../state/ui_store';
+
+interface SettingsModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
+  const { isDarkMode, toggleDarkMode } = useUIStore();
+  const [activeTab, setActiveTab] = useState<'general' | 'notifications' | 'about'>('general');
+  const [language, setLanguage] = useState('vi');
+  const [notifications, setNotifications] = useState({
+    lowStock: true,
+    newOrders: true,
+    systemUpdates: false,
+  });
+
+  const APP_VERSION = '1.0.0';
+  const BUILD_DATE = '13/11/2025';
+
+  if (!isOpen) return null;
+
+  const handleCheckUpdate = () => {
+    alert('Đang kiểm tra cập nhật...');
+    setTimeout(() => {
+      alert('Bạn đang sử dụng phiên bản mới nhất!');
+    }, 1000);
+  };
+
+  const handleClearCache = () => {
+    if (confirm('Bạn có chắc muốn xóa cache? Điều này có thể làm chậm lần khởi động tiếp theo.')) {
+      localStorage.clear();
+      alert('Đã xóa cache thành công!');
+    }
+  };
+
+  const handleExportData = () => {
+    alert('Chức năng xuất dữ liệu đang được phát triển...');
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div className={`w-[700px] h-[600px] rounded-2xl shadow-2xl flex overflow-hidden ${
+        isDarkMode ? 'bg-zinc-900 text-white' : 'bg-white text-zinc-900'
+      }`}>
+        {/* Sidebar */}
+        <div className={`w-48 border-r ${
+          isDarkMode ? 'bg-zinc-800 border-zinc-700' : 'bg-zinc-50 border-zinc-200'
+        }`}>
+          <div className={`h-16 px-6 flex items-center border-b ${
+            isDarkMode ? 'border-zinc-700' : 'border-zinc-200'
+          }`}>
+            <h2 className="font-bold text-lg">Cài đặt</h2>
+          </div>
+          <nav className="p-2">
+            <button
+              onClick={() => setActiveTab('general')}
+              className={`w-full text-left px-4 py-3 rounded-lg mb-1 transition-colors ${
+                activeTab === 'general'
+                  ? isDarkMode
+                    ? 'bg-primary/20 text-primary'
+                    : 'bg-primary/10 text-primary'
+                  : isDarkMode
+                    ? 'hover:bg-zinc-700'
+                    : 'hover:bg-zinc-100'
+              }`}
+            >
+              Chung
+            </button>
+            <button
+              onClick={() => setActiveTab('notifications')}
+              className={`w-full text-left px-4 py-3 rounded-lg mb-1 transition-colors ${
+                activeTab === 'notifications'
+                  ? isDarkMode
+                    ? 'bg-primary/20 text-primary'
+                    : 'bg-primary/10 text-primary'
+                  : isDarkMode
+                    ? 'hover:bg-zinc-700'
+                    : 'hover:bg-zinc-100'
+              }`}
+            >
+              Thông báo
+            </button>
+            <button
+              onClick={() => setActiveTab('about')}
+              className={`w-full text-left px-4 py-3 rounded-lg mb-1 transition-colors ${
+                activeTab === 'about'
+                  ? isDarkMode
+                    ? 'bg-primary/20 text-primary'
+                    : 'bg-primary/10 text-primary'
+                  : isDarkMode
+                    ? 'hover:bg-zinc-700'
+                    : 'hover:bg-zinc-100'
+              }`}
+            >
+              Thông tin
+            </button>
+          </nav>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 flex flex-col">
+          {/* Header */}
+          <div className={`h-16 flex items-center justify-between px-6 border-b ${
+            isDarkMode ? 'border-zinc-700' : 'border-zinc-200'
+          }`}>
+            <h3 className="font-semibold text-lg">
+              {activeTab === 'general' && 'Cài đặt chung'}
+              {activeTab === 'notifications' && 'Cài đặt thông báo'}
+              {activeTab === 'about' && 'Thông tin ứng dụng'}
+            </h3>
+            <button
+              onClick={onClose}
+              className={`p-2 rounded-lg transition-colors ${
+                isDarkMode ? 'hover:bg-zinc-800' : 'hover:bg-zinc-100'
+              }`}
+            >
+              <FaTimes size={18} />
+            </button>
+          </div>
+
+          {/* Content Area */}
+          <div className="flex-1 overflow-y-auto p-6">
+            {activeTab === 'general' && (
+              <div className="space-y-6">
+                {/* Theme Toggle */}
+                <div className={`p-4 rounded-lg ${
+                  isDarkMode ? 'bg-zinc-800' : 'bg-zinc-50'
+                }`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-3">
+                      {isDarkMode ? <FaMoon size={20} /> : <FaSun size={20} />}
+                      <div>
+                        <h4 className="font-semibold">Giao diện</h4>
+                        <p className={`text-sm ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
+                          Chuyển đổi giữa chế độ sáng và tối
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={toggleDarkMode}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        isDarkMode ? 'bg-primary' : 'bg-zinc-300'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          isDarkMode ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Language */}
+                <div className={`p-4 rounded-lg ${
+                  isDarkMode ? 'bg-zinc-800' : 'bg-zinc-50'
+                }`}>
+                  <div className="flex items-center gap-3 mb-3">
+                    <FaLanguage size={20} />
+                    <div>
+                      <h4 className="font-semibold">Ngôn ngữ</h4>
+                      <p className={`text-sm ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
+                        Chọn ngôn ngữ hiển thị
+                      </p>
+                    </div>
+                  </div>
+                  <select
+                    value={language}
+                    onChange={(e) => setLanguage(e.target.value)}
+                    className={`w-full px-3 py-2 rounded-lg border ${
+                      isDarkMode
+                        ? 'bg-zinc-700 border-zinc-600 text-white'
+                        : 'bg-white border-zinc-300 text-zinc-900'
+                    }`}
+                  >
+                    <option value="vi">Tiếng Việt</option>
+                    <option value="en">English</option>
+                  </select>
+                </div>
+
+                {/* Data Management */}
+                <div className={`p-4 rounded-lg ${
+                  isDarkMode ? 'bg-zinc-800' : 'bg-zinc-50'
+                }`}>
+                  <div className="flex items-center gap-3 mb-3">
+                    <FaDatabase size={20} />
+                    <div>
+                      <h4 className="font-semibold">Quản lý dữ liệu</h4>
+                      <p className={`text-sm ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
+                        Sao lưu và xóa dữ liệu
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleExportData}
+                      className={`flex-1 px-4 py-2 rounded-lg border transition-colors ${
+                        isDarkMode
+                          ? 'border-zinc-600 hover:bg-zinc-700'
+                          : 'border-zinc-300 hover:bg-zinc-100'
+                      }`}
+                    >
+                      <FaDownload className="inline mr-2" size={14} />
+                      Xuất dữ liệu
+                    </button>
+                    <button
+                      onClick={handleClearCache}
+                      className={`flex-1 px-4 py-2 rounded-lg border transition-colors ${
+                        isDarkMode
+                          ? 'border-red-600 text-red-500 hover:bg-red-600/10'
+                          : 'border-red-500 text-red-600 hover:bg-red-50'
+                      }`}
+                    >
+                      <FaTrash className="inline mr-2" size={14} />
+                      Xóa cache
+                    </button>
+                  </div>
+                </div>
+
+                {/* Security */}
+                <div className={`p-4 rounded-lg ${
+                  isDarkMode ? 'bg-zinc-800' : 'bg-zinc-50'
+                }`}>
+                  <div className="flex items-center gap-3 mb-3">
+                    <FaShieldAlt size={20} />
+                    <div>
+                      <h4 className="font-semibold">Bảo mật</h4>
+                      <p className={`text-sm ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
+                        Cài đặt bảo mật tài khoản
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    className={`w-full px-4 py-2 rounded-lg border transition-colors ${
+                      isDarkMode
+                        ? 'border-zinc-600 hover:bg-zinc-700'
+                        : 'border-zinc-300 hover:bg-zinc-100'
+                    }`}
+                  >
+                    <FaKey className="inline mr-2" size={14} />
+                    Đổi mật khẩu
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'notifications' && (
+              <div className="space-y-4">
+                {/* Low Stock Alert */}
+                <div className={`p-4 rounded-lg ${
+                  isDarkMode ? 'bg-zinc-800' : 'bg-zinc-50'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <FaBell size={18} />
+                      <div>
+                        <h4 className="font-semibold">Cảnh báo hàng sắp hết</h4>
+                        <p className={`text-sm ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
+                          Nhận thông báo khi hàng hoá sắp hết
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setNotifications({ ...notifications, lowStock: !notifications.lowStock })}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        notifications.lowStock ? 'bg-primary' : 'bg-zinc-300'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          notifications.lowStock ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+
+                {/* New Orders */}
+                <div className={`p-4 rounded-lg ${
+                  isDarkMode ? 'bg-zinc-800' : 'bg-zinc-50'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <FaBell size={18} />
+                      <div>
+                        <h4 className="font-semibold">Đơn hàng mới</h4>
+                        <p className={`text-sm ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
+                          Thông báo khi có đơn nhập/xuất mới
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setNotifications({ ...notifications, newOrders: !notifications.newOrders })}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        notifications.newOrders ? 'bg-primary' : 'bg-zinc-300'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          notifications.newOrders ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+
+                {/* System Updates */}
+                <div className={`p-4 rounded-lg ${
+                  isDarkMode ? 'bg-zinc-800' : 'bg-zinc-50'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <FaBell size={18} />
+                      <div>
+                        <h4 className="font-semibold">Cập nhật hệ thống</h4>
+                        <p className={`text-sm ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
+                          Thông báo khi có phiên bản mới
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setNotifications({ ...notifications, systemUpdates: !notifications.systemUpdates })}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        notifications.systemUpdates ? 'bg-primary' : 'bg-zinc-300'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          notifications.systemUpdates ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'about' && (
+              <div className="space-y-6">
+                {/* App Info */}
+                <div className={`p-4 rounded-lg text-center ${
+                  isDarkMode ? 'bg-zinc-800' : 'bg-zinc-50'
+                }`}>
+                  <div className="w-20 h-20 bg-primary rounded-2xl flex items-center justify-center text-white text-3xl font-bold mx-auto mb-4">
+                    N3T
+                  </div>
+                  <h3 className="text-xl font-bold mb-2">Quản Lý Kho N3T</h3>
+                  <p className={`text-sm mb-1 ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
+                    Phiên bản: {APP_VERSION}
+                  </p>
+                  <p className={`text-sm ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
+                    Ngày build: {BUILD_DATE}
+                  </p>
+                </div>
+
+                {/* Update Check */}
+                <div className={`p-4 rounded-lg ${
+                  isDarkMode ? 'bg-zinc-800' : 'bg-zinc-50'
+                }`}>
+                  <div className="flex items-center gap-3 mb-3">
+                    <FaSync size={20} />
+                    <div>
+                      <h4 className="font-semibold">Kiểm tra cập nhật</h4>
+                      <p className={`text-sm ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
+                        Tìm và cài đặt phiên bản mới nhất
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleCheckUpdate}
+                    className="w-full px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                  >
+                    Kiểm tra ngay
+                  </button>
+                </div>
+
+                {/* Info */}
+                <div className={`p-4 rounded-lg ${
+                  isDarkMode ? 'bg-zinc-800' : 'bg-zinc-50'
+                }`}>
+                  <div className="flex items-center gap-3 mb-3">
+                    <FaInfoCircle size={20} />
+                    <h4 className="font-semibold">Thông tin</h4>
+                  </div>
+                  <div className={`text-sm space-y-2 ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
+                    <p>© 2025 N3T Team. All rights reserved.</p>
+                    <p>Developed by: Nhóm 12 - NT106</p>
+                    <p>Email: support@n3t.com</p>
+                    <p className="mt-4 pt-4 border-t border-zinc-700">
+                      Ứng dụng quản lý kho hàng hiện đại với giao diện thân thiện, 
+                      hỗ trợ theo dõi tồn kho, nhập xuất và báo cáo chi tiết.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
