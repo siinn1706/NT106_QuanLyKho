@@ -23,12 +23,31 @@ export default function ChatRoom({ conversationId, sidebarCollapsed, onExpandSid
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
+  const [showCategories, setShowCategories] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const isDarkMode = useUIStore((state) => state.isDarkMode);
+
+  const categories = [
+    { id: 'stock', label: 'Tồn kho', icon: '📦' },
+    { id: 'orders', label: 'Đơn hàng', icon: '📋' },
+    { id: 'suppliers', label: 'Nhà cung cấp', icon: '🏢' },
+    { id: 'reports', label: 'Báo cáo', icon: '📊' },
+  ];
+
+  const scrollToBottom = () => {
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    }, 100);
+  };
 
   useEffect(() => {
     setMessages(MOCK_MESSAGES.filter((m) => m.conversationId === conversationId));
   }, [conversationId]);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   const handleSend = async () => {
     if (!inputValue.trim()) return;
@@ -99,14 +118,53 @@ export default function ChatRoom({ conversationId, sidebarCollapsed, onExpandSid
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-2">
-        {messages.map((m) => (
-          <MessageBubble
-            key={m.id}
-            text={m.text}
-            time={getTime(m.createdAt)}
-            mine={m.sender === "user"}
-          />
-        ))}
+        {messages.length === 0 && (
+          <div className="flex flex-col items-center justify-center h-full text-center p-6">
+            <div className={`text-sm mb-4 ${isDarkMode ? "text-zinc-400" : "text-zinc-600"}`}>
+              Xin chào! Tôi có thể giúp gì cho bạn?
+            </div>
+            <div className="grid grid-cols-2 gap-2 w-full max-w-sm">
+              {categories.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => {
+                    setInputValue(`Tôi cần trợ giúp về ${cat.label.toLowerCase()}`);
+                    setShowCategories(false);
+                  }}
+                  className={`px-4 py-3 rounded-lg border transition ${
+                    isDarkMode
+                      ? "bg-zinc-800 border-zinc-700 hover:bg-zinc-700 text-white"
+                      : "bg-white border-zinc-300 hover:bg-zinc-50 text-zinc-900"
+                  }`}
+                >
+                  <div className="text-2xl mb-1">{cat.icon}</div>
+                  <div className="text-sm font-medium">{cat.label}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {messages.map((m, index) => {
+          const next = messages[index + 1];
+          const isSameSender = next && next.sender === m.sender;
+
+          const currentTime = getTime(m.createdAt);
+          const nextTime = next ? getTime(next.createdAt) : undefined;
+          const isSameTime = next && nextTime === currentTime;
+
+          const isLastInGroup = !(isSameSender && isSameTime);
+
+          return (
+            <MessageBubble
+              key={m.id}
+              text={m.text}
+              time={currentTime}
+              mine={m.sender === "user"}
+              isLastInGroup={isLastInGroup}
+            />
+          );
+        })}
+        <div ref={messagesEndRef} />
       </div>
 
       <div className={`flex items-center gap-2 p-4 border-t ${

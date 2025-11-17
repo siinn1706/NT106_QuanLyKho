@@ -1,6 +1,9 @@
 import { useState } from 'react';
-import { FaTimes, FaMoon, FaSun, FaBell, FaLanguage, FaDownload, FaInfoCircle, FaKey, FaDatabase, FaTrash, FaSync, FaShieldAlt } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
+import { FaTimes, FaMoon, FaSun, FaBell, FaLanguage, FaDownload, FaInfoCircle, FaKey, FaDatabase, FaTrash, FaSync, FaShieldAlt, FaUser, FaSignOutAlt } from 'react-icons/fa';
 import { useUIStore } from '../state/ui_store';
+import { useAuthStore } from '../state/auth_store';
+import { apiLogout } from '../app/api_client';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -9,7 +12,9 @@ interface SettingsModalProps {
 
 export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const { isDarkMode, toggleDarkMode } = useUIStore();
-  const [activeTab, setActiveTab] = useState<'general' | 'notifications' | 'about'>('general');
+  const { user, logout } = useAuthStore();
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<'general' | 'account' | 'notifications' | 'about'>('general');
   const [language, setLanguage] = useState('vi');
   const [notifications, setNotifications] = useState({
     lowStock: true,
@@ -40,6 +45,23 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     alert('Chức năng xuất dữ liệu đang được phát triển...');
   };
 
+  const handleLogout = async () => {
+    if (!confirm('Bạn có chắc muốn đăng xuất?')) return;
+    try {
+      await apiLogout();
+    } catch (e) {
+      // ignore server-side logout errors; proceed client-side
+    } finally {
+      logout();
+      onClose();
+      navigate('/login');
+    }
+  };
+
+  const handleChangePassword = () => {
+    alert('Chức năng đổi mật khẩu đang được phát triển...');
+  };
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className={`w-[700px] h-[600px] rounded-2xl shadow-2xl flex overflow-hidden ${
@@ -68,6 +90,20 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               }`}
             >
               Chung
+            </button>
+            <button
+              onClick={() => setActiveTab('account')}
+              className={`w-full text-left px-4 py-3 rounded-lg mb-1 transition-colors ${
+                activeTab === 'account'
+                  ? isDarkMode
+                    ? 'bg-primary/20 text-primary'
+                    : 'bg-primary/10 text-primary'
+                  : isDarkMode
+                    ? 'hover:bg-zinc-700'
+                    : 'hover:bg-zinc-100'
+              }`}
+            >
+              Tài khoản
             </button>
             <button
               onClick={() => setActiveTab('notifications')}
@@ -108,6 +144,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           }`}>
             <h3 className="font-semibold text-lg">
               {activeTab === 'general' && 'Cài đặt chung'}
+              {activeTab === 'account' && 'Tài khoản'}
               {activeTab === 'notifications' && 'Cài đặt thông báo'}
               {activeTab === 'about' && 'Thông tin ứng dụng'}
             </h3>
@@ -234,6 +271,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     </div>
                   </div>
                   <button
+                    onClick={handleChangePassword}
                     className={`w-full px-4 py-2 rounded-lg border transition-colors ${
                       isDarkMode
                         ? 'border-zinc-600 hover:bg-zinc-700'
@@ -242,6 +280,130 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   >
                     <FaKey className="inline mr-2" size={14} />
                     Đổi mật khẩu
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'account' && (
+              <div className="space-y-6">
+                {/* User Info */}
+                <div className={`p-6 rounded-lg ${
+                  isDarkMode ? 'bg-zinc-800' : 'bg-zinc-50'
+                }`}>
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="w-20 h-20 bg-gradient-to-br from-primary to-blue-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
+                      {user?.name?.charAt(0).toUpperCase() || 'U'}
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold">{user?.name || 'User'}</h3>
+                      <p className={`text-sm ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
+                        {user?.email || 'user@example.com'}
+                      </p>
+                      {user?.role && (
+                        <span className={`inline-block mt-2 px-3 py-1 rounded-full text-xs font-medium ${
+                          isDarkMode ? 'bg-primary/20 text-primary' : 'bg-primary/10 text-primary'
+                        }`}>
+                          {user.role}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    className={`w-full px-4 py-2 rounded-lg border transition-colors ${
+                      isDarkMode
+                        ? 'border-zinc-600 hover:bg-zinc-700'
+                        : 'border-zinc-300 hover:bg-zinc-100'
+                    }`}
+                  >
+                    <FaUser className="inline mr-2" size={14} />
+                    Chỉnh sửa hồ sơ
+                  </button>
+                </div>
+
+                {/* Account Info */}
+                <div className={`p-4 rounded-lg ${
+                  isDarkMode ? 'bg-zinc-800' : 'bg-zinc-50'
+                }`}>
+                  <h4 className="font-semibold mb-4">Thông tin tài khoản</h4>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center py-2 border-b border-zinc-700 dark:border-zinc-600">
+                      <span className={`text-sm ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
+                        Email
+                      </span>
+                      <span className="text-sm font-medium">
+                        {user?.email || 'N/A'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center py-2 border-b border-zinc-700 dark:border-zinc-600">
+                      <span className={`text-sm ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
+                        ID
+                      </span>
+                      <span className="text-sm font-medium font-mono">
+                        {user?.id ? user.id.substring(0, 8) + '...' : 'N/A'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center py-2">
+                      <span className={`text-sm ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
+                        Vai trò
+                      </span>
+                      <span className="text-sm font-medium">
+                        {user?.role || 'User'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Password */}
+                <div className={`p-4 rounded-lg ${
+                  isDarkMode ? 'bg-zinc-800' : 'bg-zinc-50'
+                }`}>
+                  <div className="flex items-center gap-3 mb-3">
+                    <FaKey size={20} />
+                    <div>
+                      <h4 className="font-semibold">Mật khẩu</h4>
+                      <p className={`text-sm ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
+                        Thay đổi mật khẩu đăng nhập
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleChangePassword}
+                    className={`w-full px-4 py-2 rounded-lg border transition-colors ${
+                      isDarkMode
+                        ? 'border-zinc-600 hover:bg-zinc-700'
+                        : 'border-zinc-300 hover:bg-zinc-100'
+                    }`}
+                  >
+                    Đổi mật khẩu
+                  </button>
+                </div>
+
+                {/* Logout */}
+                <div className={`p-4 rounded-lg border-2 ${
+                  isDarkMode 
+                    ? 'bg-red-900/10 border-red-800' 
+                    : 'bg-red-50 border-red-200'
+                }`}>
+                  <div className="flex items-center gap-3 mb-3">
+                    <FaSignOutAlt size={20} className="text-red-600" />
+                    <div>
+                      <h4 className="font-semibold text-red-600">Đăng xuất</h4>
+                      <p className={`text-sm ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
+                        Thoát khỏi tài khoản hiện tại
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className={`w-full px-4 py-2 rounded-lg transition-colors font-semibold ${
+                      isDarkMode
+                        ? 'bg-red-600 hover:bg-red-700 text-white'
+                        : 'bg-red-500 hover:bg-red-600 text-white'
+                    }`}
+                  >
+                    <FaSignOutAlt className="inline mr-2" size={14} />
+                    Đăng xuất ngay
                   </button>
                 </div>
               </div>

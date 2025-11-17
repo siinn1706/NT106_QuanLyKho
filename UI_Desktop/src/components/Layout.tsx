@@ -1,8 +1,11 @@
 import { ReactNode, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useUIStore } from '../state/ui_store';
+import { useAuthStore } from '../state/auth_store';
 import ChatWidget from './chat/ChatWidget';
 import SettingsModal from './SettingsModal';
-import { FaHome, FaBox, FaExchangeAlt, FaBuilding, FaChartLine, FaUser, FaSearch, FaSun, FaMoon, FaBars, FaChevronLeft, FaCog } from 'react-icons/fa';
+import { apiLogout } from '../app/api_client';
+import { FaHome, FaBox, FaExchangeAlt, FaBuilding, FaChartLine, FaUser, FaSearch, FaSun, FaMoon, FaBars, FaChevronLeft, FaCog, FaSignOutAlt, FaChevronDown, FaChevronUp } from 'react-icons/fa';
 
 interface LayoutProps {
   children: ReactNode;
@@ -14,20 +17,65 @@ interface MenuItem {
   icon: string;
   path: string;
   badge?: number;
+  subItems?: { id: string; label: string; path: string; }[];
 }
 
 export default function Layout({ children }: LayoutProps) {
   const { isDarkMode, toggleDarkMode, isSidebarCollapsed, toggleSidebar } = useUIStore();
-  const [activePath, setActivePath] = useState('/dashboard');
+  const { user, logout } = useAuthStore();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<string[]>(['items']);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   const menuItems: MenuItem[] = [
     { id: 'home', label: 'Trang chủ', icon: 'FaHome', path: '/dashboard' },
-    { id: 'items', label: 'Hàng hoá', icon: 'FaBox', path: '/items' },
-    { id: 'stock', label: 'Nhập/Xuất kho', icon: 'FaExchangeAlt', path: '/stock', badge: 14 },
+    { 
+      id: 'items', 
+      label: 'Hàng hoá', 
+      icon: 'FaBox', 
+      path: '/items',
+      subItems: [
+        { id: 'item-list', label: 'Danh sách hàng', path: '/items' },
+        { id: 'item-tracking', label: 'Theo dõi hàng', path: '/items/tracking' },
+        { id: 'item-alerts', label: 'Cảnh báo tồn kho', path: '/items/alerts' }
+      ]
+    },
+    { 
+      id: 'stock', 
+      label: 'Nhập/Xuất kho', 
+      icon: 'FaExchangeAlt', 
+      path: '/stock', 
+      badge: 14,
+      subItems: [
+        { id: 'stock-in', label: 'Nhập kho', path: '/stock/in' },
+        { id: 'stock-out', label: 'Xuất kho', path: '/stock/out' }
+      ]
+    },
     { id: 'suppliers', label: 'Nhà cung cấp', icon: 'FaBuilding', path: '/suppliers' },
     { id: 'reports', label: 'Báo cáo', icon: 'FaChartLine', path: '/reports' },
   ];
+
+  const toggleSection = (sectionId: string) => {
+    setExpandedSections(prev => 
+      prev.includes(sectionId) 
+        ? prev.filter(id => id !== sectionId)
+        : [...prev, sectionId]
+    );
+  };
+
+  const handleLogout = async () => {
+    if (!confirm('Bạn có chắc muốn đăng xuất?')) return;
+    try {
+      await apiLogout();
+    } catch (e) {
+      // ignore server-side logout errors
+    } finally {
+      logout();
+      navigate('/login');
+    }
+  };
 
   return (
     <div className="flex h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100">
@@ -62,42 +110,109 @@ export default function Layout({ children }: LayoutProps) {
                                  item.icon === 'FaExchangeAlt' ? FaExchangeAlt :
                                  item.icon === 'FaBuilding' ? FaBuilding :
                                  FaChartLine;
+            const isExpanded = expandedSections.includes(item.id);
+            const hasSubItems = item.subItems && item.subItems.length > 0;
+            
             return (
-              <button
-                key={item.id}
-                onClick={() => setActivePath(item.path)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-1 transition-colors ${
-                  activePath === item.path
-                    ? 'bg-primary/10 text-primary dark:bg-primary/20'
-                    : 'hover:bg-zinc-100 dark:hover:bg-zinc-800'
-                }`}
-                title={isSidebarCollapsed ? item.label : undefined}
-              >
-                <IconComponent size={20} />
-                {!isSidebarCollapsed && (
-                  <>
-                    <span className="flex-1 text-left font-medium">{item.label}</span>
-                    {item.badge && (
-                      <span className="px-2 py-0.5 bg-danger text-white text-xs rounded-full">
-                        {item.badge}
-                      </span>
-                    )}
-                  </>
+              <div key={item.id} className="mb-1">
+                <button
+                  onClick={() => {
+                    if (hasSubItems && !isSidebarCollapsed) {
+                      toggleSection(item.id);
+                    } else {
+                      navigate(item.path);
+                    }
+                  }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                    location.pathname === item.path
+                      ? 'bg-primary/10 text-primary dark:bg-primary/20'
+                      : 'hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                  }`}
+                  title={isSidebarCollapsed ? item.label : undefined}
+                >
+                  <IconComponent size={20} />
+                  {!isSidebarCollapsed && (
+                    <>
+                      <span className="flex-1 text-left font-medium">{item.label}</span>
+                      {item.badge && (
+                        <span className="bg-danger text-white text-xs px-2 py-0.5 rounded-full">
+                          {item.badge}
+                        </span>
+                      )}
+                      {hasSubItems && (
+                        <FaChevronLeft 
+                          size={12} 
+                          className={`transition-transform ${isExpanded ? 'rotate-[-90deg]' : ''}`}
+                        />
+                      )}
+                    </>
+                  )}
+                </button>
+                
+                {/* Sub-items */}
+                {hasSubItems && isExpanded && !isSidebarCollapsed && (
+                  <div className="ml-8 mt-1 space-y-1">
+                    {item.subItems!.map(subItem => (
+                      <button
+                        key={subItem.id}
+                        onClick={() => navigate(subItem.path)}
+                        className={`w-full text-left px-4 py-2 rounded-lg text-sm transition-colors ${
+                          location.pathname === subItem.path
+                            ? 'bg-primary/10 text-primary dark:bg-primary/20'
+                            : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400'
+                        }`}
+                      >
+                        {subItem.label}
+                      </button>
+                    ))}
+                  </div>
                 )}
-              </button>
+              </div>
             );
           })}
         </nav>
         {!isSidebarCollapsed && (
-          <div className="p-4 border-t border-zinc-200 dark:border-zinc-800">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-zinc-300 dark:bg-zinc-700 rounded-full flex items-center justify-center">
-                <FaUser size={18} />
-              </div>
-              <div className="flex-1">
-                <p className="font-medium text-sm">Admin User</p>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">admin@n3t.com</p>
-              </div>
+          <div className="mt-auto border-t border-zinc-200 dark:border-zinc-800">
+            <div className="relative">
+              <button
+                onClick={() => setUserMenuOpen(!userMenuOpen)}
+                className="w-full p-4 flex items-center gap-3 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+              >
+                <div className="w-10 h-10 bg-gradient-to-br from-primary to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                  {user?.name?.charAt(0).toUpperCase() || 'U'}
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="font-medium text-sm truncate">{user?.name || 'Admin User'}</p>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate">{user?.email || 'user@example.com'}</p>
+                </div>
+                {userMenuOpen ? <FaChevronUp size={14} /> : <FaChevronDown size={14} />}
+              </button>
+
+              {/* Dropdown menu */}
+              {userMenuOpen && (
+                <div className="absolute bottom-full left-0 right-0 mb-2 mx-2 bg-white dark:bg-zinc-800 rounded-lg shadow-lg border border-zinc-200 dark:border-zinc-700 overflow-hidden">
+                  <button
+                    onClick={() => {
+                      setUserMenuOpen(false);
+                      setSettingsOpen(true);
+                    }}
+                    className="w-full px-4 py-3 flex items-center gap-3 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors text-left"
+                  >
+                    <FaCog size={16} />
+                    <span className="text-sm">Cài đặt</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setUserMenuOpen(false);
+                      handleLogout();
+                    }}
+                    className="w-full px-4 py-3 flex items-center gap-3 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-left text-red-600 dark:text-red-500 border-t border-zinc-200 dark:border-zinc-700"
+                  >
+                    <FaSignOutAlt size={16} />
+                    <span className="text-sm font-medium">Đăng xuất</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -136,7 +251,7 @@ export default function Layout({ children }: LayoutProps) {
             </button>
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto scrollbar-thin p-6">
+        <main className="flex-1 overflow-y-auto scrollbar-thin p-6 bg-zinc-50 dark:bg-zinc-950">
           {children}
         </main>
       </div>

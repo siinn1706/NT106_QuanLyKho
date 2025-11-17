@@ -13,6 +13,7 @@ import Register_Page from '../features/auth/Register_Page';
 import Dashboard_Page from '../features/dashboard/Dashboard_Page';
 // Nếu sau này bạn có thêm:
 import Items_List_Page from '../features/items/Items_List_Page';
+import Items_Tracking_Page from '../features/items/Items_Tracking_Page';
 import Stock_InOut_Page from '../features/stock/Stock_InOut_Page';
 import Suppliers_Page from '../features/suppliers/Suppliers_Page';
 import Reports_Page from '../features/reports/Reports_Page';
@@ -48,6 +49,17 @@ export default function AppRoutes() {
           <Protected_Route>
             <Layout>
               <Items_List_Page />
+            </Layout>
+          </Protected_Route>
+        }
+      />
+      
+      <Route
+        path="/items/tracking"
+        element={
+          <Protected_Route>
+            <Layout>
+              <Items_Tracking_Page />
             </Layout>
           </Protected_Route>
         }

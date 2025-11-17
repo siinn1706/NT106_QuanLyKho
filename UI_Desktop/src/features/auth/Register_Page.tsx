@@ -6,6 +6,7 @@
 
 import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import { useAuthStore } from '../../state/auth_store';
 import { apiRegister } from '../../app/api_client';
 
@@ -127,7 +128,7 @@ export default function Register_Page() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="email@example.com"
+                placeholder="user@example.com"
                 className="w-full px-4 py-3 bg-zinc-900/50 border border-zinc-600 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                 disabled={loading}
               />
@@ -152,7 +153,7 @@ export default function Register_Page() {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-300 transition-colors"
                 >
-                  {showPassword ? '🙈' : '👁️'}
+                  {showPassword ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
                 </button>
               </div>
               {/* Password Strength Indicator */}

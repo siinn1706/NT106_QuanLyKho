@@ -164,7 +164,8 @@ export interface AuthResponse {
     name: string;
     role?: string;
   };
-  token?: string;
+  token: string;
+  refresh_token?: string;
 }
 
 export async function apiLogin(credentials: LoginRequest): Promise<AuthResponse> {
@@ -174,8 +175,8 @@ export async function apiLogin(credentials: LoginRequest): Promise<AuthResponse>
     body: JSON.stringify(credentials),
   });
   if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.message || "Đăng nhập thất bại");
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || error.message || "Đăng nhập thất bại");
   }
   return res.json();
 }
@@ -184,11 +185,12 @@ export async function apiRegister(data: RegisterRequest): Promise<AuthResponse> 
   const res = await fetch(`${BASE_URL}/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
+    // Backend expects `full_name`; map from UI `name`
+    body: JSON.stringify({ email: data.email, password: data.password, full_name: data.name }),
   });
   if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.message || "Đăng ký thất bại");
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || error.message || "Đăng ký thất bại");
   }
   return res.json();
 }

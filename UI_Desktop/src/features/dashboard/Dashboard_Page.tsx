@@ -10,6 +10,8 @@ import { apiGetDashboardStats, DashboardStats } from '../../app/api_client';
 export default function Dashboard_Page() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [timeRange, setTimeRange] = useState('7days');
 
   useEffect(() => {
     // Load stats từ BE
@@ -114,17 +116,25 @@ export default function Dashboard_Page() {
         <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
           <h2 className="text-xl font-semibold">Trạng thái Hàng hoá và Tồn kho</h2>
           <div className="flex gap-2">
-            <select className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
-              <option>Tất cả danh mục</option>
-              <option>Nguyên liệu</option>
-              <option>Thành phẩm</option>
-              <option>Bán thành phẩm</option>
+            <select 
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+            >
+              <option value="all">Tất cả danh mục</option>
+              <option value="raw">Nguyên liệu</option>
+              <option value="finished">Thành phẩm</option>
+              <option value="semi">Bán thành phẩm</option>
             </select>
-            <select className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
-              <option>7 ngày qua</option>
-              <option>15 ngày qua</option>
-              <option>30 ngày qua</option>
-              <option>Tháng trước</option>
+            <select 
+              value={timeRange}
+              onChange={(e) => setTimeRange(e.target.value)}
+              className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+            >
+              <option value="7days">7 ngày qua</option>
+              <option value="15days">15 ngày qua</option>
+              <option value="30days">30 ngày qua</option>
+              <option value="prev-month">Tháng trước</option>
             </select>
           </div>
         </div>

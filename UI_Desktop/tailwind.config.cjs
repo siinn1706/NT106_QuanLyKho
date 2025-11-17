@@ -9,12 +9,17 @@ module.exports = {
     extend: {
       colors: {
         primary: {
-          DEFAULT: "#06B6D4", // cyan
-          dark: "#0891B2",
+          DEFAULT: "#00BCD4", // cyan more vibrant
+          dark: "#0097A7",
+          light: "#26C6DA",
         },
-        danger: "#EF4444",
-        warning: "#F59E0B",
-        success: "#10B981",
+        danger: "#F44336",
+        warning: "#FFC107",
+        success: "#4CAF50",
+        info: "#2196F3",
+      },
+      backgroundColor: {
+        'zinc-925': '#18181f',
       },
     },
   },

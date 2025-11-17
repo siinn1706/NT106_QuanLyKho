@@ -38,7 +38,7 @@ export default function ChatWidget() {
             : "bg-white border border-zinc-200"
         }`}
           style={{
-            width: sidebarCollapsed ? "min(400px, calc(100vw - 48px))" : "min(650px, calc(100vw - 48px))",
+            width: sidebarCollapsed ? "min(500px, calc(100vw - 48px))" : "min(780px, calc(100vw - 48px))",
             height: "min(480px, calc(100vh - 140px))",
           }}
         >
