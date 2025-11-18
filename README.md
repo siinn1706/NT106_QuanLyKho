@@ -1,92 +1,149 @@
-# NT106_QuanLyKho_Nhom12 — Ứng dụng Quản lý Nhập Xuất Kho
+<div align="center">
 
-Mô tả ngắn
-Ứng dụng hiện tại gồm 2 thành phần chính:
-- UI_Desktop/: giao diện Desktop (React + Vite + Tailwind CSS + Tauri)
-- KhoHang_API/: backend (Python FastAPI + SQLite) kèm client AI (Gemini API)
+  ![Repo Badge](https://img.shields.io/badge/NT106_QuanLy_Kho-16a34a?style=for-the-badge&logo=github&logoColor=white)
 
-Mục tiêu: quản lý hàng hóa, nghiệp vụ nhập/xuất kho, thống kê báo cáo và hỗ trợ người dùng qua chatbot AI.
+  # 📦 Ứng dụng Quản lý Nhập Xuất Kho
+  ### NT106_QuanLyKho_Nhom12
 
-Nhóm phát triển
-- Hoàng Xuân Minh Trí - 24521829
-- Trương Minh Thái - 24521599
-- Nguyễn Võ Minh Trí - 24521840
-- Nguyễn Văn Nam - 24521120
+  [![License](https://img.shields.io/badge/License-MIT-green?style=flat-square&logo=opensourceinitiative&logoColor=white)](LICENSE)
+  ![Python](https://img.shields.io/badge/Backend-FastAPI_%7C_Python-3776AB?style=flat-square&logo=python&logoColor=white)
+  ![React](https://img.shields.io/badge/Frontend-React_%7C_Tauri-61DAFB?style=flat-square&logo=react&logoColor=black)
+  ![Status](https://img.shields.io/badge/Status-Developing-orange?style=flat-square)
 
-Tính năng chính
-- Quản lý sản phẩm: thêm, sửa, xóa, tìm kiếm
-- Quản lý kho: tạo phiếu nhập, xuất; cập nhật tồn kho tự động
-- Hỗ trợ nhiều kho/chi nhánh (cấu trúc mở rộng)
-- Dashboard thống kê: tồn kho, cảnh báo sắp hết, biểu đồ
-- Phân quyền người dùng: Admin / Manager / Staff
-- Chatbot AI: hỗ trợ tra cứu, hướng dẫn (Gemini API)
+  <p>
+    <b>Mục tiêu:</b> Quản lý hàng hóa, nghiệp vụ nhập/xuất kho, thống kê báo cáo và hỗ trợ người dùng qua Chatbot AI.
+  </p>
 
-Công nghệ chính
-- Frontend: React, TypeScript, Vite, Tailwind CSS, Tauri (Desktop)
-- Backend: Python 3.11+, FastAPI, SQLite
-- AI: Gemini API (client đặt trong KhoHang_API)
-- Ngôn ngữ chính trong repo: TypeScript, Python
+  <img src="UI_Desktop/assets/screenshot.png" alt="App Screenshot" width="100%" style="border-radius: 10px; box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2);">
 
-Cấu trúc thư mục
-- KhoHang_API/ — mã nguồn backend (FastAPI), database, client AI, file cấu hình
-- UI_Desktop/ — mã nguồn frontend React + cấu hình Tauri
-- (legacy/) — (nếu còn) mã nguồn ứng dụng WinForms cũ (tóm tắt ở phần Legacy)
+</div>
 
-Hướng dẫn chạy nhanh (Quickstart)
+---
 
-A. Backend (FastAPI)
-1. Mở terminal, chuyển thư mục:
-   cd KhoHang_API
-2. Tạo virtual environment:
-   python -m venv .venv
-3. Kích hoạt venv:
-   - Windows (PowerShell): .venv\Scripts\Activate.ps1
-   - Windows (cmd): .venv\Scripts\activate
-   - macOS / Linux: source .venv/bin/activate
-4. Cài dependencies:
-   pip install -r requirements.txt
-5. Thiết lập biến môi trường (xem .env.example), ví dụ:
-   - GEMINI_API_KEY=your_api_key
-   - DATABASE_URL=sqlite:///./data.db
-6. Chạy server phát triển:
-   uvicorn app.main:app --reload
-7. API mặc định chạy tại http://127.0.0.1:8000 và tài liệu Swagger tại /docs
+## 🔸 Tóm tắt nhanh
 
-B. Frontend (React + Tauri)
-1. Mở terminal mới, chuyển thư mục:
-   cd UI_Desktop
-2. Cài package:
-   npm install
-3. Chạy ứng dụng:
-   - Chạy Desktop (Tauri): npm run tauri dev
-   - Hoặc chạy web (Vite): npm run dev
+Ứng dụng là giải pháp toàn diện gồm 2 thành phần chính, tích hợp sức mạnh của AI để hỗ trợ quản lý kho thông minh:
 
-Lưu ý khi chạy Tauri (Desktop)
-- Cần Rust & Cargo để build và chạy Tauri Desktop.
-- Trên Windows (PowerShell) cài Rust nếu chưa có:
-  winget install --id Rustlang.Rustup -e
-- Sau khi cài, khởi động lại terminal để Rust toolchain có hiệu lực.
+| Thành phần | Công nghệ chính |
+| :--- | :--- |
+| **🖥️ Desktop App** | React + TypeScript + Vite + Tailwind CSS + Tauri |
+| **⚙️ Backend API** | FastAPI (Python) + SQLite + Gemini AI Client |
 
-File cấu hình môi trường
-- Không commit file .env chứa khóa bí mật. Thay vào đó cung cấp .env.example (các biến mẫu):
-  - GEMINI_API_KEY=
-  - DATABASE_URL=sqlite:///./data.db
-  - FASTAPI_HOST=127.0.0.1
-  - FASTAPI_PORT=8000
-  - OTHER_SECRETS=
+---
 
-Lưu ý chia sẻ & đóng gói
-- Không đính kèm node_modules, .venv, __pycache__, build artifacts trong ZIP hoặc khi upload.
-- Khi gửi project qua Google Drive / Email: xóa thư viện lớn và tạo file .env riêng để gửi nếu cần.
-- Kiểm tra kỹ các khóa API trước khi chia sẻ mã nguồn công khai.
+## 🟢 Nhóm phát triển
 
-Legacy (thông tin từ README cũ)
-Dự án ban đầu là một ứng dụng Desktop WinForms viết bằng C# kết nối Firebase (Firebase Authentication + Cloud Firestore) với các tính năng tương tự (quản lý sản phẩm, phiếu nhập/xuất, dashboard, phân quyền). Các thông tin, tài liệu và code cũ vẫn nằm trong repository (nếu có) để tham khảo.
+| STT | Họ và tên | MSSV | Vai trò (Dự kiến) |
+|:---:|:---:|:---:|:---|
+| 1 | **Hoàng Xuân Minh Trí** | 24521829 | Fullstack / Leader |
+| 2 | **Trương Minh Thái** | 24521599 | Frontend Dev |
+| 3 | **Nguyễn Võ Minh Trí** | 24521840 | Backend Dev |
+| 4 | **Nguyễn Văn Nam** | 24521120 | Database / AI |
 
-Gợi ý phát triển & đóng góp
-- Tách rõ cấu hình dev/production cho database
-- Thêm file README riêng cho mỗi thư mục (KhoHang_API/README.md và UI_Desktop/README.md) nếu cần hướng dẫn chi tiết hơn
-- Sử dụng GitHub Issues/PR để theo dõi thay đổi và review
+---
 
-License
-- Chưa chỉ định. Thêm tệp LICENSE nếu muốn công khai bản quyền.
+## ✨ Điểm nhấn & Tính năng chính
+
+- ✅ **Quản lý sản phẩm:** Thêm, sửa, xóa, tìm kiếm nâng cao.
+- 📦 **Nghiệp vụ kho:** Tạo phiếu nhập/xuất, tự động cập nhật tồn kho.
+- 🏢 **Multi-warehouse:** Hỗ trợ cấu trúc nhiều kho/chi nhánh.
+- 📊 **Dashboard thông minh:** Biểu đồ thống kê, cảnh báo hàng sắp hết (Low stock alert).
+- 🛡️ **Phân quyền:** Cơ chế RBAC (Admin / Manager / Staff).
+- 🤖 **Chatbot AI:** Trợ lý ảo sử dụng **Gemini API** để tra cứu nhanh và hướng dẫn sử dụng.
+
+---
+
+## 📂 Cấu trúc thư mục
+
+```tree
+NT106_QuanLyKho/
+├── 📂 KhoHang_API/      # Backend (FastAPI, Database, AI Client)
+│   ├── app/
+│   ├── data.db          # SQLite Database
+│   └── requirements.txt
+├── 📂 UI_Desktop/       # Frontend (React + Tauri)
+│   ├── assets/          # CHỨA ẢNH SCREENSHOT Ở ĐÂY
+│   ├── src/
+│   ├── src-tauri/       # Cấu hình Rust cho Tauri
+│   └── package.json
+├── 📜 .env.example      # Mẫu cấu hình môi trường
+└── 📜 README.md
+```
+---
+
+## 🚀 Hướng dẫn chạy nhanh (Quickstart)
+
+# A. Backend (FastAPI)
+
+```
+# 1. Di chuyển vào thư mục API
+cd KhoHang_API
+
+# 2. Tạo môi trường ảo
+python -m venv .venv
+
+# 3. Kích hoạt môi trường (Windows)
+.venv\Scripts\activate
+
+# 4. Cài đặt thư viện
+pip install -r requirements.txt
+
+# 5. Setup biến môi trường (Tạo file .env từ .env.example)
+# GEMINI_API_KEY=your_api_key
+# DATABASE_URL=sqlite:///./data.db
+
+# 6. Khởi chạy Server
+uvicorn app.main:app --reload
+```
+🔗 API chạy tại: http://127.0.0.1:8000 | Docs: http://127.0.0.1:8000/docs
+
+# B. Frontend (React + Tauri)
+
+```
+# 1. Di chuyển vào thư mục UI
+cd UI_Desktop
+
+# 2. Cài đặt packages
+npm install
+
+# 3. Khởi chạy ứng dụng
+# Chạy chế độ Desktop App (Yêu cầu cài Rust & Cargo)
+npm run tauri dev
+
+# Hoặc chạy chế độ Web Browser
+npm run dev
+```
+## 🤝 Contributing
+Fork dự án.
+
+Tạo branch feature: git checkout -b feat/ten-tinh-nang
+
+Commit thay đổi: git commit -m "Thêm tính năng ABC"
+
+Push lên branch: git push origin feat/ten-tinh-nang
+
+Gửi Pull Request.
+
+<div align="center"> <i>Dự án môn học NT106 - UIT</i>
+
+
+<b>License MIT</b> </div>
+
+
+-----
+
+### ⚠️ Bước quan trọng để hiện ảnh (Bắt buộc làm)
+
+Code trên mình đã trỏ đường dẫn ảnh vào: `UI_Desktop/assets/screenshot.png`.
+Để ảnh hiện lên trên GitHub, bạn cần làm các bước sau trong Terminal:
+
+1.  Chụp màn hình app của bạn, đổi tên file thành `screenshot.png`.
+2.  Copy file đó bỏ vào thư mục: `NT106_QuanLyKho/UI_Desktop/assets/` (nếu chưa có thư mục `assets` thì tạo mới).
+3.  Gõ lệnh sau để đẩy ảnh lên GitHub:
+    ```bash
+    git add UI_Desktop/assets/screenshot.png
+    git commit -m "Add app screenshot"
+    git push origin main
+    ```
+
+*(Sau khi push xong, đợi khoảng 30 giây và F5 lại trang GitHub là ảnh sẽ hiện).*
