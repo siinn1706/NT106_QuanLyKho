@@ -1,61 +1,92 @@
-# Đồ án Lập trình Mạng Căn bản: Ứng dụng Desktop Quản lý Nhập Xuất Kho
+# NT106_QuanLyKho_Nhom12 — Ứng dụng Quản lý Nhập Xuất Kho
 
-![C#](https://img.shields.io/badge/C%23-239120?style=for-the-badge&logo=c-sharp&logoColor=white)
-![Firebase](https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)
-![.NET](https://img.shields.io/badge/.NET-512BD4?style=for-the-badge&logo=dotnet&logoColor=white)
+Mô tả ngắn
+Ứng dụng hiện tại gồm 2 thành phần chính:
+- UI_Desktop/: giao diện Desktop (React + Vite + Tailwind CSS + Tauri)
+- KhoHang_API/: backend (Python FastAPI + SQLite) kèm client AI (Gemini API)
 
-Đây là dự án học phần Lập trình Mạng Căn bản, xây dựng một ứng dụng desktop (WinForms) hoàn chỉnh để quản lý nghiệp vụ nhập, xuất, và tồn kho. Hệ thống sử dụng C# WinForms cho giao diện và Google Firebase (Cloud Firestore, Authentication) làm backend và cơ sở dữ liệu thời gian thực.
+Mục tiêu: quản lý hàng hóa, nghiệp vụ nhập/xuất kho, thống kê báo cáo và hỗ trợ người dùng qua chatbot AI.
 
-Nhóm 12 bao gồm các thành viên:
-  - Hoàng Xuân Minh Trí - 24521829
-  - Trương Minh Thái - 24521599
-  - Nguyễn Võ Minh Trí - 24521840
-  - Nguyễn Văn Nam - 24521120
+Nhóm phát triển
+- Hoàng Xuân Minh Trí - 24521829
+- Trương Minh Thái - 24521599
+- Nguyễn Võ Minh Trí - 24521840
+- Nguyễn Văn Nam - 24521120
 
----
+Tính năng chính
+- Quản lý sản phẩm: thêm, sửa, xóa, tìm kiếm
+- Quản lý kho: tạo phiếu nhập, xuất; cập nhật tồn kho tự động
+- Hỗ trợ nhiều kho/chi nhánh (cấu trúc mở rộng)
+- Dashboard thống kê: tồn kho, cảnh báo sắp hết, biểu đồ
+- Phân quyền người dùng: Admin / Manager / Staff
+- Chatbot AI: hỗ trợ tra cứu, hướng dẫn (Gemini API)
 
-## ✨ Tính năng nổi bật
+Công nghệ chính
+- Frontend: React, TypeScript, Vite, Tailwind CSS, Tauri (Desktop)
+- Backend: Python 3.11+, FastAPI, SQLite
+- AI: Gemini API (client đặt trong KhoHang_API)
+- Ngôn ngữ chính trong repo: TypeScript, Python
 
-Dự án được xây dựng với các lớp tính năng từ cơ bản đến nâng cao:
+Cấu trúc thư mục
+- KhoHang_API/ — mã nguồn backend (FastAPI), database, client AI, file cấu hình
+- UI_Desktop/ — mã nguồn frontend React + cấu hình Tauri
+- (legacy/) — (nếu còn) mã nguồn ứng dụng WinForms cũ (tóm tắt ở phần Legacy)
 
-### 🔑 Lớp 1: Hệ thống Xác thực & Nghiệp vụ cơ bản
-* **Xác thực:** Đăng nhập, Đăng ký tài khoản, Quên mật khẩu (gửi email khôi phục).
-* **Quản lý Sản phẩm:** Thêm, Sửa, Xóa, Tìm kiếm sản phẩm.
-* **Quản lý Kho (1 kho):** Tạo phiếu nhập kho, tạo phiếu xuất kho. Tự động cập nhật số lượng tồn kho sau mỗi giao dịch.
+Hướng dẫn chạy nhanh (Quickstart)
 
-### 🏢 Lớp 2: Kiến trúc Mở rộng
-* **Quản lý Nhiều kho hàng:** Nâng cấp hệ thống để có thể quản lý dữ liệu cho nhiều kho/chi nhánh khác nhau.
-* **CRUD Kho:** Thêm, sửa, xóa thông tin các kho hàng.
-* **Lọc dữ liệu:** Toàn bộ dữ liệu sản phẩm, phiếu nhập/xuất đều được lọc và hiển thị theo kho mà người dùng đã chọn.
+A. Backend (FastAPI)
+1. Mở terminal, chuyển thư mục:
+   cd KhoHang_API
+2. Tạo virtual environment:
+   python -m venv .venv
+3. Kích hoạt venv:
+   - Windows (PowerShell): .venv\Scripts\Activate.ps1
+   - Windows (cmd): .venv\Scripts\activate
+   - macOS / Linux: source .venv/bin/activate
+4. Cài dependencies:
+   pip install -r requirements.txt
+5. Thiết lập biến môi trường (xem .env.example), ví dụ:
+   - GEMINI_API_KEY=your_api_key
+   - DATABASE_URL=sqlite:///./data.db
+6. Chạy server phát triển:
+   uvicorn app.main:app --reload
+7. API mặc định chạy tại http://127.0.0.1:8000 và tài liệu Swagger tại /docs
 
-### 📊 Lớp 3: Tính năng Nâng cao
-* **Dashboard trực quan:** Hiển thị các chỉ số quan trọng (Tổng tồn kho, Sản phẩm sắp hết...) và biểu đồ (sử dụng LiveCharts2) để cung cấp cái nhìn tổng quan.
-* **Phân quyền người dùng:**
-    * **Admin:** Toàn bộ quyền quản trị, bao gồm cả việc quản lý tài khoản người dùng và quản lý kho.
-    * **Manager/Staff:** Giới hạn quyền, chỉ có thể thực hiện các nghiệp vụ nhập/xuất kho trong phạm vi kho được giao.
+B. Frontend (React + Tauri)
+1. Mở terminal mới, chuyển thư mục:
+   cd UI_Desktop
+2. Cài package:
+   npm install
+3. Chạy ứng dụng:
+   - Chạy Desktop (Tauri): npm run tauri dev
+   - Hoặc chạy web (Vite): npm run dev
 
----
+Lưu ý khi chạy Tauri (Desktop)
+- Cần Rust & Cargo để build và chạy Tauri Desktop.
+- Trên Windows (PowerShell) cài Rust nếu chưa có:
+  winget install --id Rustlang.Rustup -e
+- Sau khi cài, khởi động lại terminal để Rust toolchain có hiệu lực.
 
-## 🛠️ Công nghệ sử dụng
+File cấu hình môi trường
+- Không commit file .env chứa khóa bí mật. Thay vào đó cung cấp .env.example (các biến mẫu):
+  - GEMINI_API_KEY=
+  - DATABASE_URL=sqlite:///./data.db
+  - FASTAPI_HOST=127.0.0.1
+  - FASTAPI_PORT=8000
+  - OTHER_SECRETS=
 
-* **Ngôn ngữ lập trình:** C#
-* **Nền tảng:** .NET Framework
-* **Giao diện (Frontend):** Windows Forms (WinForms)
-* **Backend & Cơ sở dữ liệu:** Google Firebase
-    * **Firebase Authentication:** Xử lý đăng nhập, đăng ký, khôi phục mật khẩu.
-    * **Cloud Firestore:** Lưu trữ toàn bộ dữ liệu (người dùng, sản phẩm, kho, phiếu nhập/xuất) dưới dạng NoSQL.
-* **Thư viện (Libraries):**
-    * `Google.Cloud.Firestore`: Thư viện chính thức để kết nối C# với Cloud Firestore.
-    * `LiveChartsCore.SkiaSharpView.WinForms`: Thư viện vẽ biểu đồ cho Dashboard.
-    * *(Nếu dùng) Bunifu UI Framework / Siticone UI:* Thư viện hỗ trợ làm đẹp giao diện.
+Lưu ý chia sẻ & đóng gói
+- Không đính kèm node_modules, .venv, __pycache__, build artifacts trong ZIP hoặc khi upload.
+- Khi gửi project qua Google Drive / Email: xóa thư viện lớn và tạo file .env riêng để gửi nếu cần.
+- Kiểm tra kỹ các khóa API trước khi chia sẻ mã nguồn công khai.
 
----
+Legacy (thông tin từ README cũ)
+Dự án ban đầu là một ứng dụng Desktop WinForms viết bằng C# kết nối Firebase (Firebase Authentication + Cloud Firestore) với các tính năng tương tự (quản lý sản phẩm, phiếu nhập/xuất, dashboard, phân quyền). Các thông tin, tài liệu và code cũ vẫn nằm trong repository (nếu có) để tham khảo.
 
-## 🚀 Cài đặt & Chạy dự án
+Gợi ý phát triển & đóng góp
+- Tách rõ cấu hình dev/production cho database
+- Thêm file README riêng cho mỗi thư mục (KhoHang_API/README.md và UI_Desktop/README.md) nếu cần hướng dẫn chi tiết hơn
+- Sử dụng GitHub Issues/PR để theo dõi thay đổi và review
 
-Để chạy dự án này trên máy của bạn, hãy làm theo các bước sau:
-
-**1. Clone Repository**
-```bash
-git clone [link-github-cua-ban]
-cd [ten-thu-muc-du-an]
+License
+- Chưa chỉ định. Thêm tệp LICENSE nếu muốn công khai bản quyền.
