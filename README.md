@@ -1,6 +1,6 @@
 <div align="center">
 
-  ![Repo Badge](https://img.shields.io/badge/NT106_QuanLy_Kho-16a34a?style=for-the-badge&logo=github&logoColor=white)
+  ![Repo Badge](https://img.shields.io/badge/NT106_Quan_Ly_Kho_NHOM12-16a34a?style=for-the-badge&logo=github&logoColor=white)
 
   # 📦 Ứng dụng Quản lý Nhập Xuất Kho
   ### NT106_QuanLyKho_Nhom12
