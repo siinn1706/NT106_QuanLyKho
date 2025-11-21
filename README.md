@@ -131,19 +131,3 @@ Gửi Pull Request.
 
 
 -----
-
-### ⚠️ Bước quan trọng để hiện ảnh (Bắt buộc làm)
-
-Code trên mình đã trỏ đường dẫn ảnh vào: `UI_Desktop/assets/screenshot.png`.
-Để ảnh hiện lên trên GitHub, bạn cần làm các bước sau trong Terminal:
-
-1.  Chụp màn hình app của bạn, đổi tên file thành `screenshot.png`.
-2.  Copy file đó bỏ vào thư mục: `NT106_QuanLyKho/UI_Desktop/assets/` (nếu chưa có thư mục `assets` thì tạo mới).
-3.  Gõ lệnh sau để đẩy ảnh lên GitHub:
-    ```bash
-    git add UI_Desktop/assets/screenshot.png
-    git commit -m "Add app screenshot"
-    git push origin main
-    ```
-
-*(Sau khi push xong, đợi khoảng 30 giây và F5 lại trang GitHub là ảnh sẽ hiện).*
