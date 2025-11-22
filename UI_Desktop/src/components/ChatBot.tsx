@@ -84,7 +84,7 @@ export default function ChatBot() {
     <>
       {/* Chat Window */}
       {isChatOpen && (
-        <div className="fixed bottom-24 right-6 w-96 h-[600px] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden z-50">
+        <div className="fixed bottom-4 right-4 w-96 h-[600px] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden z-50">
           {/* Chat Header */}
           <div className="bg-primary text-white p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -173,14 +173,16 @@ export default function ChatBot() {
         </div>
       )}
 
-      {/* Chat Button */}
-      <button
-        onClick={toggleChat}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-primary text-white rounded-full shadow-lg hover:shadow-xl hover:scale-110 transition-all flex items-center justify-center text-2xl z-50"
-        title="Mở trợ lý N3T"
-      >
-        💬
-      </button>
+      {/* Chat Button - Only show when chat is closed */}
+      {!isChatOpen && (
+        <button
+          onClick={toggleChat}
+          className="fixed bottom-6 right-6 w-14 h-14 bg-primary text-white rounded-full shadow-lg hover:shadow-xl hover:scale-110 transition-all flex items-center justify-center text-2xl z-50"
+          title="Mở trợ lý N3T"
+        >
+          💬
+        </button>
+      )}
     </>
   );
 }

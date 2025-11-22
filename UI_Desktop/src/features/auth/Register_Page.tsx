@@ -4,11 +4,11 @@
  *  - Sau khi đăng ký thành công, tự động login
  */
 
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import { useAuthStore } from '../../state/auth_store';
-import { apiRegister } from '../../app/api_client';
+import { apiRegister, apiVerifyOtp, apiResendOtp } from '../../app/api_client';
+import { FaEye, FaEyeSlash, FaTimes, FaEnvelope } from 'react-icons/fa';
 
 export default function Register_Page() {
   const navigate = useNavigate();
@@ -25,6 +25,13 @@ export default function Register_Page() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [passwordStrength, setPasswordStrength] = useState<'weak' | 'medium' | 'strong'>('weak');
+  
+  // OTP state
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [otpError, setOtpError] = useState('');
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [resendCountdown, setResendCountdown] = useState(0);
 
   // Password strength checker
   const checkPasswordStrength = (pwd: string): 'weak' | 'medium' | 'strong' => {
@@ -37,6 +44,47 @@ export default function Register_Page() {
   const handlePasswordChange = (value: string) => {
     setPassword(value);
     setPasswordStrength(checkPasswordStrength(value));
+  };
+
+  // OTP countdown timer
+  useEffect(() => {
+    if (resendCountdown > 0) {
+      const timer = setTimeout(() => setResendCountdown(resendCountdown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCountdown]);
+
+  // OTP input handling
+  const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  const handleOtpChange = (index: number, value: string) => {
+    if (!/^\d*$/.test(value)) return; // Only allow digits
+    
+    const newOtp = [...otp];
+    newOtp[index] = value;
+    setOtp(newOtp);
+    setOtpError('');
+
+    // Auto-focus next input
+    if (value && index < 5) {
+      otpInputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      otpInputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    const newOtp = pastedData.split('').concat(Array(6 - pastedData.length).fill(''));
+    setOtp(newOtp);
+    if (pastedData.length === 6) {
+      otpInputRefs.current[5]?.focus();
+    }
   };
 
   // Form validation
@@ -66,18 +114,57 @@ export default function Register_Page() {
     setLoading(true);
     
     try {
-      // Gọi API register
-      const response = await apiRegister({ name, email, password });
+      // Gọi API register - BE sẽ gửi OTP qua email
+      await apiRegister({ name, email, password });
       
-      // Tự động login sau khi đăng ký thành công
-      login(response.user);
-      
-      // Chuyển sang dashboard
-      navigate('/dashboard');
+      // Hiển thị modal OTP
+      setShowOtpModal(true);
+      setResendCountdown(60); // 60 giây countdown
+      setLoading(false);
     } catch (err: any) {
       setError(err.message || 'Đăng ký thất bại. Vui lòng thử lại.');
-    } finally {
       setLoading(false);
+    }
+  };
+
+  // Verify OTP
+  const handleVerifyOtp = async () => {
+    const otpCode = otp.join('');
+    if (otpCode.length !== 6) {
+      setOtpError('Vui lòng nhập đầy đủ 6 số OTP');
+      return;
+    }
+
+    setVerifyingOtp(true);
+    setOtpError('');
+
+    try {
+      // Gọi API verify OTP
+      const response = await apiVerifyOtp({ email, otp: otpCode });
+      
+      // Xác thực thành công - lưu user và chuyển trang
+      login(response.user);
+      navigate('/dashboard');
+    } catch (err: any) {
+      setOtpError(err.message || 'Mã OTP không hợp lệ hoặc đã hết hạn');
+    } finally {
+      setVerifyingOtp(false);
+    }
+  };
+
+  // Resend OTP
+  const handleResendOtp = async () => {
+    if (resendCountdown > 0) return;
+    
+    try {
+      // Gọi API resend OTP
+      await apiResendOtp({ email });
+      
+      setResendCountdown(60);
+      setOtp(['', '', '', '', '', '']);
+      setOtpError('');
+    } catch (err: any) {
+      setOtpError(err.message || 'Không thể gửi lại OTP. Vui lòng thử lại.');
     }
   };
 
@@ -87,15 +174,15 @@ export default function Register_Page() {
       <div className="w-full max-w-md">
         {/* Logo & Brand */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-2xl mb-4">
-            <span className="text-3xl font-bold text-white">N3T</span>
+          <div className="inline-flex items-center justify-center w-20 h-20 mb-4">
+            <img src="/src/resources/logo.png" alt="N3T Logo" className="w-full h-full object-contain" />
           </div>
           <h1 className="text-3xl font-bold text-white mb-2">Đăng ký</h1>
           <p className="text-zinc-400">Tạo tài khoản mới để bắt đầu quản lý kho</p>
         </div>
 
         {/* Register Form */}
-        <div className="bg-zinc-800/50 backdrop-blur-xl rounded-2xl border border-zinc-700/50 p-8 shadow-2xl">
+        <div className="liquid-glass-dark backdrop-blur-xl rounded-[32px] border border-white/10 p-8 shadow-ios-lg">
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Error Message */}
             {error && (
@@ -114,7 +201,7 @@ export default function Register_Page() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Nguyễn Văn A"
-                className="w-full px-4 py-3 bg-zinc-900/50 border border-zinc-600 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                className="w-full px-4 py-3 liquid-glass-ui-dark border border-white/10 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-primary/30 transition-all hover:scale-[1.02] shadow-ios"
                 disabled={loading}
               />
             </div>
@@ -128,8 +215,8 @@ export default function Register_Page() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="user@example.com"
-                className="w-full px-4 py-3 bg-zinc-900/50 border border-zinc-600 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                placeholder="email@example.com"
+                className="w-full px-4 py-3 liquid-glass-ui-dark border border-white/10 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-primary/30 transition-all hover:scale-[1.02] shadow-ios"
                 disabled={loading}
               />
             </div>
@@ -145,13 +232,13 @@ export default function Register_Page() {
                   value={password}
                   onChange={(e) => handlePasswordChange(e.target.value)}
                   placeholder="Nhập mật khẩu"
-                  className="w-full px-4 py-3 bg-zinc-900/50 border border-zinc-600 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                  className="w-full pl-4 pr-12 py-3 liquid-glass-ui-dark border border-white/10 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-primary/30 transition-all hover:scale-[1.02] shadow-ios [&::-ms-reveal]:hidden [&::-ms-clear]:hidden [&::-webkit-credentials-auto-fill-button]:hidden [&::-webkit-contacts-auto-fill-button]:hidden"
                   disabled={loading}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-300 transition-colors"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-300 transition-colors"
                 >
                   {showPassword ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
                 </button>
@@ -178,14 +265,23 @@ export default function Register_Page() {
               <label className="block text-sm font-medium text-zinc-300 mb-2">
                 Xác nhận mật khẩu
               </label>
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Nhập lại mật khẩu"
-                className="w-full px-4 py-3 bg-zinc-900/50 border border-zinc-600 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-                disabled={loading}
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Nhập lại mật khẩu"
+                  className="w-full pl-4 pr-12 py-3 liquid-glass-ui-dark border border-white/10 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-primary/30 transition-all hover:scale-[1.02] shadow-ios [&::-ms-reveal]:hidden [&::-ms-clear]:hidden [&::-webkit-credentials-auto-fill-button]:hidden [&::-webkit-contacts-auto-fill-button]:hidden"
+                  disabled={loading}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-300 transition-colors"
+                >
+                  {showPassword ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
+                </button>
+              </div>
             </div>
 
             {/* Terms Agreement */}
@@ -211,7 +307,7 @@ export default function Register_Page() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-primary hover:bg-primary-dark text-white font-semibold py-3 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-primary hover:bg-primary-dark text-white font-semibold py-3 rounded-xl transition-all duration-200 shadow-ios-lg hover:scale-105 liquid-glass-hover disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -243,6 +339,90 @@ export default function Register_Page() {
           © 2025 N3T - Quản lý Kho. All rights reserved.
         </p>
       </div>
+
+      {/* OTP Modal */}
+      {showOtpModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
+          <div className="liquid-glass-dark backdrop-blur-xl rounded-[32px] border border-white/10 p-8 shadow-ios-lg max-w-md w-full animate-scaleIn">
+            {/* Close Button */}
+            <button
+              onClick={() => setShowOtpModal(false)}
+              className="absolute top-4 right-4 text-zinc-400 hover:text-white transition-colors"
+            >
+              <FaTimes size={20} />
+            </button>
+
+            {/* Header */}
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/20 rounded-2xl mb-4">
+                <FaEnvelope className="text-primary text-2xl" />
+              </div>
+              <h2 className="text-2xl font-bold text-white mb-2">Xác thực OTP</h2>
+              <p className="text-zinc-400 text-sm">
+                Mã OTP đã được gửi đến email<br />
+                <span className="text-primary font-medium">{email}</span>
+              </p>
+            </div>
+
+            {/* OTP Error */}
+            {otpError && (
+              <div className="bg-danger/10 border border-danger/20 text-danger px-4 py-3 rounded-lg text-sm mb-4">
+                {otpError}
+              </div>
+            )}
+
+            {/* OTP Input */}
+            <div className="flex gap-2 justify-center mb-6">
+              {otp.map((digit, index) => (
+                <input
+                  key={index}
+                  ref={(el) => (otpInputRefs.current[index] = el)}
+                  type="text"
+                  maxLength={1}
+                  value={digit}
+                  onChange={(e) => handleOtpChange(index, e.target.value)}
+                  onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                  onPaste={handleOtpPaste}
+                  className="w-12 h-14 text-center text-2xl font-bold liquid-glass-ui-dark border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all shadow-ios"
+                  disabled={verifyingOtp}
+                />
+              ))}
+            </div>
+
+            {/* Verify Button */}
+            <button
+              onClick={handleVerifyOtp}
+              disabled={verifyingOtp}
+              className="w-full bg-primary hover:bg-primary-dark text-white font-semibold py-3 rounded-xl transition-all duration-200 shadow-ios-lg hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed mb-4"
+            >
+              {verifyingOtp ? (
+                <span className="flex items-center justify-center gap-2">
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Đang xác thực...
+                </span>
+              ) : (
+                'Xác nhận OTP'
+              )}
+            </button>
+
+            {/* Resend OTP */}
+            <div className="text-center text-sm">
+              {resendCountdown > 0 ? (
+                <p className="text-zinc-400">
+                  Gửi lại mã sau <span className="text-primary font-semibold">{resendCountdown}s</span>
+                </p>
+              ) : (
+                <button
+                  onClick={handleResendOtp}
+                  className="text-primary hover:text-primary-dark font-semibold transition-colors"
+                >
+                  Gửi lại mã OTP
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

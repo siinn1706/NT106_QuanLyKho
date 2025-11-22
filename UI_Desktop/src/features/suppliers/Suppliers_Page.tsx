@@ -20,11 +20,13 @@ export default function Suppliers_Page() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Nhà cung cấp</h1>
       <div className="flex justify-end mb-4">
-        <button className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition">Thêm NCC</button>
+        <button className="bg-success text-white px-6 py-3 rounded-[20px] hover:scale-105 transition-transform shadow-ios font-medium hover:bg-success/90 backdrop-blur-sm">
+          Thêm NCC
+        </button>
       </div>
-      <div className="overflow-x-auto">
-        <table className="min-w-full bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800">
-          <thead className="bg-zinc-50 dark:bg-zinc-800/50">
+      <div className="overflow-x-auto liquid-glass dark:liquid-glass-dark rounded-[24px] border border-black/10 dark:border-white/10 shadow-ios">
+        <table className="min-w-full">
+          <thead className="liquid-glass-ui dark:liquid-glass-ui-dark">
             <tr>
               <th className="px-4 py-3 text-left text-zinc-900 dark:text-zinc-100">Tên NCC</th>
               <th className="px-4 py-3 text-left text-zinc-900 dark:text-zinc-100">Liên hệ</th>
@@ -43,13 +45,13 @@ export default function Suppliers_Page() {
               </tr>
             ) : (
               suppliers.map(sup => (
-                <tr key={sup.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition border-b border-zinc-200 dark:border-zinc-800">
+                <tr key={sup.id} className="hover:liquid-glass-ui dark:hover:liquid-glass-ui-dark transition-all border-b border-black/10 dark:border-white/10">
                   <td className="px-4 py-3 text-zinc-900 dark:text-zinc-100">{sup.name}</td>
                   <td className="px-4 py-3 text-zinc-900 dark:text-zinc-100">{sup.contact}</td>
                   <td className="px-4 py-3 text-zinc-900 dark:text-zinc-100">{sup.address}</td>
                   <td className="px-4 py-3 text-center">
-                    <button className="px-3 py-1 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 mr-2">Sửa</button>
-                    <button className="px-3 py-1 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/20">Xoá</button>
+                    <button className="px-3 py-1.5 rounded-[16px] bg-primary/10 dark:bg-primary/20 border border-primary/30 text-primary hover:scale-105 transition-transform shadow-ios font-medium mr-2 hover:bg-primary/20 dark:hover:bg-primary/30">Sửa</button>
+                    <button className="px-3 py-1.5 rounded-[16px] bg-red-500/10 dark:bg-red-500/20 border border-red-500/30 text-red-500 hover:scale-105 transition-transform shadow-ios font-medium hover:bg-red-500/20 dark:hover:bg-red-500/30">Xoá</button>
                   </td>
                 </tr>
               ))

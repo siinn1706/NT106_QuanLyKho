@@ -38,7 +38,7 @@ export default function ChatSidebar({ onSelect, activeId, onToggle }:{
   }, []);
 
   return (
-    <aside className={`w-80 flex flex-col border-r ${
+    <aside className={`w-80 flex flex-col border-r animate-fadeIn ${
       isDarkMode 
         ? "bg-zinc-900 text-white border-zinc-800" 
         : "bg-zinc-50 text-zinc-900 border-zinc-300"

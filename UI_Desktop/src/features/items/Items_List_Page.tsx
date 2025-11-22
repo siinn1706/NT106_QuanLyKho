@@ -23,13 +23,16 @@ export default function Items_List_Page() {
         <input
           type="text"
           placeholder="Tìm kiếm hàng hoá..."
-          className="w-64 px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder-zinc-500 dark:placeholder-zinc-400 focus:ring-2 focus:ring-primary"
+          className="w-64 px-4 py-3 border border-black/10 dark:border-white/10 rounded-[20px] liquid-glass dark:liquid-glass-dark text-zinc-900 dark:text-zinc-100 placeholder-zinc-500 dark:placeholder-zinc-400 focus:ring-2 focus:ring-primary shadow-ios transition-all"
         />
-        <button className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition">Thêm hàng hoá</button>
+        <button className="bg-success text-white px-6 py-3 rounded-[20px] hover:scale-105 transition-transform shadow-ios font-medium hover:bg-success/90 backdrop-blur-sm">
+          Thêm hàng hoá
+        </button>
       </div>
-      <div className="overflow-x-auto">
-        <table className="min-w-full bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800">
-          <thead className="bg-zinc-50 dark:bg-zinc-800/50">
+      <div className="liquid-glass dark:liquid-glass-dark rounded-[24px] border border-black/10 dark:border-white/10 shadow-ios overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full">
+            <thead className="liquid-glass-ui dark:liquid-glass-ui-dark border-b border-black/10 dark:border-white/10">
             <tr>
               <th className="px-4 py-3 text-left text-zinc-900 dark:text-zinc-100">Tên hàng</th>
               <th className="px-4 py-3 text-left text-zinc-900 dark:text-zinc-100">Mã SKU</th>
@@ -51,7 +54,7 @@ export default function Items_List_Page() {
               </tr>
             ) : (
               items.map(item => (
-                <tr key={item.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition border-b border-zinc-200 dark:border-zinc-800">
+                <tr key={item.id} className="hover:liquid-glass-ui dark:hover:liquid-glass-ui-dark transition-all border-b border-black/10 dark:border-white/10">
                   <td className="px-4 py-3 text-zinc-900 dark:text-zinc-100">{item.name}</td>
                   <td className="px-4 py-3 text-zinc-900 dark:text-zinc-100">{item.sku}</td>
                   <td className="px-4 py-3 text-right text-zinc-900 dark:text-zinc-100">{item.quantity}</td>
@@ -59,14 +62,15 @@ export default function Items_List_Page() {
                   <td className="px-4 py-3 text-right text-zinc-900 dark:text-zinc-100">{item.price?.toLocaleString()}₫</td>
                   <td className="px-4 py-3 text-right text-zinc-900 dark:text-zinc-100">{item.category}</td>
                   <td className="px-4 py-3 text-center">
-                    <button className="px-3 py-1 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 mr-2">Sửa</button>
-                    <button className="px-3 py-1 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/20">Xoá</button>
+                    <button className="px-3 py-1.5 rounded-[16px] bg-primary/10 dark:bg-primary/20 border border-primary/30 text-primary shadow-ios transition-transform hover:scale-105 hover:bg-primary/20 dark:hover:bg-primary/30 mr-2 font-medium">Sửa</button>
+                    <button className="px-3 py-1.5 rounded-[16px] bg-red-500/10 dark:bg-red-500/20 border border-red-500/30 text-red-500 shadow-ios transition-transform hover:scale-105 hover:bg-red-500/20 dark:hover:bg-red-500/30 font-medium">Xoá</button>
                   </td>
                 </tr>
               ))
             )}
           </tbody>
         </table>
+      </div>
       </div>
     </div>
   );
