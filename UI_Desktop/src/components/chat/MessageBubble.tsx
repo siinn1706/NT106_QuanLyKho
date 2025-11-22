@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { FaEllipsisV, FaRegSmile, FaReply } from "react-icons/fa";
 import { useUIStore } from "../../state/ui_store";
+import ReactMarkdown from "react-markdown";
 
 export default function MessageBubble({
   text,
@@ -25,42 +26,68 @@ export default function MessageBubble({
       {/* Hàng trên: bong bóng + action, action căn giữa theo chiều dọc */}
       <div className={`flex items-center gap-1.5 ${mine ? "flex-row-reverse" : "flex-row"}`}>
         {/* Bong bóng tin nhắn */}
-        <div className={`px-4 py-2 rounded-xl text-sm shadow max-w-[280px] ${
+        <div className={`px-4 py-3 rounded-2xl text-sm max-w-[280px] transition-all ${
           mine 
-            ? "bg-primary text-white" 
+            ? "bg-blue-500 text-white shadow-sm" 
             : isDarkMode
-              ? "bg-zinc-800 text-zinc-100"
-              : "bg-zinc-200 text-zinc-900"
+              ? "bg-zinc-800 text-zinc-100 shadow-sm"
+              : "bg-gray-100 text-gray-900 shadow-sm"
         }`}>
-          {text}
+          <div className="markdown-content">
+            <ReactMarkdown
+              components={{
+                p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                ul: ({ children }) => <ul className="list-disc ml-4 mb-2">{children}</ul>,
+                ol: ({ children }) => <ol className="list-decimal ml-4 mb-2">{children}</ol>,
+                li: ({ children }) => <li className="mb-1">{children}</li>,
+                h1: ({ children }) => <h1 className="text-lg font-bold mb-2">{children}</h1>,
+                h2: ({ children }) => <h2 className="text-base font-bold mb-2">{children}</h2>,
+                h3: ({ children }) => <h3 className="text-sm font-bold mb-1">{children}</h3>,
+                code: ({ children }) => (
+                  <code className={`px-1 py-0.5 rounded ${
+                    isDarkMode ? "bg-zinc-700" : "bg-zinc-300"
+                  }`}>{children}</code>
+                ),
+                pre: ({ children }) => (
+                  <pre className={`p-2 rounded my-2 overflow-x-auto ${
+                    isDarkMode ? "bg-zinc-700" : "bg-zinc-300"
+                  }`}>{children}</pre>
+                ),
+                strong: ({ children }) => <strong className="font-bold">{children}</strong>,
+                em: ({ children }) => <em className="italic">{children}</em>,
+              }}
+            >
+              {text}
+            </ReactMarkdown>
+          </div>
         </div>
 
         {/* Action, không chiếm không gian khi ẩn */}
         <div className={`w-0 overflow-visible flex items-center ${mine ? "mr-20" : ""}`}>
           {showAction && (
-            <div className="flex gap-0.5">
+            <div className="flex gap-1">
               {mine ? (
                 <>
-                  <button className={`p-1 rounded-full ${
-                    isDarkMode ? "hover:bg-zinc-700 text-zinc-400" : "hover:bg-zinc-200 text-zinc-600"
+                  <button className={`p-1.5 rounded-full transition-all duration-200 backdrop-blur-sm ${
+                    isDarkMode ? "hover:bg-zinc-700/80 text-zinc-400 hover:text-white" : "hover:bg-gray-200/80 text-gray-600 hover:text-gray-900"
                   }`}><FaReply size={14} /></button>
-                  <button className={`p-1 rounded-full ${
-                    isDarkMode ? "hover:bg-zinc-700 text-zinc-400" : "hover:bg-zinc-200 text-zinc-600"
+                  <button className={`p-1.5 rounded-full transition-all duration-200 backdrop-blur-sm ${
+                    isDarkMode ? "hover:bg-zinc-700/80 text-zinc-400 hover:text-white" : "hover:bg-gray-200/80 text-gray-600 hover:text-gray-900"
                   }`}><FaRegSmile size={14} /></button>
-                  <button className={`p-1 rounded-full ${
-                    isDarkMode ? "hover:bg-zinc-700 text-zinc-400" : "hover:bg-zinc-200 text-zinc-600"
+                  <button className={`p-1.5 rounded-full transition-all duration-200 backdrop-blur-sm ${
+                    isDarkMode ? "hover:bg-zinc-700/80 text-zinc-400 hover:text-white" : "hover:bg-gray-200/80 text-gray-600 hover:text-gray-900"
                   }`}><FaEllipsisV size={14} /></button>
                 </>
               ) : (
                 <>
-                  <button className={`p-1 rounded-full ${
-                    isDarkMode ? "hover:bg-zinc-700 text-zinc-400" : "hover:bg-zinc-200 text-zinc-600"
+                  <button className={`p-1.5 rounded-full transition-all duration-200 backdrop-blur-sm ${
+                    isDarkMode ? "hover:bg-zinc-700/80 text-zinc-400 hover:text-white" : "hover:bg-gray-200/80 text-gray-600 hover:text-gray-900"
                   }`}><FaReply size={14} /></button>
-                  <button className={`p-1 rounded-full ${
-                    isDarkMode ? "hover:bg-zinc-700 text-zinc-400" : "hover:bg-zinc-200 text-zinc-600"
+                  <button className={`p-1.5 rounded-full transition-all duration-200 backdrop-blur-sm ${
+                    isDarkMode ? "hover:bg-zinc-700/80 text-zinc-400 hover:text-white" : "hover:bg-gray-200/80 text-gray-600 hover:text-gray-900"
                   }`}><FaRegSmile size={14} /></button>
-                  <button className={`p-1 rounded-full ${
-                    isDarkMode ? "hover:bg-zinc-700 text-zinc-400" : "hover:bg-zinc-200 text-zinc-600"
+                  <button className={`p-1.5 rounded-full transition-all duration-200 backdrop-blur-sm ${
+                    isDarkMode ? "hover:bg-zinc-700/80 text-zinc-400 hover:text-white" : "hover:bg-gray-200/80 text-gray-600 hover:text-gray-900"
                   }`}><FaEllipsisV size={14} /></button>
                 </>
               )}

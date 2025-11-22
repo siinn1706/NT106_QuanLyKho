@@ -26,6 +26,7 @@ export default function Layout({ children }: LayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<'general' | 'account' | 'notifications' | 'about'>('general');
   const [expandedSections, setExpandedSections] = useState<string[]>(['items']);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
@@ -77,23 +78,69 @@ export default function Layout({ children }: LayoutProps) {
     }
   };
 
+  const getPageInfo = () => {
+    const path = location.pathname;
+    
+    // Dashboard
+    if (path === '/dashboard') {
+      return { title: 'Trang chủ', subtitle: null };
+    }
+    
+    // Hàng hoá
+    if (path === '/items') {
+      return { title: 'Hàng hoá', subtitle: 'Danh sách hàng hoá' };
+    }
+    if (path === '/items/tracking') {
+      return { title: 'Hàng hoá', subtitle: 'Theo dõi hàng hoá' };
+    }
+    if (path === '/items/alerts') {
+      return { title: 'Hàng hoá', subtitle: 'Cảnh báo tồn kho' };
+    }
+    
+    // Nhập/Xuất kho
+    if (path === '/stock') {
+      return { title: 'Nhập/Xuất kho', subtitle: null };
+    }
+    if (path === '/stock/in') {
+      return { title: 'Nhập/Xuất kho', subtitle: 'Nhập kho' };
+    }
+    if (path === '/stock/out') {
+      return { title: 'Nhập/Xuất kho', subtitle: 'Xuất kho' };
+    }
+    
+    // Nhà cung cấp
+    if (path === '/suppliers') {
+      return { title: 'Nhà cung cấp', subtitle: null };
+    }
+    
+    // Báo cáo
+    if (path === '/reports') {
+      return { title: 'Báo cáo', subtitle: null };
+    }
+    
+    // Default
+    return { title: 'Trang chủ', subtitle: null };
+  };
+
+  const pageInfo = getPageInfo();
+
   return (
     <div className="flex h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100">
       {/* Sidebar trái */}
       <aside
         className={`${
           isSidebarCollapsed ? 'w-20' : 'w-64'
-        } bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 transition-all duration-300 flex flex-col`}
+        } bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 transition-all duration-300 ease-in-out flex flex-col overflow-hidden`}
       >
         <div className="h-16 flex items-center justify-between px-4 border-b border-zinc-200 dark:border-zinc-800">
-          {!isSidebarCollapsed && (
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white font-bold">
-                N3T
-              </div>
-              <span className="font-semibold text-lg">Quản lý Kho</span>
+          <div className={`flex items-center gap-2 transition-opacity duration-300 ${
+            isSidebarCollapsed ? 'opacity-0 w-0' : 'opacity-100'
+          }`}>
+            <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
+              <img src="/src/resources/logo.png" alt="N3T Logo" className="w-full h-full object-contain" />
             </div>
-          )}
+            <span className="font-semibold text-lg whitespace-nowrap">Quản lý Kho</span>
+          </div>
           <button
             onClick={toggleSidebar}
             className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
@@ -103,7 +150,7 @@ export default function Layout({ children }: LayoutProps) {
           </button>
         </div>
         {/* Menu items */}
-        <nav className="flex-1 p-2 overflow-y-auto scrollbar-thin">
+        <nav className="flex-1 p-3 overflow-y-auto scrollbar-thin">
           {menuItems.map((item) => {
             const IconComponent = item.icon === 'FaHome' ? FaHome : 
                                  item.icon === 'FaBox' ? FaBox :
@@ -114,7 +161,7 @@ export default function Layout({ children }: LayoutProps) {
             const hasSubItems = item.subItems && item.subItems.length > 0;
             
             return (
-              <div key={item.id} className="mb-1">
+              <div key={item.id} className="mb-2">
                 <button
                   onClick={() => {
                     if (hasSubItems && !isSidebarCollapsed) {
@@ -123,26 +170,32 @@ export default function Layout({ children }: LayoutProps) {
                       navigate(item.path);
                     }
                   }}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                  className={`w-full flex items-center ${
+                    isSidebarCollapsed ? 'justify-center p-3' : 'gap-3 px-4 py-3'
+                  } rounded-xl transition-all duration-200 ${
                     location.pathname === item.path
-                      ? 'bg-primary/10 text-primary dark:bg-primary/20'
+                      ? 'bg-primary/10 text-primary dark:bg-primary/20 shadow-sm'
                       : 'hover:bg-zinc-100 dark:hover:bg-zinc-800'
                   }`}
                   title={isSidebarCollapsed ? item.label : undefined}
                 >
-                  <IconComponent size={20} />
+                  <IconComponent size={isSidebarCollapsed ? 22 : 20} className="flex-shrink-0" />
                   {!isSidebarCollapsed && (
                     <>
-                      <span className="flex-1 text-left font-medium">{item.label}</span>
+                      <span className="flex-1 text-left font-medium whitespace-nowrap">
+                        {item.label}
+                      </span>
                       {item.badge && (
-                        <span className="bg-danger text-white text-xs px-2 py-0.5 rounded-full">
+                        <span className="bg-danger text-white text-xs px-2 py-0.5 rounded-full flex-shrink-0">
                           {item.badge}
                         </span>
                       )}
                       {hasSubItems && (
                         <FaChevronLeft 
                           size={12} 
-                          className={`transition-transform ${isExpanded ? 'rotate-[-90deg]' : ''}`}
+                          className={`flex-shrink-0 transition-transform duration-300 ${
+                            isExpanded ? 'rotate-[-90deg]' : ''
+                          }`}
                         />
                       )}
                     </>
@@ -151,14 +204,14 @@ export default function Layout({ children }: LayoutProps) {
                 
                 {/* Sub-items */}
                 {hasSubItems && isExpanded && !isSidebarCollapsed && (
-                  <div className="ml-8 mt-1 space-y-1">
+                  <div className="ml-9 mt-1.5 space-y-1">
                     {item.subItems!.map(subItem => (
                       <button
                         key={subItem.id}
                         onClick={() => navigate(subItem.path)}
-                        className={`w-full text-left px-4 py-2 rounded-lg text-sm transition-colors ${
+                        className={`w-full text-left px-4 py-2.5 rounded-lg text-sm transition-colors ${
                           location.pathname === subItem.path
-                            ? 'bg-primary/10 text-primary dark:bg-primary/20'
+                            ? 'bg-primary/10 text-primary dark:bg-primary/20 font-medium'
                             : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400'
                         }`}
                       >
@@ -171,9 +224,10 @@ export default function Layout({ children }: LayoutProps) {
             );
           })}
         </nav>
-        {!isSidebarCollapsed && (
-          <div className="mt-auto border-t border-zinc-200 dark:border-zinc-800">
-            <div className="relative">
+        <div className={`mt-auto border-t border-zinc-200 dark:border-zinc-800 transition-opacity duration-300 ${
+          isSidebarCollapsed ? 'opacity-0 h-0 overflow-hidden' : 'opacity-100'
+        }`}>
+          <div className="relative">
               <button
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
                 className="w-full p-4 flex items-center gap-3 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
@@ -182,10 +236,10 @@ export default function Layout({ children }: LayoutProps) {
                   {user?.name?.charAt(0).toUpperCase() || 'U'}
                 </div>
                 <div className="flex-1 text-left">
-                  <p className="font-medium text-sm truncate">{user?.name || 'Admin User'}</p>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate">{user?.email || 'user@example.com'}</p>
+                  <p className="font-medium text-sm truncate whitespace-nowrap">{user?.name || 'Admin User'}</p>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate whitespace-nowrap">{user?.email || 'user@example.com'}</p>
                 </div>
-                {userMenuOpen ? <FaChevronUp size={14} /> : <FaChevronDown size={14} />}
+                {userMenuOpen ? <FaChevronUp size={14} className="flex-shrink-0" /> : <FaChevronDown size={14} className="flex-shrink-0" />}
               </button>
 
               {/* Dropdown menu */}
@@ -194,6 +248,7 @@ export default function Layout({ children }: LayoutProps) {
                   <button
                     onClick={() => {
                       setUserMenuOpen(false);
+                      setSettingsTab('account');
                       setSettingsOpen(true);
                     }}
                     className="w-full px-4 py-3 flex items-center gap-3 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors text-left"
@@ -213,18 +268,22 @@ export default function Layout({ children }: LayoutProps) {
                   </button>
                 </div>
               )}
-            </div>
           </div>
-        )}
+        </div>
       </aside>
       {/* Nội dung chính */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="h-16 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-6">
-          <div className="flex items-center gap-4">
-            <h1 className="text-xl font-semibold">Dashboard</h1>
-            <span className="text-sm text-zinc-500 dark:text-zinc-400">
-              Theo dõi hiệu suất, hàng hoá và tồn kho
-            </span>
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl font-semibold leading-none">{pageInfo.title}</h1>
+            {pageInfo.subtitle && (
+              <>
+                <FaChevronLeft size={10} className="text-zinc-400 dark:text-zinc-600 rotate-180" />
+                <span className="text-base text-zinc-500 dark:text-zinc-400 leading-none">
+                  {pageInfo.subtitle}
+                </span>
+              </>
+            )}
           </div>
           <div className="flex items-center gap-4">
             <div className="relative">
@@ -243,7 +302,10 @@ export default function Layout({ children }: LayoutProps) {
               {isDarkMode ? <FaSun size={20} /> : <FaMoon size={20} />}
             </button>
             <button
-              onClick={() => setSettingsOpen(true)}
+              onClick={() => {
+                setSettingsTab('general');
+                setSettingsOpen(true);
+              }}
               className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
               title="Cài đặt"
             >
@@ -258,7 +320,7 @@ export default function Layout({ children }: LayoutProps) {
       {/* ChatWidget luôn xuất hiện ở mọi trang */}
       <ChatWidget />
       {/* Settings Modal */}
-      <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} initialTab={settingsTab} />
     </div>
   );
 }

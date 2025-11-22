@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { FaEllipsisV, FaRegSmile, FaReply, FaPaperclip, FaMicrophone, FaPaperPlane, FaBars } from "react-icons/fa";
 import MessageBubble from "./MessageBubble";
+import TypingIndicator from "./TypingIndicator";
 import { useUIStore } from "../../state/ui_store";
 import { apiChat } from "../../app/api_client";
 
@@ -24,6 +25,7 @@ export default function ChatRoom({ conversationId, sidebarCollapsed, onExpandSid
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [showCategories, setShowCategories] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isDarkMode = useUIStore((state) => state.isDarkMode);
@@ -62,6 +64,9 @@ export default function ChatRoom({ conversationId, sidebarCollapsed, onExpandSid
     const userText = inputValue;
     setInputValue("");
 
+    // Hiển thị typing indicator
+    setIsTyping(true);
+
     // Gọi BE -> Gemini
     try {
       const res = await apiChat({ prompt: userText, system_instruction: "Bạn là trợ lý kho N3T, trả lời ngắn gọn." });
@@ -82,6 +87,9 @@ export default function ChatRoom({ conversationId, sidebarCollapsed, onExpandSid
         createdAt: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, errMsg]);
+    } finally {
+      // Ẩn typing indicator khi đã nhận được phản hồi
+      setIsTyping(false);
     }
   };
 
@@ -92,19 +100,19 @@ export default function ChatRoom({ conversationId, sidebarCollapsed, onExpandSid
     <div className={`flex flex-col h-full w-full relative ${
       isDarkMode ? "bg-zinc-950" : "bg-white"
     }`}>
-      <div className={`flex justify-between items-center gap-3 px-6 py-3 border-b ${
+      <div className={`flex justify-between items-center gap-3 px-6 py-4 border-b ${
         isDarkMode 
-          ? "bg-zinc-900 border-zinc-800 text-white" 
-          : "bg-zinc-100 border-zinc-300 text-zinc-900"
+          ? "liquid-glass-ui-dark border-white/5" 
+          : "liquid-glass-ui border-black/5"
       }`}>
         <div className="flex items-center gap-2">
           {sidebarCollapsed && onExpandSidebar && (
             <button
               onClick={onExpandSidebar}
-              className={`rounded-full w-8 h-8 flex items-center justify-center transition ${
+              className={`rounded-full w-8 h-8 flex items-center justify-center transition-all duration-150 hover:scale-105 shadow-ios liquid-glass-hover ${
                 isDarkMode
-                  ? "bg-zinc-800 hover:bg-zinc-700 text-white"
-                  : "bg-zinc-200 hover:bg-zinc-300 text-zinc-800"
+                  ? "liquid-glass-ui-dark text-white"
+                  : "liquid-glass-ui text-gray-800"
               }`}
               title="Mở danh sách"
             >
@@ -164,30 +172,31 @@ export default function ChatRoom({ conversationId, sidebarCollapsed, onExpandSid
             />
           );
         })}
+        {isTyping && <TypingIndicator />}
         <div ref={messagesEndRef} />
       </div>
 
-      <div className={`flex items-center gap-2 p-4 border-t ${
+      <div className={`flex items-center gap-3 p-4 border-t ${
         isDarkMode
-          ? "bg-zinc-900 border-zinc-800"
-          : "bg-zinc-100 border-zinc-300"
+          ? "liquid-glass-ui-dark border-white/5"
+          : "liquid-glass-ui border-black/5"
       }`}>
-        <button className={`p-2 rounded ${
-          isDarkMode ? "text-white hover:bg-zinc-800" : "text-zinc-700 hover:bg-zinc-200"
-        }`} title="Gửi file"><FaPaperclip /></button>
-        <button className={`p-2 rounded ${
-          isDarkMode ? "text-white hover:bg-zinc-800" : "text-zinc-700 hover:bg-zinc-200"
-        }`} title="Ghi âm"><FaMicrophone /></button>
+        <button className={`p-2.5 rounded-full transition-all duration-150 hover:scale-105 ${
+          isDarkMode ? "text-zinc-400 hover:bg-zinc-800/50" : "text-gray-600 hover:bg-gray-200/50"
+        }`} title="Gửi file"><FaPaperclip size={18} /></button>
+        <button className={`p-2.5 rounded-full transition-all duration-150 hover:scale-105 ${
+          isDarkMode ? "text-zinc-400 hover:bg-zinc-800/50" : "text-gray-600 hover:bg-gray-200/50"
+        }`} title="Ghi âm"><FaMicrophone size={18} /></button>
         <input
           ref={inputRef}
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           type="text"
           placeholder="Nhập tin nhắn..."
-          className={`flex-1 p-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-primary ${
+          className={`flex-1 px-4 py-2.5 rounded-[24px] focus:outline-none focus:ring-1 transition-all hover:scale-[1.02] hover:-translate-y-0.5 ${
             isDarkMode
-              ? "bg-zinc-800 border-zinc-700 text-white"
-              : "bg-white border-zinc-300 text-zinc-900"
+              ? "liquid-glass-ui-dark text-white placeholder-zinc-500 focus:ring-blue-500/20"
+              : "liquid-glass-ui text-gray-900 placeholder-gray-400 focus:ring-blue-500/30"
           }`}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
@@ -195,8 +204,8 @@ export default function ChatRoom({ conversationId, sidebarCollapsed, onExpandSid
             }
           }}
         />
-        <button className="text-white p-2 rounded bg-primary hover:bg-primary-dark" onClick={handleSend} title="Gửi">
-          <FaPaperPlane />
+        <button className="text-white p-3 rounded-full bg-blue-500 hover:bg-blue-600 hover:scale-105 transition-all duration-150 shadow-ios-lg liquid-glass-hover" onClick={handleSend} title="Gửi">
+          <FaPaperPlane size={18} />
         </button>
       </div>
     </div>

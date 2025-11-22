@@ -1,12 +1,14 @@
 /** Stock_InOut_Page.tsx - Nhập/Xuất kho */
 
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { apiGetStockTransactions, StockTransaction } from '../../app/api_client';
 import { useUIStore } from '../../state/ui_store';
 
 export default function Stock_InOut_Page() {
   const [transactions, setTransactions] = useState<StockTransaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
   const isDarkMode = useUIStore((state) => state.isDarkMode);
 
   useEffect(() => {
@@ -19,13 +21,23 @@ export default function Stock_InOut_Page() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Nhập/Xuất kho</h1>
-      <div className="flex justify-between items-center mb-4">
-        <button className="bg-success text-white px-4 py-2 rounded-lg hover:bg-success/90 mr-2">Nhập kho</button>
-        <button className="bg-warning text-white px-4 py-2 rounded-lg hover:bg-warning/90">Xuất kho</button>
+      <div className="flex gap-4 mb-4">
+        <button 
+          onClick={() => navigate('/stock/in')}
+          className="bg-success text-white px-6 py-3 rounded-[20px] hover:scale-105 transition-transform shadow-ios font-medium hover:bg-success/90 backdrop-blur-sm"
+        >
+          Nhập kho
+        </button>
+        <button 
+          onClick={() => navigate('/stock/out')}
+          className="bg-warning text-white px-6 py-3 rounded-[20px] hover:scale-105 transition-transform shadow-ios font-medium hover:bg-warning/90 backdrop-blur-sm"
+        >
+          Xuất kho
+        </button>
       </div>
       <div className="overflow-x-auto">
-        <table className="min-w-full bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800">
-          <thead className="bg-zinc-50 dark:bg-zinc-800/50">
+        <table className="min-w-full liquid-glass dark:liquid-glass-dark rounded-[24px] border border-black/10 dark:border-white/10 shadow-ios overflow-hidden">
+          <thead className="liquid-glass-ui dark:liquid-glass-ui-dark">
             <tr>
               <th className="px-4 py-3 text-left text-zinc-900 dark:text-zinc-100">Thời gian</th>
               <th className="px-4 py-3 text-left text-zinc-900 dark:text-zinc-100">Loại</th>
@@ -46,7 +58,7 @@ export default function Stock_InOut_Page() {
               </tr>
             ) : (
               transactions.map(tran => (
-                <tr key={tran.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition border-b border-zinc-200 dark:border-zinc-800">
+                <tr key={tran.id} className="hover:liquid-glass-ui dark:hover:liquid-glass-ui-dark transition-all border-b border-black/10 dark:border-white/10">
                   <td className="px-4 py-3 text-zinc-900 dark:text-zinc-100">{new Date(tran.timestamp).toLocaleString('vi-VN')}</td>
                   <td className="px-4 py-3">
                     <span className={`px-3 py-1 rounded-full font-bold text-xs ${tran.type === 'in' ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
@@ -57,7 +69,7 @@ export default function Stock_InOut_Page() {
                   <td className="px-4 py-3 text-right text-zinc-900 dark:text-zinc-100">{tran.quantity}</td>
                   <td className="px-4 py-3 text-zinc-900 dark:text-zinc-100">{tran.note || '-'}</td>
                   <td className="px-4 py-3 text-center">
-                    <button className="px-3 py-1 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 mr-2">Chi tiết</button>
+                    <button className="px-3 py-1.5 rounded-[16px] bg-primary/10 dark:bg-primary/20 border border-primary/30 text-primary hover:scale-105 transition-transform shadow-ios font-medium hover:bg-primary/20 dark:hover:bg-primary/30">Chi tiết</button>
                   </td>
                 </tr>
               ))

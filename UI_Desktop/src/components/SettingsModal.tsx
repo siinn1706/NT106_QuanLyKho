@@ -1,27 +1,23 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaTimes, FaMoon, FaSun, FaBell, FaLanguage, FaDownload, FaInfoCircle, FaKey, FaDatabase, FaTrash, FaSync, FaShieldAlt, FaUser, FaSignOutAlt, FaArrowLeft, FaSave } from 'react-icons/fa';
+import { FaTimes, FaMoon, FaSun, FaBell, FaLanguage, FaDownload, FaInfoCircle, FaKey, FaDatabase, FaTrash, FaSync, FaShieldAlt, FaUser, FaSignOutAlt } from 'react-icons/fa';
 import { useUIStore } from '../state/ui_store';
 import { useAuthStore } from '../state/auth_store';
-import { apiLogout, apiChangePassword } from '../app/api_client';
+import { apiLogout } from '../app/api_client';
 
+type TabKey = 'general' | 'account' | 'notifications' | 'about';
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialTab?: TabKey;
 }
 
-export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
+export default function SettingsModal({ isOpen, onClose, initialTab = 'general' }: SettingsModalProps) {
   const { isDarkMode, toggleDarkMode } = useUIStore();
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'general' | 'account' | 'notifications' | 'about'>('general');
-
-  // State cho việc đổi mật khẩu
-  const [isChangingPass, setIsChangingPass] = useState(false);
-  const [passForm, setPassForm] = useState({ oldPass: '', newPass: '', confirmPass: '' });
-  const [passStatus, setPassStatus] = useState({ loading: false, error: '', success: '' });
-
+  const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
   const [language, setLanguage] = useState('vi');
   const [notifications, setNotifications] = useState({
     lowStock: true,
@@ -31,6 +27,13 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
   const APP_VERSION = '1.0.0';
   const BUILD_DATE = '13/11/2025';
+
+  // Sync tab when modal opens or initialTab changes
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab(initialTab);
+    }
+  }, [isOpen, initialTab]);
 
   if (!isOpen) return null;
 
@@ -56,188 +59,84 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     if (!confirm('Bạn có chắc muốn đăng xuất?')) return;
     try {
       await apiLogout();
-    } catch (e) {
-      // ignore server-side logout errors; proceed client-side
-    } finally {
-      logout();
-      onClose();
-      navigate('/login');
-    }
+    } catch {}
+    logout();
+    onClose();
+    navigate('/login');
   };
 
   const handleChangePassword = () => {
-    setIsChangingPass(true);
+    onClose();
+    navigate('/change-password');
   };
-
-  const handleChangePasswordSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setPassStatus({ loading: true, error: '', success: '' });
-
-    if (passForm.newPass !== passForm.confirmPass) {
-      setPassStatus({ loading: false, error: 'Mật khẩu mới không khớp', success: '' });
-      return;
-    }
-    if (passForm.newPass.length < 6) {
-      setPassStatus({ loading: false, error: 'Mật khẩu phải có ít nhất 6 ký tự', success: '' });
-      return;
-    }
-
-    try {
-      if (!user?.email) throw new Error("Không tìm thấy email người dùng");
-      
-      await apiChangePassword({
-        email: user.email,
-        oldPassword: passForm.oldPass,
-        newPassword: passForm.newPass
-      });
-
-      setPassStatus({ loading: false, error: '', success: 'Đổi mật khẩu thành công!' });
-      // Reset form sau 1s
-      setTimeout(() => {
-        setIsChangingPass(false);
-        setPassForm({ oldPass: '', newPass: '', confirmPass: '' });
-        setPassStatus({ loading: false, error: '', success: '' });
-      }, 1500);
-    } catch (err: any) {
-      setPassStatus({ loading: false, error: err.message, success: '' });
-    }
-  };
-
-  const renderChangePasswordForm = () => (
-    <div className="h-full flex flex-col">
-      <div className="flex items-center gap-2 mb-6">
-        <button 
-          onClick={() => { setIsChangingPass(false); setPassStatus({ loading: false, error: '', success: '' }); }}
-          className={`p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors`}
-        >
-          <FaArrowLeft />
-        </button>
-        <h3 className="font-bold text-lg">Đổi mật khẩu</h3>
-      </div>
-
-      <form onSubmit={handleChangePasswordSubmit} className="space-y-4 max-w-md">
-        {passStatus.error && (
-          <div className="p-3 bg-red-100 text-red-600 rounded-lg text-sm border border-red-200">
-            {passStatus.error}
-          </div>
-        )}
-        {passStatus.success && (
-          <div className="p-3 bg-green-100 text-green-600 rounded-lg text-sm border border-green-200">
-            {passStatus.success}
-          </div>
-        )}
-
-        <div>
-          <label className="block text-sm font-medium mb-1">Mật khẩu hiện tại</label>
-          <input
-            type="password"
-            required
-            className={`w-full p-2 rounded-lg border ${isDarkMode ? 'bg-zinc-800 border-zinc-600' : 'bg-white border-zinc-300'}`}
-            value={passForm.oldPass}
-            onChange={e => setPassForm({...passForm, oldPass: e.target.value})}
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-1">Mật khẩu mới</label>
-          <input
-            type="password"
-            required
-            className={`w-full p-2 rounded-lg border ${isDarkMode ? 'bg-zinc-800 border-zinc-600' : 'bg-white border-zinc-300'}`}
-            value={passForm.newPass}
-            onChange={e => setPassForm({...passForm, newPass: e.target.value})}
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-1">Xác nhận mật khẩu mới</label>
-          <input
-            type="password"
-            required
-            className={`w-full p-2 rounded-lg border ${isDarkMode ? 'bg-zinc-800 border-zinc-600' : 'bg-white border-zinc-300'}`}
-            value={passForm.confirmPass}
-            onChange={e => setPassForm({...passForm, confirmPass: e.target.value})}
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={passStatus.loading}
-          className="w-full bg-primary text-white py-2 rounded-lg font-semibold hover:bg-primary-dark transition-colors disabled:opacity-50 flex items-center justify-center gap-2 mt-4"
-        >
-          {passStatus.loading ? 'Đang xử lý...' : <><FaSave /> Lưu thay đổi</>}
-        </button>
-      </form>
-    </div>
-  );
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className={`w-[700px] h-[600px] rounded-2xl shadow-2xl flex overflow-hidden ${
-        isDarkMode ? 'bg-zinc-900 text-white' : 'bg-white text-zinc-900'
+      <div className={`w-[700px] h-[600px] rounded-[32px] shadow-ios-lg flex overflow-hidden ${
+        isDarkMode ? 'liquid-glass-dark text-white' : 'liquid-glass text-zinc-900'
       }`}>
         {/* Sidebar */}
         <div className={`w-48 border-r ${
-          isDarkMode ? 'bg-zinc-800 border-zinc-700' : 'bg-zinc-50 border-zinc-200'
+          isDarkMode ? 'liquid-glass-ui-dark border-white/5' : 'liquid-glass-ui border-black/5'
         }`}>
           <div className={`h-16 px-6 flex items-center border-b ${
-            isDarkMode ? 'border-zinc-700' : 'border-zinc-200'
+            isDarkMode ? 'border-white/5' : 'border-black/5'
           }`}>
             <h2 className="font-bold text-lg">Cài đặt</h2>
           </div>
           <nav className="p-2">
             <button
               onClick={() => setActiveTab('general')}
-              className={`w-full text-left px-4 py-3 rounded-lg mb-1 transition-colors ${
+              className={`w-full text-left px-4 py-3 rounded-xl mb-1 transition-all hover:scale-[1.02] shadow-ios ${
                 activeTab === 'general'
                   ? isDarkMode
-                    ? 'bg-primary/20 text-primary'
-                    : 'bg-primary/10 text-primary'
+                    ? 'liquid-glass-ui-dark text-primary'
+                    : 'liquid-glass-ui text-primary'
                   : isDarkMode
-                    ? 'hover:bg-zinc-700'
-                    : 'hover:bg-zinc-100'
+                    ? 'hover:liquid-glass-ui-dark'
+                    : 'hover:liquid-glass-ui'
               }`}
             >
               Chung
             </button>
             <button
               onClick={() => setActiveTab('account')}
-              className={`w-full text-left px-4 py-3 rounded-lg mb-1 transition-colors ${
+              className={`w-full text-left px-4 py-3 rounded-xl mb-1 transition-all hover:scale-[1.02] shadow-ios ${
                 activeTab === 'account'
                   ? isDarkMode
-                    ? 'bg-primary/20 text-primary'
-                    : 'bg-primary/10 text-primary'
+                    ? 'liquid-glass-ui-dark text-primary'
+                    : 'liquid-glass-ui text-primary'
                   : isDarkMode
-                    ? 'hover:bg-zinc-700'
-                    : 'hover:bg-zinc-100'
+                    ? 'hover:liquid-glass-ui-dark'
+                    : 'hover:liquid-glass-ui'
               }`}
             >
               Tài khoản
             </button>
             <button
               onClick={() => setActiveTab('notifications')}
-              className={`w-full text-left px-4 py-3 rounded-lg mb-1 transition-colors ${
+              className={`w-full text-left px-4 py-3 rounded-xl mb-1 transition-all hover:scale-[1.02] shadow-ios ${
                 activeTab === 'notifications'
                   ? isDarkMode
-                    ? 'bg-primary/20 text-primary'
-                    : 'bg-primary/10 text-primary'
+                    ? 'liquid-glass-ui-dark text-primary'
+                    : 'liquid-glass-ui text-primary'
                   : isDarkMode
-                    ? 'hover:bg-zinc-700'
-                    : 'hover:bg-zinc-100'
+                    ? 'hover:liquid-glass-ui-dark'
+                    : 'hover:liquid-glass-ui'
               }`}
             >
               Thông báo
             </button>
             <button
               onClick={() => setActiveTab('about')}
-              className={`w-full text-left px-4 py-3 rounded-lg mb-1 transition-colors ${
+              className={`w-full text-left px-4 py-3 rounded-xl mb-1 transition-all hover:scale-[1.02] shadow-ios ${
                 activeTab === 'about'
                   ? isDarkMode
-                    ? 'bg-primary/20 text-primary'
-                    : 'bg-primary/10 text-primary'
+                    ? 'liquid-glass-ui-dark text-primary'
+                    : 'liquid-glass-ui text-primary'
                   : isDarkMode
-                    ? 'hover:bg-zinc-700'
-                    : 'hover:bg-zinc-100'
+                    ? 'hover:liquid-glass-ui-dark'
+                    : 'hover:liquid-glass-ui'
               }`}
             >
               Thông tin
@@ -249,7 +148,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         <div className="flex-1 flex flex-col">
           {/* Header */}
           <div className={`h-16 flex items-center justify-between px-6 border-b ${
-            isDarkMode ? 'border-zinc-700' : 'border-zinc-200'
+            isDarkMode ? 'liquid-glass-ui-dark border-white/5' : 'liquid-glass-ui border-black/5'
           }`}>
             <h3 className="font-semibold text-lg">
               {activeTab === 'general' && 'Cài đặt chung'}
@@ -259,8 +158,8 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             </h3>
             <button
               onClick={onClose}
-              className={`p-2 rounded-lg transition-colors ${
-                isDarkMode ? 'hover:bg-zinc-800' : 'hover:bg-zinc-100'
+              className={`p-2 rounded-full transition-all hover:scale-105 shadow-ios liquid-glass-hover ${
+                isDarkMode ? 'liquid-glass-ui-dark' : 'liquid-glass-ui'
               }`}
             >
               <FaTimes size={18} />
@@ -269,11 +168,11 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
           {/* Content Area */}
           <div className="flex-1 overflow-y-auto p-6">
-            {activeTab === 'general' && (isChangingPass ? renderChangePasswordForm() : 
+            {activeTab === 'general' && (
               <div className="space-y-6">
                 {/* Theme Toggle */}
-                <div className={`p-4 rounded-lg ${
-                  isDarkMode ? 'bg-zinc-800' : 'bg-zinc-50'
+                <div className={`p-4 rounded-xl shadow-ios transition-all hover:scale-[1.02] ${
+                  isDarkMode ? 'liquid-glass-ui-dark' : 'liquid-glass-ui'
                 }`}>
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-3">
@@ -301,8 +200,8 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 </div>
 
                 {/* Language */}
-                <div className={`p-4 rounded-lg ${
-                  isDarkMode ? 'bg-zinc-800' : 'bg-zinc-50'
+                <div className={`p-4 rounded-xl shadow-ios transition-all hover:scale-[1.02] ${
+                  isDarkMode ? 'liquid-glass-ui-dark' : 'liquid-glass-ui'
                 }`}>
                   <div className="flex items-center gap-3 mb-3">
                     <FaLanguage size={20} />
@@ -316,10 +215,10 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   <select
                     value={language}
                     onChange={(e) => setLanguage(e.target.value)}
-                    className={`w-full px-3 py-2 rounded-lg border ${
+                    className={`w-full px-3 py-2 rounded-xl border shadow-ios transition-all hover:scale-[1.02] ${
                       isDarkMode
-                        ? 'bg-zinc-700 border-zinc-600 text-white'
-                        : 'bg-white border-zinc-300 text-zinc-900'
+                        ? 'liquid-glass-ui-dark border-white/10 text-white'
+                        : 'liquid-glass-ui border-black/10 text-zinc-900'
                     }`}
                   >
                     <option value="vi">Tiếng Việt</option>
@@ -328,8 +227,8 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 </div>
 
                 {/* Data Management */}
-                <div className={`p-4 rounded-lg ${
-                  isDarkMode ? 'bg-zinc-800' : 'bg-zinc-50'
+                <div className={`p-4 rounded-xl shadow-ios transition-all hover:scale-[1.02] ${
+                  isDarkMode ? 'liquid-glass-ui-dark' : 'liquid-glass-ui'
                 }`}>
                   <div className="flex items-center gap-3 mb-3">
                     <FaDatabase size={20} />
@@ -343,10 +242,10 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   <div className="flex gap-2">
                     <button
                       onClick={handleExportData}
-                      className={`flex-1 px-4 py-2 rounded-lg border transition-colors ${
+                      className={`flex-1 px-4 py-2 rounded-xl border shadow-ios transition-all hover:scale-105 liquid-glass-hover ${
                         isDarkMode
-                          ? 'border-zinc-600 hover:bg-zinc-700'
-                          : 'border-zinc-300 hover:bg-zinc-100'
+                          ? 'liquid-glass-ui-dark border-white/10'
+                          : 'liquid-glass-ui border-black/10'
                       }`}
                     >
                       <FaDownload className="inline mr-2" size={14} />
@@ -354,10 +253,10 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     </button>
                     <button
                       onClick={handleClearCache}
-                      className={`flex-1 px-4 py-2 rounded-lg border transition-colors ${
+                      className={`flex-1 px-4 py-2 rounded-xl border shadow-ios transition-all hover:scale-105 liquid-glass-hover ${
                         isDarkMode
-                          ? 'border-red-600 text-red-500 hover:bg-red-600/10'
-                          : 'border-red-500 text-red-600 hover:bg-red-50'
+                          ? 'border-red-600/50 text-red-400 hover:bg-red-600/10'
+                          : 'border-red-500/50 text-red-600 hover:bg-red-50'
                       }`}
                     >
                       <FaTrash className="inline mr-2" size={14} />
@@ -367,8 +266,8 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 </div>
 
                 {/* Security */}
-                <div className={`p-4 rounded-lg ${
-                  isDarkMode ? 'bg-zinc-800' : 'bg-zinc-50'
+                <div className={`p-4 rounded-xl shadow-ios transition-all hover:scale-[1.02] ${
+                  isDarkMode ? 'liquid-glass-ui-dark' : 'liquid-glass-ui'
                 }`}>
                   <div className="flex items-center gap-3 mb-3">
                     <FaShieldAlt size={20} />
@@ -380,11 +279,14 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     </div>
                   </div>
                   <button
-                    onClick={handleChangePassword}
-                    className={`w-full px-4 py-2 rounded-lg border transition-colors ${
+                    onClick={() => {
+                      onClose();
+                      navigate('/change-password');
+                    }}
+                    className={`w-full px-4 py-2 rounded-xl border shadow-ios transition-all hover:scale-105 liquid-glass-hover ${
                       isDarkMode
-                        ? 'border-zinc-600 hover:bg-zinc-700'
-                        : 'border-zinc-300 hover:bg-zinc-100'
+                        ? 'liquid-glass-ui-dark border-white/10'
+                        : 'liquid-glass-ui border-black/10'
                     }`}
                   >
                     <FaKey className="inline mr-2" size={14} />
@@ -394,135 +296,11 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               </div>
             )}
 
-            {activeTab === 'account' && (isChangingPass ? renderChangePasswordForm() :
-              <div className="space-y-6">
-                {/* User Info */}
-                <div className={`p-6 rounded-lg ${
-                  isDarkMode ? 'bg-zinc-800' : 'bg-zinc-50'
-                }`}>
-                  <div className="flex items-center gap-4 mb-6">
-                    <div className="w-20 h-20 bg-gradient-to-br from-primary to-blue-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
-                      {user?.name?.charAt(0).toUpperCase() || 'U'}
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold">{user?.name || 'User'}</h3>
-                      <p className={`text-sm ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
-                        {user?.email || 'user@example.com'}
-                      </p>
-                      {user?.role && (
-                        <span className={`inline-block mt-2 px-3 py-1 rounded-full text-xs font-medium ${
-                          isDarkMode ? 'bg-primary/20 text-primary' : 'bg-primary/10 text-primary'
-                        }`}>
-                          {user.role}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <button
-                    className={`w-full px-4 py-2 rounded-lg border transition-colors ${
-                      isDarkMode
-                        ? 'border-zinc-600 hover:bg-zinc-700'
-                        : 'border-zinc-300 hover:bg-zinc-100'
-                    }`}
-                  >
-                    <FaUser className="inline mr-2" size={14} />
-                    Chỉnh sửa hồ sơ
-                  </button>
-                </div>
-
-                {/* Account Info */}
-                <div className={`p-4 rounded-lg ${
-                  isDarkMode ? 'bg-zinc-800' : 'bg-zinc-50'
-                }`}>
-                  <h4 className="font-semibold mb-4">Thông tin tài khoản</h4>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center py-2 border-b border-zinc-700 dark:border-zinc-600">
-                      <span className={`text-sm ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
-                        Email
-                      </span>
-                      <span className="text-sm font-medium">
-                        {user?.email || 'N/A'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center py-2 border-b border-zinc-700 dark:border-zinc-600">
-                      <span className={`text-sm ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
-                        ID
-                      </span>
-                      <span className="text-sm font-medium font-mono">
-                        {user?.id ? user.id.substring(0, 8) + '...' : 'N/A'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center py-2">
-                      <span className={`text-sm ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
-                        Vai trò
-                      </span>
-                      <span className="text-sm font-medium">
-                        {user?.role || 'User'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Password */}
-                <div className={`p-4 rounded-lg ${
-                  isDarkMode ? 'bg-zinc-800' : 'bg-zinc-50'
-                }`}>
-                  <div className="flex items-center gap-3 mb-3">
-                    <FaKey size={20} />
-                    <div>
-                      <h4 className="font-semibold">Mật khẩu</h4>
-                      <p className={`text-sm ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
-                        Thay đổi mật khẩu đăng nhập
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={handleChangePassword}
-                    className={`w-full px-4 py-2 rounded-lg border transition-colors ${
-                      isDarkMode
-                        ? 'border-zinc-600 hover:bg-zinc-700'
-                        : 'border-zinc-300 hover:bg-zinc-100'
-                    }`}
-                  >
-                    Đổi mật khẩu
-                  </button>
-                </div>
-
-                {/* Logout */}
-                <div className={`p-4 rounded-lg border-2 ${
-                  isDarkMode 
-                    ? 'bg-red-900/10 border-red-800' 
-                    : 'bg-red-50 border-red-200'
-                }`}>
-                  <div className="flex items-center gap-3 mb-3">
-                    <FaSignOutAlt size={20} className="text-red-600" />
-                    <div>
-                      <h4 className="font-semibold text-red-600">Đăng xuất</h4>
-                      <p className={`text-sm ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
-                        Thoát khỏi tài khoản hiện tại
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={handleLogout}
-                    className={`w-full px-4 py-2 rounded-lg transition-colors font-semibold ${
-                      isDarkMode
-                        ? 'bg-red-600 hover:bg-red-700 text-white'
-                        : 'bg-red-500 hover:bg-red-600 text-white'
-                    }`}
-                  >
-                    <FaSignOutAlt className="inline mr-2" size={14} />
-                    Đăng xuất ngay
-                  </button>
-                </div>
-              </div>
-            )}
-
             {activeTab === 'notifications' && (
               <div className="space-y-4">
                 {/* Low Stock Alert */}
-                <div className={`p-4 rounded-lg ${
-                  isDarkMode ? 'bg-zinc-800' : 'bg-zinc-50'
+                <div className={`p-4 rounded-xl shadow-ios transition-all hover:scale-[1.02] ${
+                  isDarkMode ? 'liquid-glass-ui-dark' : 'liquid-glass-ui'
                 }`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -550,8 +328,8 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 </div>
 
                 {/* New Orders */}
-                <div className={`p-4 rounded-lg ${
-                  isDarkMode ? 'bg-zinc-800' : 'bg-zinc-50'
+                <div className={`p-4 rounded-xl shadow-ios transition-all hover:scale-[1.02] ${
+                  isDarkMode ? 'liquid-glass-ui-dark' : 'liquid-glass-ui'
                 }`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -579,8 +357,8 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 </div>
 
                 {/* System Updates */}
-                <div className={`p-4 rounded-lg ${
-                  isDarkMode ? 'bg-zinc-800' : 'bg-zinc-50'
+                <div className={`p-4 rounded-xl shadow-ios transition-all hover:scale-[1.02] ${
+                  isDarkMode ? 'liquid-glass-ui-dark' : 'liquid-glass-ui'
                 }`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -612,11 +390,11 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             {activeTab === 'about' && (
               <div className="space-y-6">
                 {/* App Info */}
-                <div className={`p-4 rounded-lg text-center ${
-                  isDarkMode ? 'bg-zinc-800' : 'bg-zinc-50'
+                <div className={`p-4 rounded-xl shadow-ios text-center transition-all hover:scale-[1.02] ${
+                  isDarkMode ? 'liquid-glass-ui-dark' : 'liquid-glass-ui'
                 }`}>
-                  <div className="w-20 h-20 bg-primary rounded-2xl flex items-center justify-center text-white text-3xl font-bold mx-auto mb-4">
-                    N3T
+                  <div className="w-28 h-28 flex items-center justify-center mx-auto mb-4">
+                    <img src="/src/resources/logo.png" alt="N3T Logo" className="w-full h-full object-contain" />
                   </div>
                   <h3 className="text-xl font-bold mb-2">Quản Lý Kho N3T</h3>
                   <p className={`text-sm mb-1 ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
@@ -628,8 +406,8 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 </div>
 
                 {/* Update Check */}
-                <div className={`p-4 rounded-lg ${
-                  isDarkMode ? 'bg-zinc-800' : 'bg-zinc-50'
+                <div className={`p-4 rounded-xl shadow-ios transition-all hover:scale-[1.02] ${
+                  isDarkMode ? 'liquid-glass-ui-dark' : 'liquid-glass-ui'
                 }`}>
                   <div className="flex items-center gap-3 mb-3">
                     <FaSync size={20} />
@@ -642,15 +420,15 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   </div>
                   <button
                     onClick={handleCheckUpdate}
-                    className="w-full px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                    className="w-full px-4 py-2 bg-primary text-white rounded-xl shadow-ios-lg transition-all hover:scale-105 liquid-glass-hover hover:bg-primary-dark"
                   >
                     Kiểm tra ngay
                   </button>
                 </div>
 
                 {/* Info */}
-                <div className={`p-4 rounded-lg ${
-                  isDarkMode ? 'bg-zinc-800' : 'bg-zinc-50'
+                <div className={`p-4 rounded-xl shadow-ios transition-all hover:scale-[1.02] ${
+                  isDarkMode ? 'liquid-glass-ui-dark' : 'liquid-glass-ui'
                 }`}>
                   <div className="flex items-center gap-3 mb-3">
                     <FaInfoCircle size={20} />
@@ -665,6 +443,80 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                       hỗ trợ theo dõi tồn kho, nhập xuất và báo cáo chi tiết.
                     </p>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'account' && (
+              <div className="space-y-6">
+                {/* User Info */}
+                <div className={`${isDarkMode ? 'liquid-glass-ui-dark' : 'liquid-glass-ui'} p-6 rounded-xl shadow-ios transition-all hover:scale-[1.02]`}>
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="w-20 h-20 bg-gradient-to-br from-primary to-blue-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
+                      {user?.name?.charAt(0).toUpperCase() || 'U'}
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold">{user?.name || 'User'}</h3>
+                      <p className={`text-sm ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>{user?.email || 'user@example.com'}</p>
+                      {user?.role && (
+                        <span className={`inline-block mt-2 px-3 py-1 rounded-full text-xs font-medium ${isDarkMode ? 'bg-primary/20 text-primary' : 'bg-primary/10 text-primary'}`}>
+                          {user.role}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <button className={`w-full px-4 py-2 rounded-xl border shadow-ios transition-all hover:scale-[1.02] ${isDarkMode ? 'liquid-glass-ui-dark border-white/10' : 'liquid-glass-ui border-black/10'}`}>
+                    <FaUser className="inline mr-2" size={14} />
+                    Chỉnh sửa hồ sơ
+                  </button>
+                </div>
+
+                {/* Account Info */}
+                <div className={`${isDarkMode ? 'liquid-glass-ui-dark' : 'liquid-glass-ui'} p-4 rounded-xl shadow-ios`}>
+                  <h4 className="font-semibold mb-4">Thông tin tài khoản</h4>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center py-2 border-b border-black/10 dark:border-white/10">
+                      <span className={`text-sm ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>Email</span>
+                      <span className="text-sm font-medium">{user?.email || 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2 border-b border-black/10 dark:border-white/10">
+                      <span className={`text-sm ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>ID</span>
+                      <span className="text-sm font-medium font-mono">{user?.id ? user.id.substring(0,8) + '...' : 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2">
+                      <span className={`text-sm ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>Vai trò</span>
+                      <span className="text-sm font-medium">{user?.role || 'User'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Password */}
+                <div className={`${isDarkMode ? 'liquid-glass-ui-dark' : 'liquid-glass-ui'} p-4 rounded-xl shadow-ios`}>
+                  <div className="flex items-center gap-3 mb-3">
+                    <FaKey size={20} />
+                    <div>
+                      <h4 className="font-semibold">Mật khẩu</h4>
+                      <p className={`text-sm ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>Thay đổi mật khẩu đăng nhập</p>
+                    </div>
+                  </div>
+                  <button onClick={handleChangePassword} className={`w-full px-4 py-2 rounded-xl border shadow-ios transition-all hover:scale-[1.02] ${isDarkMode ? 'liquid-glass-ui-dark border-white/10' : 'liquid-glass-ui border-black/10'}`}>
+                    Đổi mật khẩu
+                  </button>
+                </div>
+
+                {/* Logout */}
+                <div className={`p-4 rounded-xl border-2 ${isDarkMode ? 'bg-red-900/10 border-red-800' : 'bg-red-50 border-red-200'}`}>
+                  <div className="flex items-center gap-3 mb-3">
+                    <FaSignOutAlt size={20} className="text-red-600" />
+                    <div>
+                      <h4 className="font-semibold text-red-600">Đăng xuất</h4>
+                      <p className={`text-sm ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>Thoát khỏi tài khoản hiện tại</p>
+                    </div>
+                  </div>
+                  <button onClick={handleLogout} className="w-full px-4 py-2 rounded-xl transition-all font-semibold bg-red-500 hover:bg-red-600 text-white shadow-ios-lg">
+                    <FaSignOutAlt className="inline mr-2" size={14} />
+                    Đăng xuất ngay
+                  </button>
                 </div>
               </div>
             )}
