@@ -10,22 +10,30 @@ export default function Login_Page() {
   const navigate = useNavigate();
   const { login } = useAuthStore();
   
+  // Form state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  
+  // UI state
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Form validation
   const validateForm = (): string | null => {
     if (!email.trim()) return 'Vui lòng nhập email';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Email không hợp lệ';
     if (!password) return 'Vui lòng nhập mật khẩu';
+    if (password.length < 6) return 'Mật khẩu phải có ít nhất 6 ký tự';
     return null;
   };
 
+  // Handle submit
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
     
+    // Validate
     const validationError = validateForm();
     if (validationError) {
       setError(validationError);
@@ -62,7 +70,9 @@ export default function Login_Page() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 flex items-center justify-center p-4">
+      {/* Login Card */}
       <div className="w-full max-w-md">
+        {/* Logo & Brand */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-20 h-20 mb-4">
             <img src="/src/resources/logo.png" alt="N3T Logo" className="w-full h-full object-contain" />
@@ -71,14 +81,17 @@ export default function Login_Page() {
           <p className="text-zinc-400">Chào mừng trở lại! Vui lòng đăng nhập để tiếp tục</p>
         </div>
 
+        {/* Login Form */}
         <div className="liquid-glass-dark backdrop-blur-xl rounded-[32px] border border-white/10 p-8 shadow-ios-lg">
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Error Message */}
             {error && (
               <div className="bg-danger/10 border border-danger/20 text-danger px-4 py-3 rounded-lg text-sm">
                 {error}
               </div>
             )}
 
+            {/* Email Field */}
             <div>
               <label className="block text-sm font-medium text-zinc-300 mb-2">Email</label>
               <input
@@ -91,8 +104,11 @@ export default function Login_Page() {
               />
             </div>
 
+            {/* Password Field */}
             <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-2">Mật khẩu</label>
+              <label className="block text-sm font-medium text-zinc-300 mb-2">
+                Mật khẩu
+              </label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -112,15 +128,24 @@ export default function Login_Page() {
               </div>
             </div>
 
+            {/* Login Button */}
             <button
               type="submit"
               disabled={loading}
               className="w-full bg-primary hover:bg-primary-dark text-white font-semibold py-3 rounded-xl transition-all duration-200 shadow-ios-lg hover:scale-105 liquid-glass-hover disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Đang đăng nhập...
+                </span>
+              ) : (
+                'Đăng nhập'
+              )}
             </button>
           </form>
 
+          {/* Register Link */}
           <div className="mt-6 text-center">
             <p className="text-zinc-400 text-sm">
               Chưa có tài khoản?{' '}
@@ -130,6 +155,11 @@ export default function Login_Page() {
             </p>
           </div>
         </div>
+        
+        {/* Footer */}
+        <p className="text-center text-zinc-500 text-xs mt-8">
+          © 2025 N3T - Quản lý Kho. All rights reserved.
+        </p>
       </div>
     </div>
   );
