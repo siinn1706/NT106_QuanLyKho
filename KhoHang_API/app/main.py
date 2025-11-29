@@ -10,6 +10,13 @@ from datetime import datetime, timezone
 from . import schemas
 from .config import FIREBASE_API_KEY
 from .gemini_client import generate_reply, is_configured as gemini_ready, MODEL_NAME
+from .schemas import ChatMessage, ChatHistory, ChatRequest
+
+# =============================================================
+# In-memory stores (Thêm store cho Chat)
+# =============================================================
+# Key: user_id, Value: List[ChatMessage]
+chat_store: Dict[str, List[schemas.ChatMessage]] = {}
 
 # =============================================================
 # In-memory stores (Firebase DB sẽ thay thế sau) - Tạm thời
@@ -322,6 +329,57 @@ def get_dashboard_stats():
         recent_transactions=recent_transactions,
     )
 
+# -------------------------------------------------
+# CHAT CRUD API
+# -------------------------------------------------
+
+# 1. CREATE & READ (Gửi tin nhắn và nhận phản hồi, đồng thời lưu lịch sử)
+@app.post("/chat/send", response_model=schemas.ChatHistory)
+def send_chat_message(req: schemas.ChatRequest):
+    if not gemini_ready():
+        raise HTTPException(status_code=501, detail="Gemini chưa được cấu hình")
+
+    # 1. Khởi tạo lịch sử nếu chưa có
+    if req.user_id not in chat_store:
+        chat_store[req.user_id] = []
+
+    # 2. Lưu tin nhắn của User
+    user_msg = schemas.ChatMessage(
+        role="user",
+        content=req.message,
+        timestamp=datetime.now(timezone.utc)
+    )
+    chat_store[req.user_id].append(user_msg)
+
+    # 3. Gọi Gemini (Có thể gửi kèm lịch sử context nếu muốn bot thông minh hơn)
+    # Ở đây demo gửi prompt đơn lẻ, nhưng thực tế nên build context từ chat_store
+    try:
+        ai_reply_text = generate_reply(req.message, req.system_instruction)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    # 4. Lưu phản hồi của AI
+    ai_msg = schemas.ChatMessage(
+        role="model",
+        content=ai_reply_text,
+        timestamp=datetime.now(timezone.utc)
+    )
+    chat_store[req.user_id].append(ai_msg)
+
+    return schemas.ChatHistory(user_id=req.user_id, messages=chat_store[req.user_id])
+
+# 2. READ (Lấy toàn bộ lịch sử chat của User)
+@app.get("/chat/history/{user_id}", response_model=schemas.ChatHistory)
+def get_chat_history(user_id: str):
+    messages = chat_store.get(user_id, [])
+    return schemas.ChatHistory(user_id=user_id, messages=messages)
+
+# 3. DELETE (Xóa lịch sử chat)
+@app.delete("/chat/history/{user_id}", status_code=204)
+def clear_chat_history(user_id: str):
+    if user_id in chat_store:
+        chat_store[user_id] = [] # Hoặc del chat_store[user_id]
+    return
 
 # -------------------------------------------------
 # AI CHAT (Gemini proxy)
