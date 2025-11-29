@@ -121,3 +121,19 @@ class AIChatRequest(BaseModel):
 class AIChatResponse(BaseModel):
     reply: str
     model: str
+
+# ---------- CHAT SYSTEM ----------
+
+class ChatMessage(BaseModel):
+    role: str  # 'user' | 'model'
+    content: str
+    timestamp: datetime = None
+
+class ChatHistory(BaseModel):
+    user_id: str
+    messages: List[ChatMessage]
+
+class ChatRequest(BaseModel):
+    user_id: str
+    message: str
+    system_instruction: Optional[str] = None
