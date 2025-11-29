@@ -6,6 +6,19 @@
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
+// === API Chat CRUD ===
+
+export interface ChatMessage {
+  role: 'user' | 'model';
+  content: string;
+  timestamp: string;
+}
+
+export interface ChatHistoryResponse {
+  user_id: string;
+  messages: ChatMessage[];
+}
+
 // Types cho dữ liệu (sẽ match với response từ BE)
 export interface Item {
   id: string;
@@ -32,6 +45,39 @@ export interface Supplier {
   name: string;
   contact: string;
   address: string;
+}
+
+// 1. Lấy lịch sử chat
+export async function apiGetChatHistory(userId: string): Promise<ChatHistoryResponse> {
+  // Lưu ý: Đảm bảo Backend đã có endpoint GET /chat/history/{userId}
+  const res = await fetch(`${BASE_URL}/chat/history/${userId}`);
+  if (!res.ok) {
+    // Nếu chưa có lịch sử (404) hoặc lỗi, trả về rỗng để UI không crash
+    return { user_id: userId, messages: [] };
+  }
+  return res.json();
+}
+
+// 2. Gửi tin nhắn và lưu vào DB
+export async function apiSendChatMessage(userId: string, message: string): Promise<ChatHistoryResponse> {
+  // Lưu ý: Đảm bảo Backend đã có endpoint POST /chat/send
+  const res = await fetch(`${BASE_URL}/chat/send`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      user_id: userId,
+      message: message,
+      // system_instruction: "..." // Có thể thêm nếu cần
+    }),
+  });
+  
+  if (!res.ok) throw new Error("Gửi tin nhắn thất bại");
+  return res.json();
+}
+
+// 3. Xóa lịch sử (Tùy chọn)
+export async function apiClearChatHistory(userId: string): Promise<void> {
+  await fetch(`${BASE_URL}/chat/history/${userId}`, { method: 'DELETE' });
 }
 
 // === API Hàng hoá ===
