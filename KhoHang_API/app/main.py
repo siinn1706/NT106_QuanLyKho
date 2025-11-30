@@ -413,3 +413,324 @@ def ai_chat_markdown(req: schemas.AIChatRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Gemini error: {e}")
     return PlainTextResponse(reply, media_type="text/markdown")
+# # app/main.py
+# import firebase_admin
+# from firebase_admin import credentials, firestore
+# from fastapi import FastAPI, HTTPException, status
+# from fastapi.responses import PlainTextResponse
+# from fastapi.middleware.cors import CORSMiddleware
+# from typing import List, Any, Dict
+# from datetime import datetime, timezone
+# import requests
+
+# from . import schemas
+# from .config import FIREBASE_API_KEY
+# from .gemini_client import generate_reply, is_configured as gemini_ready, MODEL_NAME
+
+# # =============================================================
+# # CẤU HÌNH FIREBASE FIRESTORE
+# # =============================================================
+# # Đảm bảo file serviceAccountKey.json nằm cùng thư mục với main.py
+# # Hoặc đường dẫn tuyệt đối tới file đó.
+# try:
+#     cred = credentials.Certificate("app/serviceAccountKey.json")
+#     firebase_admin.initialize_app(cred)
+#     db = firestore.client()
+#     print(">>> Kết nối Firestore thành công!")
+# except Exception as e:
+#     print(f">>> Lỗi kết nối Firestore: {e}")
+#     print(">>> Vui lòng kiểm tra file serviceAccountKey.json")
+
+# # =============================================================
+# # In-memory stores (Chỉ dùng cho Chat - Dữ liệu tạm)
+# # =============================================================
+# chat_store: Dict[str, List[schemas.ChatMessage]] = {}
+
+# app = FastAPI(title="N3T KhoHang API", version="0.1.0")
+
+# # CORS
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=["*"],
+#     allow_credentials=True,
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
+
+# # -------------------------------------------------
+# # ROOT
+# # -------------------------------------------------
+# @app.get("/")
+# def root():
+#     return {"message": "N3T KhoHang API is running with Firestore"}
+
+# # -------------------------------------------------
+# # AUTH (Firebase REST API - Giữ nguyên logic cũ)
+# # -------------------------------------------------
+# @app.post("/auth/register", response_model=schemas.AuthResponse)
+# def register_user(payload: schemas.AuthRegisterRequest):
+#     url = f"https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={FIREBASE_API_KEY}"
+#     data = {
+#         "email": payload.email,
+#         "password": payload.password,
+#         "returnSecureToken": True,
+#     }
+#     if payload.full_name:
+#         data["displayName"] = payload.full_name
+
+#     r = requests.post(url, json=data)
+#     if not r.ok:
+#         err = r.json()
+#         msg = err.get("error", {}).get("message", "FIREBASE_SIGNUP_FAILED")
+#         raise HTTPException(status_code=400, detail=msg)
+
+#     fb = r.json()
+#     user = schemas.User(
+#         id=fb.get("localId", ""),
+#         email=fb["email"],
+#         name=fb.get("displayName"),
+#     )
+#     return schemas.AuthResponse(
+#         user=user,
+#         token=fb["idToken"],
+#         refresh_token=fb.get("refreshToken"),
+#     )
+
+# @app.post("/auth/login", response_model=schemas.AuthResponse)
+# def login_user(payload: schemas.AuthLoginRequest):
+#     url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={FIREBASE_API_KEY}"
+#     data = {
+#         "email": payload.email,
+#         "password": payload.password,
+#         "returnSecureToken": True,
+#     }
+
+#     r = requests.post(url, json=data)
+#     if not r.ok:
+#         err = r.json()
+#         msg = err.get("error", {}).get("message", "FIREBASE_LOGIN_FAILED")
+#         raise HTTPException(status_code=400, detail=msg)
+
+#     fb = r.json()
+#     user = schemas.User(
+#         id=fb.get("localId", ""),
+#         email=fb["email"],
+#         name=fb.get("displayName"),
+#     )
+#     return schemas.AuthResponse(
+#         user=user,
+#         token=fb["idToken"],
+#         refresh_token=fb.get("refreshToken"),
+#     )
+
+# @app.post("/auth/change-password")
+# def change_password(payload: schemas.AuthChangePasswordRequest):
+#     login_url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={FIREBASE_API_KEY}"
+#     login_data = {"email": payload.email, "password": payload.old_password, "returnSecureToken": True}
+    
+#     r_login = requests.post(login_url, json=login_data)
+#     if not r_login.ok:
+#         raise HTTPException(status_code=400, detail="Mật khẩu cũ không chính xác")
+    
+#     id_token = r_login.json().get("idToken")
+
+#     update_url = f"https://identitytoolkit.googleapis.com/v1/accounts:update?key={FIREBASE_API_KEY}"
+#     update_data = {"idToken": id_token, "password": payload.new_password, "returnSecureToken": False}
+    
+#     r_update = requests.post(update_url, json=update_data)
+#     if not r_update.ok:
+#         err = r_update.json()
+#         msg = err.get("error", {}).get("message", "CHANGE_PASSWORD_FAILED")
+#         raise HTTPException(status_code=400, detail=msg)
+
+#     return {"message": "Đổi mật khẩu thành công"}
+
+# @app.post("/auth/logout", status_code=200)
+# def logout_user():
+#     return {"message": "logged out"}
+
+# @app.post("/auth/forgot-password", status_code=200)
+# def forgot_password(payload: schemas.AuthForgotPasswordRequest):
+#     url = f"https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key={FIREBASE_API_KEY}"
+#     data = {"requestType": "PASSWORD_RESET", "email": payload.email}
+#     r = requests.post(url, json=data)
+#     if not r.ok:
+#         err = r.json()
+#         msg = err.get("error", {}).get("message", "FIREBASE_ERROR")
+#         if msg == "EMAIL_NOT_FOUND":
+#             raise HTTPException(status_code=404, detail="Email không tồn tại")
+#         raise HTTPException(status_code=400, detail=msg)
+#     return {"message": "Đã gửi email đặt lại mật khẩu."}
+
+# # -------------------------------------------------
+# # SUPPLIERS (FIRESTORE)
+# # -------------------------------------------------
+# @app.get("/suppliers", response_model=List[schemas.Supplier])
+# def get_suppliers():
+#     docs = db.collection('suppliers').stream()
+#     result = []
+#     for doc in docs:
+#         data = doc.to_dict()
+#         result.append(data)
+#     return result
+
+# @app.post("/suppliers", response_model=schemas.Supplier)
+# def create_supplier(supplier: schemas.SupplierCreate):
+#     new_id = int(datetime.now().timestamp())
+#     data = supplier.model_dump()
+#     data['id'] = new_id
+#     db.collection('suppliers').document(str(new_id)).set(data)
+#     return data
+
+# # -------------------------------------------------
+# # ITEMS (FIRESTORE)
+# # -------------------------------------------------
+# @app.get("/items", response_model=List[schemas.Item])
+# def get_items():
+#     docs = db.collection('products').stream()
+#     items = []
+#     for doc in docs:
+#         items.append(doc.to_dict())
+#     return items
+
+# @app.post("/items", response_model=schemas.Item)
+# def create_item(item: schemas.ItemCreate):
+#     existing = db.collection('products').where('sku', '==', item.sku).limit(1).get()
+#     if len(existing) > 0:
+#         raise HTTPException(status_code=400, detail="SKU đã tồn tại")
+    
+#     new_id = int(datetime.now().timestamp())
+#     item_data = item.model_dump()
+#     item_data['id'] = new_id
+    
+#     db.collection('products').document(str(new_id)).set(item_data)
+#     return item_data
+
+# @app.put("/items/{item_id}", response_model=schemas.Item)
+# def update_item(item_id: int, item: schemas.ItemUpdate):
+#     doc_ref = db.collection('products').document(str(item_id))
+#     if not doc_ref.get().exists:
+#         raise HTTPException(status_code=404, detail="Không tìm thấy hàng hoá")
+    
+#     data = item.model_dump(exclude_unset=True)
+#     doc_ref.update(data)
+#     return doc_ref.get().to_dict()
+
+# @app.delete("/items/{item_id}", status_code=204)
+# def delete_item(item_id: int):
+#     doc_ref = db.collection('products').document(str(item_id))
+#     if not doc_ref.get().exists:
+#         raise HTTPException(status_code=404, detail="Không tìm thấy hàng hoá")
+#     doc_ref.delete()
+#     return
+
+# # -------------------------------------------------
+# # STOCK TRANSACTIONS (FIRESTORE)
+# # -------------------------------------------------
+# @app.get("/stock/transactions", response_model=List[schemas.StockTransaction])
+# def get_transactions():
+#     docs = db.collection('stock_transactions').order_by('timestamp', direction=firestore.Query.DESCENDING).stream()
+#     txs = []
+#     for doc in docs:
+#         txs.append(doc.to_dict())
+#     return txs
+
+# @app.post("/stock/transactions", response_model=schemas.StockTransaction)
+# def create_transaction(tx: schemas.StockTransactionCreate):
+#     item_ref = db.collection('products').document(str(tx.item_id))
+#     item_doc = item_ref.get()
+#     if not item_doc.exists:
+#         raise HTTPException(status_code=404, detail="Không tìm thấy hàng hoá")
+    
+#     if tx.type == "out":
+#         current_qty = item_doc.get('quantity')
+#         if current_qty < tx.quantity:
+#              raise HTTPException(status_code=400, detail=f"Không đủ tồn kho (Còn: {current_qty})")
+
+#     tx_id = int(datetime.now().timestamp() * 1000)
+#     new_tx = schemas.StockTransaction(
+#         id=tx_id,
+#         type=tx.type,
+#         item_id=tx.item_id,
+#         quantity=tx.quantity,
+#         note=tx.note,
+#         timestamp=datetime.now(timezone.utc),
+#     )
+    
+#     db.collection('stock_transactions').document(str(tx_id)).set(new_tx.model_dump())
+#     return new_tx
+
+# # -------------------------------------------------
+# # DASHBOARD (FIRESTORE)
+# # -------------------------------------------------
+# @app.get("/dashboard/stats", response_model=schemas.DashboardStats)
+# def get_dashboard_stats():
+#     item_docs = db.collection('products').stream()
+#     items = [doc.to_dict() for doc in item_docs]
+    
+#     total_items = len(items)
+#     low_stock_count = sum(1 for i in items if i.get('quantity', 0) < 10)
+#     total_value = sum(i.get('quantity', 0) * i.get('price', 0) for i in items)
+    
+#     tx_docs = db.collection('stock_transactions').order_by('timestamp', direction=firestore.Query.DESCENDING).limit(10).stream()
+#     recent_transactions = [doc.to_dict() for doc in tx_docs]
+
+#     return schemas.DashboardStats(
+#         total_items=total_items,
+#         low_stock_count=low_stock_count,
+#         total_value=total_value,
+#         recent_transactions=recent_transactions,
+#     )
+
+# # -------------------------------------------------
+# # CHAT & AI
+# # -------------------------------------------------
+# @app.post("/chat/send", response_model=schemas.ChatHistory)
+# def send_chat_message(req: schemas.ChatRequest):
+#     if not gemini_ready():
+#         raise HTTPException(status_code=501, detail="Gemini chưa cấu hình")
+    
+#     if req.user_id not in chat_store:
+#         chat_store[req.user_id] = []
+
+#     user_msg = schemas.ChatMessage(role="user", content=req.message, timestamp=datetime.now(timezone.utc))
+#     chat_store[req.user_id].append(user_msg)
+
+#     try:
+#         reply = generate_reply(req.message, req.system_instruction)
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
+
+#     ai_msg = schemas.ChatMessage(role="model", content=reply, timestamp=datetime.now(timezone.utc))
+#     chat_store[req.user_id].append(ai_msg)
+#     return schemas.ChatHistory(user_id=req.user_id, messages=chat_store[req.user_id])
+
+# @app.get("/chat/history/{user_id}", response_model=schemas.ChatHistory)
+# def get_chat_history(user_id: str):
+#     return schemas.ChatHistory(user_id=user_id, messages=chat_store.get(user_id, []))
+
+# @app.delete("/chat/history/{user_id}", status_code=204)
+# def clear_chat_history(user_id: str):
+#     if user_id in chat_store:
+#         chat_store[user_id] = []
+#     return
+
+# @app.post("/ai/chat", response_model=schemas.AIChatResponse)
+# def ai_chat(req: schemas.AIChatRequest):
+#     if not gemini_ready():
+#         raise HTTPException(status_code=501, detail="Gemini chưa cấu hình")
+#     try:
+#         reply = generate_reply(req.prompt, req.system_instruction)
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
+#     return schemas.AIChatResponse(reply=reply, model=MODEL_NAME)
+
+# @app.post("/ai/chat-md", response_class=PlainTextResponse)
+# def ai_chat_markdown(req: schemas.AIChatRequest):
+#     if not gemini_ready():
+#         raise HTTPException(status_code=501, detail="Gemini chưa cấu hình")
+#     try:
+#         reply = generate_reply(req.prompt, req.system_instruction)
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
+#     return PlainTextResponse(reply, media_type="text/markdown")
