@@ -7,10 +7,7 @@
 import { useState, FormEvent, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../state/auth_store';
-//import { apiRegister, apiVerifyOtp, apiResendOtp } from '../../app/api_client';//ko call api nữa, đổi qua làm việc với firebase
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'; // Auth
-import { ref, set } from 'firebase/database'; // Database
-import { auth, db } from '../../firebase'; // Config
+import { apiRegister, apiVerifyOtp, apiResendOtp } from '../../app/api_client';
 import { FaEye, FaEyeSlash, FaTimes, FaEnvelope } from 'react-icons/fa';
 
 export default function Register_Page() {
@@ -29,6 +26,13 @@ export default function Register_Page() {
   const [error, setError] = useState('');
   const [passwordStrength, setPasswordStrength] = useState<'weak' | 'medium' | 'strong'>('weak');
   
+  // OTP state
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [otpError, setOtpError] = useState('');
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [resendCountdown, setResendCountdown] = useState(0);
+
   // Password strength checker
   const checkPasswordStrength = (pwd: string): 'weak' | 'medium' | 'strong' => {
     if (pwd.length < 6) return 'weak';
@@ -42,23 +46,56 @@ export default function Register_Page() {
     setPasswordStrength(checkPasswordStrength(value));
   };
 
+  // OTP countdown timer
+  useEffect(() => {
+    if (resendCountdown > 0) {
+      const timer = setTimeout(() => setResendCountdown(resendCountdown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCountdown]);
+
+  // OTP input handling
+  const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  const handleOtpChange = (index: number, value: string) => {
+    if (!/^\d*$/.test(value)) return; // Only allow digits
+    
+    const newOtp = [...otp];
+    newOtp[index] = value;
+    setOtp(newOtp);
+    setOtpError('');
+
+    // Auto-focus next input
+    if (value && index < 5) {
+      otpInputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      otpInputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    const newOtp = pastedData.split('').concat(Array(6 - pastedData.length).fill(''));
+    setOtp(newOtp);
+    if (pastedData.length === 6) {
+      otpInputRefs.current[5]?.focus();
+    }
+  };
+
   // Form validation
   const validateForm = (): string | null => {
-    // 1. Kiểm tra Họ tên
     if (!name.trim()) return 'Vui lòng nhập họ tên';
-    if (name.trim().length < 2) return 'Họ tên quá ngắn (tối thiểu 2 ký tự)';
-
-    // 2. Kiểm tra Email (Regex chặn email rác)
+    if (name.length < 2) return 'Họ tên quá ngắn';
     if (!email.trim()) return 'Vui lòng nhập email';
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Email không hợp lệ';
-
-    // 3. Kiểm tra Mật khẩu (Firebase yêu cầu > 6 ký tự)
     if (!password) return 'Vui lòng nhập mật khẩu';
     if (password.length < 6) return 'Mật khẩu phải có ít nhất 6 ký tự';
-    
-    // 4. Kiểm tra Xác nhận
     if (password !== confirmPassword) return 'Mật khẩu xác nhận không khớp';
-    
     return null;
   };
 
@@ -67,6 +104,7 @@ export default function Register_Page() {
     e.preventDefault();
     setError('');
     
+    // Validate
     const validationError = validateForm();
     if (validationError) {
       setError(validationError);
@@ -76,45 +114,57 @@ export default function Register_Page() {
     setLoading(true);
     
     try {
-      // 1. TẠO TÀI KHOẢN (Authentication)
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-
-      // 2. CẬP NHẬT TÊN HIỂN THỊ
-      await updateProfile(user, {
-        displayName: name
-      });
-
-      // 3. LƯU VÀO DATABASE ĐỂ PHÂN QUYỀN (Realtime Database)
-      // Đây là chỗ bạn thực hiện ý muốn "nhiều role"
-      await set(ref(db, 'users/' + user.uid), {
-        username: name,
-        email: email,
-        // Mặc định là 'nhan_vien'. Sau này bạn vào Firebase Console sửa thành 'quan_ly_kho_a', 'sep_tong' v.v...
-        role: 'nhan_vien', 
-        createdAt: new Date().toISOString()
-      });
-
-      // 4. TỰ ĐỘNG ĐĂNG NHẬP LUÔN
-      login({
-        id: user.uid,
-        email: user.email || '',
-        name: name,
-        role: 'nhan_vien'
-      });
+      // Gọi API register - BE sẽ gửi OTP qua email
+      await apiRegister({ name, email, password });
       
-      // Chuyển hướng ngay lập tức
-      navigate('/dashboard');
-
-    } catch (err: any) {
-      console.error(err);
-      if (err.code === 'auth/email-already-in-use') {
-        setError('Email này đã được sử dụng.');
-      } else {
-        setError('Đăng ký thất bại. Vui lòng thử lại.');
-      }
-    } finally {
+      // Hiển thị modal OTP
+      setShowOtpModal(true);
+      setResendCountdown(60); // 60 giây countdown
       setLoading(false);
+    } catch (err: any) {
+      setError(err.message || 'Đăng ký thất bại. Vui lòng thử lại.');
+      setLoading(false);
+    }
+  };
+
+  // Verify OTP
+  const handleVerifyOtp = async () => {
+    const otpCode = otp.join('');
+    if (otpCode.length !== 6) {
+      setOtpError('Vui lòng nhập đầy đủ 6 số OTP');
+      return;
+    }
+
+    setVerifyingOtp(true);
+    setOtpError('');
+
+    try {
+      // Gọi API verify OTP
+      const response = await apiVerifyOtp({ email, otp: otpCode });
+      
+      // Xác thực thành công - lưu user và chuyển trang
+      login(response.user);
+      navigate('/dashboard');
+    } catch (err: any) {
+      setOtpError(err.message || 'Mã OTP không hợp lệ hoặc đã hết hạn');
+    } finally {
+      setVerifyingOtp(false);
+    }
+  };
+
+  // Resend OTP
+  const handleResendOtp = async () => {
+    if (resendCountdown > 0) return;
+    
+    try {
+      // Gọi API resend OTP
+      await apiResendOtp({ email });
+      
+      setResendCountdown(60);
+      setOtp(['', '', '', '', '', '']);
+      setOtpError('');
+    } catch (err: any) {
+      setOtpError(err.message || 'Không thể gửi lại OTP. Vui lòng thử lại.');
     }
   };
 
@@ -289,6 +339,91 @@ export default function Register_Page() {
           © 2025 N3T - Quản lý Kho. All rights reserved.
         </p>
       </div>
+
+      {/* OTP Modal */}
+      {showOtpModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
+          <div className="liquid-glass-dark backdrop-blur-xl rounded-[32px] border border-white/10 p-8 shadow-ios-lg max-w-md w-full animate-scaleIn">
+            {/* Close Button */}
+            <button
+              onClick={() => setShowOtpModal(false)}
+              className="absolute top-4 right-4 text-zinc-400 hover:text-white transition-colors"
+            >
+              <FaTimes size={20} />
+            </button>
+
+            {/* Header */}
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/20 rounded-2xl mb-4">
+                <FaEnvelope className="text-primary text-2xl" />
+              </div>
+              <h2 className="text-2xl font-bold text-white mb-2">Xác thực OTP</h2>
+              <p className="text-zinc-400 text-sm">
+                Mã OTP đã được gửi đến email<br />
+                <span className="text-primary font-medium">{email}</span>
+              </p>
+            </div>
+
+            {/* OTP Error */}
+            {otpError && (
+              <div className="bg-danger/10 border border-danger/20 text-danger px-4 py-3 rounded-lg text-sm mb-4">
+                {otpError}
+              </div>
+            )}
+
+            {/* OTP Input */}
+            <div className="flex gap-2 justify-center mb-6">
+              {otp.map((digit, index) => (
+                <input
+                  key={index}
+                  ref={(el) => (otpInputRefs.current[index] = el)}
+                  type="text"
+                  maxLength={1}
+                  value={digit}
+                  onChange={(e) => handleOtpChange(index, e.target.value)}
+                  onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                  onPaste={handleOtpPaste}
+                  className="w-12 h-14 text-center text-2xl font-bold liquid-glass-ui-dark border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all shadow-ios"
+                  disabled={verifyingOtp}
+                />
+              ))}
+            </div>
+
+            {/* Verify Button */}
+            <button
+              onClick={handleVerifyOtp}
+              disabled={verifyingOtp}
+              className="w-full bg-primary hover:bg-primary-dark text-white font-semibold py-3 rounded-xl transition-all duration-200 shadow-ios-lg hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed mb-4"
+            >
+              {verifyingOtp ? (
+                <span className="flex items-center justify-center gap-2">
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Đang xác thực...
+                </span>
+              ) : (
+                'Xác nhận OTP'
+              )}
+            </button>
+
+            {/* Resend OTP */}
+            <div className="text-center text-sm">
+              {resendCountdown > 0 ? (
+                <p className="text-zinc-400">
+                  Gửi lại mã sau <span className="text-primary font-semibold">{resendCountdown}s</span>
+                </p>
+              ) : (
+                <button
+                  onClick={handleResendOtp}
+                  className="text-primary hover:text-primary-dark font-semibold transition-colors"
+                >
+                  Gửi lại mã OTP
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
