@@ -52,4 +52,3 @@ src-tauri/gen/
 .Trashes
 ehthumbs.db
 Thumbs.db
-UI_Desktop/src/firebase.ts
