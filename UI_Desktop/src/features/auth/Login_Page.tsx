@@ -1,9 +1,14 @@
+/** Login_Page.tsx - Màn hình đăng nhập
+ *  - UI: Email + Password + Login button
+ *  - Validate form trước khi gọi API
+ *  - Hiển thị lỗi nếu đăng nhập thất bại
+ *  - Có link chuyển sang Register
+ */
+
 import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../state/auth_store';
-// import { apiLogin } from '../../app/api_client';//call trực tiếp ko thông qua api nữa
-import { signInWithEmailAndPassword } from 'firebase/auth'; 
-import { auth } from '../../firebase';
+import { apiLogin } from '../../app/api_client';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
 export default function Login_Page() {
@@ -43,26 +48,16 @@ export default function Login_Page() {
     setLoading(true);
     
     try {
-      // --- CODE KẾT NỐI FIREBASE ---
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-
-      // Lưu vào Store
-      login({
-        id: user.uid,
-        email: user.email || '',
-        name: user.displayName || 'User', // Lấy tên từ Firebase
-        role: 'user'
-      });
+      // Gọi API login
+      const response = await apiLogin({ email, password });
       
+      // Lưu user vào store
+      login(response.user);
+      
+      // Chuyển sang dashboard
       navigate('/dashboard');
     } catch (err: any) {
-      console.error(err);
-      if (err.code === 'auth/invalid-credential') {
-        setError('Email hoặc mật khẩu không chính xác.');
-      } else {
-        setError('Đăng nhập thất bại. Vui lòng thử lại.');
-      }
+      setError(err.message || 'Đăng nhập thất bại. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }
@@ -93,7 +88,9 @@ export default function Login_Page() {
 
             {/* Email Field */}
             <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-2">Email</label>
+              <label className="block text-sm font-medium text-zinc-300 mb-2">
+                Email
+              </label>
               <input
                 type="email"
                 value={email}
@@ -115,7 +112,7 @@ export default function Login_Page() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Nhập mật khẩu"
-                  className="w-full pl-4 pr-12 py-3 liquid-glass-ui-dark border border-white/10 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-primary/30 transition-all hover:scale-[1.02] shadow-ios"
+                  className="w-full pl-4 pr-12 py-3 liquid-glass-ui-dark border border-white/10 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-primary/30 transition-all hover:scale-[1.02] shadow-ios [&::-ms-reveal]:hidden [&::-ms-clear]:hidden [&::-webkit-credentials-auto-fill-button]:hidden [&::-webkit-contacts-auto-fill-button]:hidden"
                   disabled={loading}
                 />
                 <button
@@ -126,6 +123,24 @@ export default function Login_Page() {
                   {showPassword ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
                 </button>
               </div>
+            </div>
+
+            {/* Forgot Password Link */}
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 rounded border-zinc-600 bg-zinc-900 text-primary focus:ring-primary focus:ring-offset-0"
+                />
+                <span className="text-sm text-zinc-400">Ghi nhớ đăng nhập</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => navigate('/forgot-password')}
+                className="text-sm text-primary hover:text-primary-dark transition-colors"
+              >
+                Quên mật khẩu?
+              </button>
             </div>
 
             {/* Login Button */}
@@ -149,13 +164,16 @@ export default function Login_Page() {
           <div className="mt-6 text-center">
             <p className="text-zinc-400 text-sm">
               Chưa có tài khoản?{' '}
-              <button onClick={() => navigate('/register')} className="text-primary hover:text-primary-dark font-semibold transition-colors">
+              <button
+                onClick={() => navigate('/register')}
+                className="text-primary hover:text-primary-dark font-semibold transition-colors"
+              >
                 Đăng ký ngay
               </button>
             </p>
           </div>
         </div>
-        
+
         {/* Footer */}
         <p className="text-center text-zinc-500 text-xs mt-8">
           © 2025 N3T - Quản lý Kho. All rights reserved.
