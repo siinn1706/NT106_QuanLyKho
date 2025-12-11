@@ -1,7 +1,15 @@
 /** Stock_In_Page.tsx - Trang Nhập kho */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FaBox, FaCalendar, FaUser, FaFileAlt } from 'react-icons/fa';
+import {
+  apiCreateItem,
+  apiGetItems,
+  apiCreateStockTransaction,
+  apiGetStockTransactions,
+  Item,
+  StockTransaction,
+} from '../../app/api_client';
 
 export default function Stock_In_Page() {
   const [formData, setFormData] = useState({
@@ -15,22 +23,107 @@ export default function Stock_In_Page() {
     note: '',
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // State quản lý loading, error, lịch sử
+  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [transactions, setTransactions] = useState<StockTransaction[]>([]);
+  const [items, setItems] = useState<Item[]>([]);
+
+  // Load lịch sử nhập kho
+  useEffect(() => {
+    loadHistory();
+  }, []);
+
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => setSuccess(''), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [success]);
+
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError(''), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
+
+  const loadHistory = async () => {
+    try {
+      setIsLoadingHistory(true);
+      const [transactionsData, itemsData] = await Promise.all([
+        apiGetStockTransactions(),
+        apiGetItems(),
+      ]);
+      // Lọc chỉ lấy nhập (type='in') và sắp xếp mới nhất trước
+      const inTransactions = transactionsData
+        .filter(t => t.type === 'in')
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+        .slice(0, 10); // 10 giao dịch gần đây
+      setTransactions(inTransactions);
+      setItems(itemsData);
+    } catch (err) {
+      console.error('Lỗi tải lịch sử:', err);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Nhập kho:', formData);
-    // TODO: Call API nhập kho
-    alert('Nhập kho thành công!');
-    // Reset form
-    setFormData({
-      itemName: '',
-      itemCode: '',
-      quantity: '',
-      unit: '',
-      supplier: '',
-      price: '',
-      date: new Date().toISOString().split('T')[0],
-      note: '',
-    });
+    setError('');
+    setSuccess('');
+    setIsLoading(true);
+
+    try {
+      let itemId: number;
+      const existingItem = items.find(i => i.sku === formData.itemCode);
+
+      if (existingItem) {
+        itemId = Number(existingItem.id);
+      } else {
+        const newItem = await apiCreateItem({
+          name: formData.itemName,
+          sku: formData.itemCode,
+          quantity: 0,
+          unit: formData.unit,
+          price: parseFloat(formData.price || '0') || 0,
+          category: 'Hàng hoá',
+          supplier_id: undefined,
+        });
+        itemId = Number(newItem.id);
+      }
+
+      // Tạo giao dịch nhập kho
+      await apiCreateStockTransaction({
+        type: 'in',
+        item_id: itemId,
+        quantity: Number(formData.quantity) || 0,
+        note: formData.note || undefined,
+      });
+
+      setSuccess('Nhập kho thành công!');
+      setFormData({
+        itemName: '',
+        itemCode: '',
+        quantity: '',
+        unit: '',
+        supplier: '',
+        price: '',
+        date: new Date().toISOString().split('T')[0],
+        note: '',
+      });
+
+      await loadHistory();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Có lỗi xảy ra';
+      setError(msg);
+      console.error('Lỗi nhập kho:', err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -58,6 +151,18 @@ export default function Stock_In_Page() {
           </p>
         </div>
       </div>
+
+      {/* Thông báo */}
+      {error && (
+        <div className="p-4 rounded-[16px] bg-red-100 dark:bg-red-900/30 border border-red-500 text-red-700 dark:text-red-200">
+          ❌ {error}
+        </div>
+      )}
+      {success && (
+        <div className="p-4 rounded-[16px] bg-green-100 dark:bg-green-900/30 border border-green-500 text-green-700 dark:text-green-200">
+          ✅ {success}
+        </div>
+      )}
 
       {/* Form */}
       <div className="liquid-glass dark:liquid-glass-dark rounded-[24px] border border-black/10 dark:border-white/10 shadow-ios p-8">
