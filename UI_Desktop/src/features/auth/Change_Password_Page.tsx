@@ -7,7 +7,7 @@
 import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../state/auth_store';
-import { FaArrowLeft, FaKey, FaCheckCircle, FaEye, FaEyeSlash } from 'react-icons/fa';
+import Icon from '../../components/ui/Icon';
 import { apiLogout } from '../../app/api_client';
 
 export default function Change_Password_Page() {
@@ -113,14 +113,14 @@ export default function Change_Password_Page() {
           onClick={() => navigate(-1)}
           className="mb-6 flex items-center gap-2 text-zinc-400 hover:text-white transition-colors"
         >
-          <FaArrowLeft size={16} />
+          <Icon name="arrow-left" size="md" />
           <span>Quay lại</span>
         </button>
 
         {/* Logo & Brand */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-[24px] mb-4">
-            <FaKey className="text-white" size={28} />
+            <Icon name="key" size="xl" className="text-white" />
           </div>
           <h1 className="text-3xl font-bold text-white mb-2">Đổi mật khẩu</h1>
           <p className="text-zinc-400">Cập nhật mật khẩu mới cho tài khoản của bạn</p>
@@ -132,7 +132,7 @@ export default function Change_Password_Page() {
             // Success message
             <div className="text-center space-y-6">
               <div className="inline-flex items-center justify-center w-16 h-16 bg-green-500/20 rounded-full">
-                <FaCheckCircle className="text-green-500" size={32} />
+                <Icon name="check-circle" size="2x" className="text-green-500" />
               </div>
               <div>
                 <h3 className="text-xl font-semibold text-white mb-2">
@@ -189,7 +189,7 @@ export default function Change_Password_Page() {
                     onClick={() => setShowOldPassword(!showOldPassword)}
                     className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-300 transition-colors"
                   >
-                    {showOldPassword ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
+                    <Icon name={showOldPassword ? 'eye-slash' : 'eye'} size="md" />
                   </button>
                 </div>
               </div>
@@ -213,7 +213,7 @@ export default function Change_Password_Page() {
                     onClick={() => setShowNewPassword(!showNewPassword)}
                     className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-300 transition-colors"
                   >
-                    {showNewPassword ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
+                    <Icon name={showNewPassword ? 'eye-slash' : 'eye'} size="md" />
                   </button>
                 </div>
                 {/* Password Strength Indicator */}
@@ -252,7 +252,7 @@ export default function Change_Password_Page() {
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-300 transition-colors"
                   >
-                    {showConfirmPassword ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
+                    <Icon name={showConfirmPassword ? 'eye-slash' : 'eye'} size="md" />
                   </button>
                 </div>
               </div>

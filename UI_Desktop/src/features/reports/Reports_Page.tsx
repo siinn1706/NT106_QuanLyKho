@@ -1,7 +1,7 @@
 /** Reports_Page.tsx - Báo cáo tổng hợp */
 
 import { useState, useEffect } from "react";
-import { FaChartBar, FaChartLine, FaChartPie, FaFileExport } from "react-icons/fa";
+import Icon from "../../components/ui/Icon";
 import { useUIStore } from "../../state/ui_store";
 
 export default function Reports_Page() {
@@ -96,9 +96,12 @@ export default function Reports_Page() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Báo cáo & Thống kê</h1>
-        <button className="flex items-center gap-2 bg-info text-white px-6 py-3 rounded-[20px] font-medium transition-transform hover:scale-105 shadow-ios hover:bg-info/90 backdrop-blur-sm">
-          <FaFileExport />
+        <div>
+          <h1 className="text-2xl font-bold text-[var(--text-1)]">Báo cáo & Thống kê</h1>
+          <p className="text-[var(--text-3)] text-sm mt-1">Phân tích dữ liệu kho hàng</p>
+        </div>
+        <button className="flex items-center gap-2 bg-info text-white px-6 py-3 rounded-[var(--radius-lg)] font-medium transition-all duration-[180ms] hover:opacity-90 active:scale-[0.98]">
+          <Icon name="file-export" />
           Xuất báo cáo
         </button>
       </div>
@@ -107,80 +110,78 @@ export default function Reports_Page() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <button
           onClick={() => setSelectedReport("inventory")}
-          className={`p-6 rounded-[24px] border-2 transition-all hover:scale-[1.02] liquid-glass dark:liquid-glass-dark shadow-ios ${
+          className={`p-6 rounded-[var(--radius-xl)] border bg-[var(--surface-1)] transition-all duration-[180ms] hover:scale-[1.02] active:scale-[0.98] ${
             selectedReport === "inventory"
               ? "border-primary bg-primary/10"
-              : "border-black/10 dark:border-white/10"
+              : "border-[var(--border)]"
           }`}
         >
-          <FaChartPie className={`text-2xl mb-2 ${selectedReport === "inventory" ? "text-primary" : ""}`} />
-          <div className="font-semibold">Tồn kho</div>
-          <div className="text-sm text-zinc-500">Theo danh mục</div>
+          <Icon name="chart-pie" className={`text-2xl mb-2 ${selectedReport === "inventory" ? "text-primary" : "text-[var(--text-2)]"}`} />
+          <div className="font-semibold text-[var(--text-1)]">Tồn kho</div>
+          <div className="text-sm text-[var(--text-3)]">Theo danh mục</div>
         </button>
 
         <button
           onClick={() => setSelectedReport("trend")}
-          className={`p-6 rounded-[24px] border-2 transition-all hover:scale-[1.02] liquid-glass dark:liquid-glass-dark shadow-ios ${
+          className={`p-6 rounded-[var(--radius-xl)] border bg-[var(--surface-1)] transition-all duration-[180ms] hover:scale-[1.02] active:scale-[0.98] ${
             selectedReport === "trend"
               ? "border-success bg-success/10"
-              : "border-black/10 dark:border-white/10"
+              : "border-[var(--border)]"
           }`}
         >
-          <FaChartLine className={`text-2xl mb-2 ${selectedReport === "trend" ? "text-success" : ""}`} />
-          <div className="font-semibold">Xu hướng</div>
-          <div className="text-sm text-zinc-500">Nhập/Xuất kho</div>
+          <Icon name="chart-line" className={`text-2xl mb-2 ${selectedReport === "trend" ? "text-success" : "text-[var(--text-2)]"}`} />
+          <div className="font-semibold text-[var(--text-1)]">Xu hướng</div>
+          <div className="text-sm text-[var(--text-3)]">Nhập/Xuất kho</div>
         </button>
 
         <button
           onClick={() => setSelectedReport("lowstock")}
-          className={`p-6 rounded-[24px] border-2 transition-all hover:scale-[1.02] liquid-glass dark:liquid-glass-dark shadow-ios ${
+          className={`p-6 rounded-[var(--radius-xl)] border bg-[var(--surface-1)] transition-all duration-[180ms] hover:scale-[1.02] active:scale-[0.98] ${
             selectedReport === "lowstock"
               ? "border-warning bg-warning/10"
-              : "border-black/10 dark:border-white/10"
+              : "border-[var(--border)]"
           }`}
         >
-          <FaChartBar className={`text-2xl mb-2 ${selectedReport === "lowstock" ? "text-warning" : ""}`} />
-          <div className="font-semibold">Cảnh báo</div>
-          <div className="text-sm text-zinc-500">Hàng sắp hết</div>
+          <Icon name="chart-bar" className={`text-2xl mb-2 ${selectedReport === "lowstock" ? "text-warning" : "text-[var(--text-2)]"}`} />
+          <div className="font-semibold text-[var(--text-1)]">Cảnh báo</div>
+          <div className="text-sm text-[var(--text-3)]">Hàng sắp hết</div>
         </button>
 
         <button
           onClick={() => setSelectedReport("damage")}
-          className={`p-6 rounded-[24px] border-2 transition-all hover:scale-[1.02] liquid-glass dark:liquid-glass-dark shadow-ios ${
+          className={`p-6 rounded-[var(--radius-xl)] border bg-[var(--surface-1)] transition-all duration-[180ms] hover:scale-[1.02] active:scale-[0.98] ${
             selectedReport === "damage"
               ? "border-danger bg-danger/10"
-              : "border-black/10 dark:border-white/10"
+              : "border-[var(--border)]"
           }`}
         >
-          <FaChartBar className={`text-2xl mb-2 ${selectedReport === "damage" ? "text-danger" : ""}`} />
-          <div className="font-semibold">Hư hỏng</div>
-          <div className="text-sm text-zinc-500">Hàng lỗi/hủy</div>
+          <Icon name="chart-bar" className={`text-2xl mb-2 ${selectedReport === "damage" ? "text-danger" : "text-[var(--text-2)]"}`} />
+          <div className="font-semibold text-[var(--text-1)]">Hư hỏng</div>
+          <div className="text-sm text-[var(--text-3)]">Hàng lỗi/hủy</div>
         </button>
       </div>
 
       {/* Report Content */}
-      <div className="liquid-glass dark:liquid-glass-dark rounded-[24px] border border-black/10 dark:border-white/10 shadow-ios p-6">
+      <div className="bg-[var(--surface-1)] rounded-[var(--radius-xl)] border border-[var(--border)] p-6">
         {/* Inventory Report */}
         {selectedReport === "inventory" && (
           <div className="space-y-6">
             <h2 className="text-xl font-bold flex items-center gap-2">
-              <FaChartPie className="text-primary" />
+              <Icon name="chart-pie" className="text-primary" />
               Báo cáo tồn kho theo danh mục
             </h2>
             
             {/* Pie Chart */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <div className="space-y-4">
-                <div className="font-semibold text-sm text-zinc-500">Phân bố hàng tồn kho</div>
+                <div className="font-semibold text-sm text-[var(--text-3)]">Phân bố hàng tồn kho</div>
                 {inventoryData.map((item) => (
                   <div key={item.category} className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="font-medium">{item.category}</span>
                       <span className="font-bold">{item.value} sản phẩm</span>
                     </div>
-                    <div className={`h-8 rounded-full overflow-hidden ${
-                      isDarkMode ? "bg-zinc-800" : "bg-zinc-100"
-                    }`}>
+                    <div className="h-8 rounded-full overflow-hidden bg-[var(--surface-2)]">
                       <div
                         className="h-full flex items-center justify-end pr-3 text-white text-xs font-bold transition-all duration-500"
                         style={{
@@ -197,24 +198,24 @@ export default function Reports_Page() {
 
               {/* Summary Stats */}
               <div className="space-y-4">
-                <div className="font-semibold text-sm text-zinc-500">Tổng quan</div>
-                <div className={`p-4 liquid-glass-ui dark:liquid-glass-ui-dark border border-black/10 dark:border-white/10 rounded-xl shadow-ios transition-all hover:scale-[1.02]`}>
+                <div className="font-semibold text-sm text-[var(--text-3)]">Tổng quan</div>
+                <div className="p-4 bg-[var(--surface-2)] border border-[var(--border)] rounded-[var(--radius-lg)] transition-all duration-[180ms] hover:scale-[1.02]">
                   <div className="text-3xl font-bold text-primary">
                     {inventoryData.length > 0 ? inventoryData.reduce((acc, item) => acc + item.value, 0) : 0}
                   </div>
-                  <div className="text-sm text-zinc-500">Tổng hàng hoá</div>
+                  <div className="text-sm text-[var(--text-3)]">Tổng hàng hoá</div>
                 </div>
-                <div className={`p-4 liquid-glass-ui dark:liquid-glass-ui-dark border border-black/10 dark:border-white/10 rounded-xl shadow-ios transition-all hover:scale-[1.02]`}>
+                <div className="p-4 bg-[var(--surface-2)] border border-[var(--border)] rounded-[var(--radius-lg)] transition-all duration-[180ms] hover:scale-[1.02]">
                   <div className="text-3xl font-bold text-success">
                     {inventoryData.length}
                   </div>
-                  <div className="text-sm text-zinc-500">Danh mục sản phẩm</div>
+                  <div className="text-sm text-[var(--text-3)]">Danh mục sản phẩm</div>
                 </div>
-                <div className={`p-4 liquid-glass-ui dark:liquid-glass-ui-dark border border-black/10 dark:border-white/10 rounded-xl shadow-ios transition-all hover:scale-[1.02]`}>
+                <div className="p-4 bg-[var(--surface-2)] border border-[var(--border)] rounded-[var(--radius-lg)] transition-all duration-[180ms] hover:scale-[1.02]">
                   <div className="text-3xl font-bold text-warning">
                     {inventoryData.length > 0 ? Math.max(...inventoryData.map(d => d.value)) : 0}
                   </div>
-                  <div className="text-sm text-zinc-500">Danh mục lớn nhất</div>
+                  <div className="text-sm text-[var(--text-3)]">Danh mục lớn nhất</div>
                 </div>
               </div>
             </div>
@@ -225,7 +226,7 @@ export default function Reports_Page() {
         {selectedReport === "trend" && (
           <div className="space-y-6">
             <h2 className="text-xl font-bold flex items-center gap-2">
-              <FaChartLine className="text-success" />
+              <Icon name="chart-line" className="text-success" />
               Xu hướng nhập/xuất kho 6 tháng
             </h2>
 
@@ -274,23 +275,23 @@ export default function Reports_Page() {
 
               {/* Summary */}
               <div className="grid grid-cols-3 gap-4">
-                <div className={`p-4 liquid-glass-ui dark:liquid-glass-ui-dark border border-black/10 dark:border-white/10 rounded-xl shadow-ios transition-all hover:scale-[1.02]`}>
+                <div className="p-4 bg-[var(--surface-2)] border border-[var(--border)] rounded-[var(--radius-lg)] transition-all duration-[180ms] hover:scale-[1.02]">
                   <div className="text-2xl font-bold text-primary">
                     {monthlyTrend.length > 0 ? monthlyTrend.reduce((a, b) => a + b.import, 0) : 0}
                   </div>
-                  <div className="text-sm text-zinc-500">Tổng nhập kho</div>
+                  <div className="text-sm text-[var(--text-3)]">Tổng nhập kho</div>
                 </div>
-                <div className={`p-4 liquid-glass-ui dark:liquid-glass-ui-dark border border-black/10 dark:border-white/10 rounded-xl shadow-ios transition-all hover:scale-[1.02]`}>
+                <div className="p-4 bg-[var(--surface-2)] border border-[var(--border)] rounded-[var(--radius-lg)] transition-all duration-[180ms] hover:scale-[1.02]">
                   <div className="text-2xl font-bold text-success">
                     {monthlyTrend.length > 0 ? monthlyTrend.reduce((a, b) => a + b.export, 0) : 0}
                   </div>
-                  <div className="text-sm text-zinc-500">Tổng xuất kho</div>
+                  <div className="text-sm text-[var(--text-3)]">Tổng xuất kho</div>
                 </div>
-                <div className={`p-4 liquid-glass-ui dark:liquid-glass-ui-dark border border-black/10 dark:border-white/10 rounded-xl shadow-ios transition-all hover:scale-[1.02]`}>
+                <div className="p-4 bg-[var(--surface-2)] border border-[var(--border)] rounded-[var(--radius-lg)] transition-all duration-[180ms] hover:scale-[1.02]">
                   <div className="text-2xl font-bold text-info">
                     {monthlyTrend.length > 0 ? (monthlyTrend.reduce((a, b) => a + b.import, 0) - monthlyTrend.reduce((a, b) => a + b.export, 0)) : 0}
                   </div>
-                  <div className="text-sm text-zinc-500">Chênh lệch</div>
+                  <div className="text-sm text-[var(--text-3)]">Chênh lệch</div>
                 </div>
               </div>
             </div>
@@ -301,7 +302,7 @@ export default function Reports_Page() {
         {selectedReport === "lowstock" && (
           <div className="space-y-6">
             <h2 className="text-xl font-bold flex items-center gap-2">
-              <FaChartBar className="text-warning" />
+              <Icon name="chart-bar" className="text-warning" />
               Cảnh báo hàng sắp hết
             </h2>
 
@@ -316,7 +317,7 @@ export default function Reports_Page() {
                   } ${isDarkMode ? "" : ""}`}
                 >
                   <div className="flex justify-between items-center mb-2">
-                    <div className="font-semibold">{item.name}</div>
+                    <div className="font-semibold text-[var(--text-1)]">{item.name}</div>
                     <span className={`px-3 py-1 rounded-full text-xs font-bold ${
                       item.status === "danger"
                         ? "bg-danger text-white"
@@ -327,17 +328,15 @@ export default function Reports_Page() {
                   </div>
                   <div className="flex items-center gap-4 text-sm">
                     <div>
-                      <span className="text-zinc-500">Tồn kho: </span>
-                      <span className="font-bold">{item.stock}</span>
+                      <span className="text-[var(--text-3)]">Tồn kho: </span>
+                      <span className="font-bold text-[var(--text-1)]">{item.stock}</span>
                     </div>
                     <div>
-                      <span className="text-zinc-500">Tối thiểu: </span>
-                      <span className="font-bold">{item.min}</span>
+                      <span className="text-[var(--text-3)]">Tối thiểu: </span>
+                      <span className="font-bold text-[var(--text-1)]">{item.min}</span>
                     </div>
                     <div className="flex-1">
-                      <div className={`h-2 rounded-full overflow-hidden ${
-                        isDarkMode ? "bg-zinc-800" : "bg-zinc-200"
-                      }`}>
+                      <div className="h-2 rounded-full overflow-hidden bg-[var(--surface-2)]">
                         <div
                           className={`h-full transition-all duration-500 ${
                             item.status === "danger" ? "bg-danger" : "bg-warning"
@@ -357,29 +356,29 @@ export default function Reports_Page() {
         {selectedReport === "damage" && (
           <div className="space-y-6">
             <h2 className="text-xl font-bold flex items-center gap-2">
-              <FaChartBar className="text-danger" />
+              <Icon name="chart-bar" className="text-danger" />
               Báo cáo hàng hư hỏng
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className={`p-6 liquid-glass-ui dark:liquid-glass-ui-dark border border-black/10 dark:border-white/10 rounded-xl shadow-ios transition-all hover:scale-[1.02]`}>
+              <div className="p-6 bg-[var(--surface-2)] border border-[var(--border)] rounded-[var(--radius-lg)] transition-all duration-[180ms] hover:scale-[1.02]">
                 <div className="text-3xl font-bold text-danger">{damageStats.damaged}</div>
-                <div className="text-sm text-zinc-500">Hàng hư hỏng</div>
+                <div className="text-sm text-[var(--text-3)]">Hàng hư hỏng</div>
               </div>
-              <div className={`p-6 liquid-glass-ui dark:liquid-glass-ui-dark border border-black/10 dark:border-white/10 rounded-xl shadow-ios transition-all hover:scale-[1.02]`}>
+              <div className="p-6 bg-[var(--surface-2)] border border-[var(--border)] rounded-[var(--radius-lg)] transition-all duration-[180ms] hover:scale-[1.02]">
                 <div className="text-3xl font-bold text-warning">{damageStats.discarded}</div>
-                <div className="text-sm text-zinc-500">Hàng hủy</div>
+                <div className="text-sm text-[var(--text-3)]">Hàng hủy</div>
               </div>
-              <div className={`p-6 liquid-glass-ui dark:liquid-glass-ui-dark border border-black/10 dark:border-white/10 rounded-xl shadow-ios transition-all hover:scale-[1.02]`}>
+              <div className="p-6 bg-[var(--surface-2)] border border-[var(--border)] rounded-[var(--radius-lg)] transition-all duration-[180ms] hover:scale-[1.02]">
                 <div className="text-3xl font-bold text-info">{damageStats.processing}</div>
-                <div className="text-sm text-zinc-500">Đang xử lý</div>
+                <div className="text-sm text-[var(--text-3)]">Đang xử lý</div>
               </div>
             </div>
 
-            <div className={`p-4 liquid-glass-ui dark:liquid-glass-ui-dark border border-black/10 dark:border-white/10 rounded-xl shadow-ios transition-all hover:scale-[1.02]`}>
-              <div className="text-sm text-zinc-500 mb-2">Tỷ lệ hư hỏng theo tháng</div>
-              <div className="text-2xl font-bold">{damageStats.rate}%</div>
-              <div className="text-xs text-zinc-500">Chưa có dữ liệu so sánh</div>
+            <div className="p-4 bg-[var(--surface-2)] border border-[var(--border)] rounded-[var(--radius-lg)] transition-all duration-[180ms] hover:scale-[1.02]">
+              <div className="text-sm text-[var(--text-3)] mb-2">Tỷ lệ hư hỏng theo tháng</div>
+              <div className="text-2xl font-bold text-[var(--text-1)]">{damageStats.rate}%</div>
+              <div className="text-xs text-[var(--text-3)]">Chưa có dữ liệu so sánh</div>
             </div>
           </div>
         )}

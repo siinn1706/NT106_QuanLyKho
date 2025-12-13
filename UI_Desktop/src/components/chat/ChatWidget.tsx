@@ -1,7 +1,7 @@
 import { useState } from "react";
 import ChatSidebar from "./ChatSidebar";
 import ChatRoom from "./ChatRoom";
-import { FaTimes, FaCommentDots, FaMinus, FaChevronRight } from "react-icons/fa";
+import Icon from "../ui/Icon";
 import { useUIStore } from "../../state/ui_store";
 
 type MinimizedChat = {
@@ -81,7 +81,7 @@ export default function ChatWidget() {
                 className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-br from-red-500 to-red-600 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-200 flex items-center justify-center text-white text-xs shadow-lg hover:scale-110"
                 title="Đóng"
               >
-                ✕
+                <Icon name="times" size="xs" />
               </button>
             </button>
           ))}
@@ -97,7 +97,7 @@ export default function ChatWidget() {
           className="fixed bottom-6 right-6 z-50 w-16 h-16 rounded-full bg-blue-500 text-white shadow-ios-lg flex items-center justify-center text-2xl hover:scale-105 hover:bg-blue-600 transition-all duration-200 inner-glow"
           title="Mở chat"
         >
-          <FaCommentDots size={24} />
+          <Icon name="comment-dots" size="lg" />
         </button>
       )}
 
@@ -135,7 +135,7 @@ export default function ChatWidget() {
               }`}
               title="Thu nhỏ"
             >
-              <FaMinus size={12} />
+              <Icon name="minus" size="xs" />
             </button>
             <button
               onClick={() => setOpen(false)}
@@ -146,7 +146,7 @@ export default function ChatWidget() {
               }`}
               title="Đóng chat"
             >
-              <FaTimes size={12} />
+              <Icon name="times" size="xs" />
             </button>
           </div>
         </div>

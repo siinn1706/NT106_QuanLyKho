@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { FaEllipsisV, FaRegSmile, FaReply, FaPaperclip, FaMicrophone, FaPaperPlane, FaBars } from "react-icons/fa";
+import Icon from "../ui/Icon";
 import MessageBubble from "./MessageBubble";
 import TypingIndicator from "./TypingIndicator";
 import { useUIStore } from "../../state/ui_store";
@@ -30,11 +30,19 @@ export default function ChatRoom({ conversationId, sidebarCollapsed, onExpandSid
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isDarkMode = useUIStore((state) => state.isDarkMode);
 
+  // Category icons mapping - dùng icon name thay vì emoji
+  const categoryIcons: Record<string, string> = {
+    'stock': 'box',
+    'orders': 'clipboard-list', 
+    'suppliers': 'building',
+    'reports': 'chart-bar',
+  };
+
   const categories = [
-    { id: 'stock', label: 'Tồn kho', icon: '📦' },
-    { id: 'orders', label: 'Đơn hàng', icon: '📋' },
-    { id: 'suppliers', label: 'Nhà cung cấp', icon: '🏢' },
-    { id: 'reports', label: 'Báo cáo', icon: '📊' },
+    { id: 'stock', label: 'Tồn kho' },
+    { id: 'orders', label: 'Đơn hàng' },
+    { id: 'suppliers', label: 'Nhà cung cấp' },
+    { id: 'reports', label: 'Báo cáo' },
   ];
 
   const scrollToBottom = () => {
@@ -116,7 +124,7 @@ export default function ChatRoom({ conversationId, sidebarCollapsed, onExpandSid
               }`}
               title="Mở danh sách"
             >
-              <FaBars size={14} />
+              <Icon name="bars" size="sm" />
             </button>
           )}
           <h2 className={`font-semibold ${
@@ -145,7 +153,9 @@ export default function ChatRoom({ conversationId, sidebarCollapsed, onExpandSid
                       : "bg-white border-zinc-300 hover:bg-zinc-50 text-zinc-900"
                   }`}
                 >
-                  <div className="text-2xl mb-1">{cat.icon}</div>
+                  <div className="text-2xl mb-1">
+                    <Icon name={categoryIcons[cat.id]} size="lg" className="text-primary" />
+                  </div>
                   <div className="text-sm font-medium">{cat.label}</div>
                 </button>
               ))}
@@ -183,10 +193,10 @@ export default function ChatRoom({ conversationId, sidebarCollapsed, onExpandSid
       }`}>
         <button className={`p-2.5 rounded-full transition-all duration-150 hover:scale-105 ${
           isDarkMode ? "text-zinc-400 hover:bg-zinc-800/50" : "text-gray-600 hover:bg-gray-200/50"
-        }`} title="Gửi file"><FaPaperclip size={18} /></button>
+        }`} title="Gửi file"><Icon name="paperclip" size="md" /></button>
         <button className={`p-2.5 rounded-full transition-all duration-150 hover:scale-105 ${
           isDarkMode ? "text-zinc-400 hover:bg-zinc-800/50" : "text-gray-600 hover:bg-gray-200/50"
-        }`} title="Ghi âm"><FaMicrophone size={18} /></button>
+        }`} title="Ghi âm"><Icon name="microphone" size="md" /></button>
         <input
           ref={inputRef}
           value={inputValue}
@@ -205,7 +215,7 @@ export default function ChatRoom({ conversationId, sidebarCollapsed, onExpandSid
           }}
         />
         <button className="text-white p-3 rounded-full bg-blue-500 hover:bg-blue-600 hover:scale-105 transition-all duration-150 shadow-ios-lg liquid-glass-hover" onClick={handleSend} title="Gửi">
-          <FaPaperPlane size={18} />
+          <Icon name="paper-plane" size="md" />
         </button>
       </div>
     </div>

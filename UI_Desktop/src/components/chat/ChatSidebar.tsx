@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useUIStore } from '../../state/ui_store';
-import { FaThumbtack, FaChevronLeft } from 'react-icons/fa';
+import Icon from '../ui/Icon';
 
 type ConversationSummary = {
   id: string;
@@ -64,7 +64,7 @@ export default function ChatSidebar({ onSelect, activeId, onToggle }:{
             }`}
             title="Thu gọn danh sách"
           >
-            <FaChevronLeft size={18} />
+            <Icon name="chevronLeft" size="md" />
           </button>
         )}
       </div>
@@ -91,7 +91,7 @@ export default function ChatSidebar({ onSelect, activeId, onToggle }:{
               {(c.unreadCount ?? 0) > 0 && (
                 <span className="bg-primary text-xs rounded-full px-2 py-0.5">{c.unreadCount}</span>
               )}
-              {c.isBot && <span className="text-primary ml-2"><FaThumbtack size={16} /></span>}
+              {c.isBot && <Icon name="thumbtack" size="md" className="text-primary ml-2" />}
             </button>
           );
         })}

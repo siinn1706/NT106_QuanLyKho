@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FaEllipsisV, FaRegSmile, FaReply } from "react-icons/fa";
+import Icon from "../ui/Icon";
 import { useUIStore } from "../../state/ui_store";
 import ReactMarkdown from "react-markdown";
 
@@ -70,25 +70,25 @@ export default function MessageBubble({
                 <>
                   <button className={`p-1.5 rounded-full transition-all duration-200 backdrop-blur-sm ${
                     isDarkMode ? "hover:bg-zinc-700/80 text-zinc-400 hover:text-white" : "hover:bg-gray-200/80 text-gray-600 hover:text-gray-900"
-                  }`}><FaReply size={14} /></button>
+                  }`}><Icon name="reply" size="sm" /></button>
                   <button className={`p-1.5 rounded-full transition-all duration-200 backdrop-blur-sm ${
                     isDarkMode ? "hover:bg-zinc-700/80 text-zinc-400 hover:text-white" : "hover:bg-gray-200/80 text-gray-600 hover:text-gray-900"
-                  }`}><FaRegSmile size={14} /></button>
+                  }`}><Icon name="smile" size="sm" /></button>
                   <button className={`p-1.5 rounded-full transition-all duration-200 backdrop-blur-sm ${
                     isDarkMode ? "hover:bg-zinc-700/80 text-zinc-400 hover:text-white" : "hover:bg-gray-200/80 text-gray-600 hover:text-gray-900"
-                  }`}><FaEllipsisV size={14} /></button>
+                  }`}><Icon name="ellipsis-v" size="sm" /></button>
                 </>
               ) : (
                 <>
                   <button className={`p-1.5 rounded-full transition-all duration-200 backdrop-blur-sm ${
                     isDarkMode ? "hover:bg-zinc-700/80 text-zinc-400 hover:text-white" : "hover:bg-gray-200/80 text-gray-600 hover:text-gray-900"
-                  }`}><FaReply size={14} /></button>
+                  }`}><Icon name="reply" size="sm" /></button>
                   <button className={`p-1.5 rounded-full transition-all duration-200 backdrop-blur-sm ${
                     isDarkMode ? "hover:bg-zinc-700/80 text-zinc-400 hover:text-white" : "hover:bg-gray-200/80 text-gray-600 hover:text-gray-900"
-                  }`}><FaRegSmile size={14} /></button>
+                  }`}><Icon name="smile" size="sm" /></button>
                   <button className={`p-1.5 rounded-full transition-all duration-200 backdrop-blur-sm ${
                     isDarkMode ? "hover:bg-zinc-700/80 text-zinc-400 hover:text-white" : "hover:bg-gray-200/80 text-gray-600 hover:text-gray-900"
-                  }`}><FaEllipsisV size={14} /></button>
+                  }`}><Icon name="ellipsis-v" size="sm" /></button>
                 </>
               )}
             </div>

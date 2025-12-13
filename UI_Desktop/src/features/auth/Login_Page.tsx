@@ -9,7 +9,7 @@ import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../state/auth_store';
 import { apiLogin } from '../../app/api_client';
-import { FaEye, FaEyeSlash } from 'react-icons/fa';
+import Icon from '../../components/ui/Icon';
 
 export default function Login_Page() {
   const navigate = useNavigate();
@@ -120,7 +120,7 @@ export default function Login_Page() {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-300 transition-colors"
                 >
-                  {showPassword ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
+                  <Icon name={showPassword ? 'eye-slash' : 'eye'} size="md" />
                 </button>
               </div>
             </div>
