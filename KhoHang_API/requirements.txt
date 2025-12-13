@@ -5,3 +5,10 @@ python-dotenv
 requests
 email-validator
 google-generativeai
+python-multipart
+# Image processing
+Pillow
+# Export dependencies
+openpyxl
+reportlab
+num2words
