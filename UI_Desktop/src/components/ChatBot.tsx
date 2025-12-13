@@ -6,6 +6,7 @@
 
 import { useState } from 'react';
 import { useUIStore } from '../state/ui_store';
+import Icon from './ui/Icon';
 
 interface Message {
   id: string;
@@ -27,12 +28,19 @@ export default function ChatBot() {
   const [inputText, setInputText] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
-  // Các danh mục hỗ trợ nhanh
+  // Các danh mục hỗ trợ nhanh - dùng icon name thay vì emoji
+  const categoryIcons: Record<string, string> = {
+    'items': 'box',
+    'stock': 'chart-bar',
+    'suppliers': 'building',
+    'reports': 'chart-line',
+  };
+
   const categories = [
-    { id: 'items', label: 'Hàng hoá', icon: '📦' },
-    { id: 'stock', label: 'Nhập/Xuất', icon: '📊' },
-    { id: 'suppliers', label: 'Nhà cung cấp', icon: '🏢' },
-    { id: 'reports', label: 'Báo cáo', icon: '📈' },
+    { id: 'items', label: 'Hàng hoá' },
+    { id: 'stock', label: 'Nhập/Xuất' },
+    { id: 'suppliers', label: 'Nhà cung cấp' },
+    { id: 'reports', label: 'Báo cáo' },
   ];
 
   const handleCategorySelect = (categoryId: string) => {
@@ -84,12 +92,12 @@ export default function ChatBot() {
     <>
       {/* Chat Window */}
       {isChatOpen && (
-        <div className="fixed bottom-4 right-4 w-96 h-[600px] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden z-50">
+        <div className="fixed bottom-4 right-4 w-96 h-[600px] bg-[var(--surface-1)] border border-[var(--border)] rounded-2xl flex flex-col overflow-hidden z-50">
           {/* Chat Header */}
           <div className="bg-primary text-white p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                🤖
+                <Icon name="comment-dots" className="text-white" />
               </div>
               <div>
                 <h3 className="font-semibold">N3T Assistant</h3>
@@ -100,14 +108,14 @@ export default function ChatBot() {
               onClick={toggleChat}
               className="p-1 hover:bg-white/10 rounded transition-colors"
             >
-              ✕
+              <Icon name="times" className="text-white" />
             </button>
           </div>
 
           {/* Welcome Message + Category Selection */}
           {messages.length === 1 && (
-            <div className="p-4 border-b border-zinc-200 dark:border-zinc-800">
-              <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-3">
+            <div className="p-4 border-b border-[var(--border)]">
+              <p className="text-sm text-[var(--text-2)] mb-3">
                 Chào mừng bạn! Hãy chọn danh mục bạn cần hỗ trợ:
               </p>
               <div className="grid grid-cols-2 gap-2">
@@ -115,9 +123,11 @@ export default function ChatBot() {
                   <button
                     key={cat.id}
                     onClick={() => handleCategorySelect(cat.id)}
-                    className="p-3 bg-zinc-50 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded-lg transition-colors text-left"
+                    className="p-3 bg-[var(--surface-2)] hover:bg-[var(--surface-3)] rounded-xl transition-colors text-left"
                   >
-                    <span className="text-2xl mb-1 block">{cat.icon}</span>
+                    <span className="text-2xl mb-1 block">
+                      <Icon name={categoryIcons[cat.id]} size="lg" className="text-primary" />
+                    </span>
                     <span className="text-sm font-medium">{cat.label}</span>
                   </button>
                 ))}
@@ -136,7 +146,7 @@ export default function ChatBot() {
                   className={`max-w-[80%] px-4 py-2 rounded-2xl ${
                     msg.sender === 'user'
                       ? 'bg-primary text-white rounded-br-none'
-                      : 'bg-zinc-100 dark:bg-zinc-800 rounded-bl-none'
+                      : 'bg-[var(--surface-2)] rounded-bl-none'
                   }`}
                 >
                   <p className="text-sm whitespace-pre-line">{msg.text}</p>
@@ -152,7 +162,7 @@ export default function ChatBot() {
           </div>
 
           {/* Input Area */}
-          <div className="p-4 border-t border-zinc-200 dark:border-zinc-800">
+          <div className="p-4 border-t border-[var(--border)]">
             <div className="flex gap-2">
               <input
                 type="text"
@@ -160,7 +170,7 @@ export default function ChatBot() {
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                 placeholder="Nhập câu hỏi của bạn..."
-                className="flex-1 px-4 py-2 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+                className="flex-1 px-4 py-2 bg-[var(--surface-2)] border border-[var(--border)] rounded-xl text-[var(--text-1)] placeholder:text-[var(--text-3)] focus:outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20 transition-all"
               />
               <button
                 onClick={handleSendMessage}

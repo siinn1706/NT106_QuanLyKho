@@ -4,7 +4,7 @@
  *  - Nếu BE đã có contract (URL, body, response), phải TUÂN THỦ 100%.
  */
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+export const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
 // Types cho dữ liệu (sẽ match với response từ BE)
 export interface Item {
@@ -16,12 +16,17 @@ export interface Item {
   price: number;
   category: string;
   supplier_id?: string;
+  expiry_date?: string;    // Hạn sử dụng (ISO date string: "2024-12-31")
+  min_stock?: number;      // Mức tồn kho tối thiểu để cảnh báo
+  description?: string;    // Mô tả sản phẩm
+  created_at?: string;     // Ngày tạo
+  updated_at?: string;     // Ngày cập nhật
 }
 
 export interface StockTransaction {
   id: string;
   type: 'in' | 'out';
-  item_id: number;
+  item_id: string;
   quantity: number;
   timestamp: string;
   note?: string;
@@ -30,8 +35,14 @@ export interface StockTransaction {
 export interface Supplier {
   id: string;
   name: string;
-  contact: string;
+  tax_id: string;        // Mã số thuế
   address: string;
+  phone: string;
+  email: string;
+  bank_account: string;  // Số tài khoản
+  bank_name: string;     // Tên ngân hàng
+  notes: string;
+  outstanding_debt: number;  // Công nợ còn lại
 }
 
 // === API Hàng hoá ===
@@ -160,7 +171,7 @@ export async function apiGetSuppliers(): Promise<Supplier[]> {
   */
 }
 
-export async function apiCreateSupplier(supplier: Omit<Supplier, 'id'>): Promise<Supplier> {
+export async function apiCreateSupplier(supplier: Omit<Supplier, 'id' | 'outstanding_debt'>): Promise<Supplier> {
   const res = await fetch(`${BASE_URL}/suppliers`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -171,11 +182,41 @@ export async function apiCreateSupplier(supplier: Omit<Supplier, 'id'>): Promise
   /* Request body (POST /suppliers):
   {
     "name": "Công ty ABC",
-    "contact": "0901234567",
-    "address": "123 Đường XYZ, TP.HCM"
+    "tax_id": "0123456789",
+    "address": "123 Đường XYZ, TP.HCM",
+    "phone": "0901234567",
+    "email": "contact@abc.com",
+    "bank_account": "1234567890",
+    "bank_name": "Vietcombank",
+    "notes": "Ghi chú..."
   }
   Response: Supplier with generated id
   */
+}
+
+/**
+ * API: GET /suppliers/{supplier_id}/transactions
+ * Purpose: Lấy lịch sử giao dịch nhập/xuất kho của một nhà cung cấp
+ * Response (JSON) [200]: {
+ *   "stock_in": [...],
+ *   "stock_out": [...],
+ *   "total_transactions": number,
+ *   "outstanding_debt": number
+ * }
+ * Response Errors:
+ * - 404: { "detail": "Supplier not found" }
+ */
+export interface SupplierTransactions {
+  stock_in: StockInRecord[];
+  stock_out: StockOutRecord[];
+  total_transactions: number;
+  outstanding_debt: number;
+}
+
+export async function apiGetSupplierTransactions(supplierId: number): Promise<SupplierTransactions> {
+  const res = await fetch(`${BASE_URL}/suppliers/${supplierId}/transactions`);
+  if (!res.ok) throw new Error("Không thể tải lịch sử giao dịch");
+  return res.json();
 }
 
 // === API Dashboard Stats ===
@@ -362,4 +403,334 @@ export async function apiResendOtp(data: ResendOtpRequest): Promise<{ message: s
     "message": "OTP đã được gửi lại"
   }
   */
+}
+
+
+// === API Stock In (Phiếu nhập kho) ===
+export interface StockInItem {
+  item_id: string;
+  item_code: string;
+  item_name: string;
+  quantity: number;
+  unit: string;
+  price: number;
+}
+
+export interface StockInRecord {
+  id: string;
+  warehouse_code: string;  // Mã kho (K1, K2,...)
+  supplier: string;
+  date: string;
+  note: string;
+  tax_rate: number;
+  items: StockInItem[];
+  total_quantity: number;
+  total_amount: number;
+  created_at: string;
+  status: string;
+}
+
+export interface StockInBatchCreate {
+  warehouse_code: string;  // Mã kho (K1, K2,...)
+  supplier: string;
+  date: string;
+  note?: string;
+  tax_rate?: number;
+  payment_method?: 'tiền_mặt' | 'chuyển_khoản' | 'công_nợ';
+  payment_bank_account?: string;
+  payment_bank_name?: string;
+  items: Array<{
+    item_id: string;
+    item_code: string;
+    item_name: string;
+    quantity: number;
+    unit: string;
+    price: number;
+  }>;
+}
+
+export async function apiGetStockInRecords(): Promise<StockInRecord[]> {
+  const res = await fetch(`${BASE_URL}/stock/in`);
+  if (!res.ok) throw new Error("Không thể tải danh sách phiếu nhập kho");
+  return res.json();
+}
+
+export async function apiGetStockInRecord(id: string): Promise<StockInRecord> {
+  const res = await fetch(`${BASE_URL}/stock/in/${id}`);
+  if (!res.ok) throw new Error("Không tìm thấy phiếu nhập kho");
+  return res.json();
+}
+
+export async function apiCreateStockIn(data: StockInBatchCreate): Promise<StockInRecord> {
+  const res = await fetch(`${BASE_URL}/stock/in`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || "Không thể tạo phiếu nhập kho");
+  }
+  return res.json();
+}
+
+export async function apiDeleteStockIn(id: string): Promise<void> {
+  const res = await fetch(`${BASE_URL}/stock/in/${id}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) throw new Error("Không thể xóa phiếu nhập kho");
+}
+
+
+// === API Stock Out (Phiếu xuất kho) ===
+export interface StockOutItem {
+  item_id: string;
+  item_code: string;
+  item_name: string;
+  quantity: number;
+  unit: string;
+  sell_price?: number;
+}
+
+export interface StockOutRecord {
+  id: string;
+  warehouse_code: string;  // Mã kho (K1, K2,...)
+  recipient: string;
+  purpose: string;
+  date: string;
+  note: string;
+  tax_rate: number;
+  items: StockOutItem[];
+  total_quantity: number;
+  total_amount?: number;
+  created_at: string;
+  status: string;
+}
+
+export interface StockOutBatchCreate {
+  warehouse_code: string;  // Mã kho (K1, K2,...)
+  recipient: string;
+  purpose: string;
+  date: string;
+  note?: string;
+  tax_rate?: number;
+  payment_method?: 'tiền_mặt' | 'chuyển_khoản' | 'công_nợ';
+  payment_bank_account?: string;
+  payment_bank_name?: string;
+  items: Array<{
+    item_id: string;
+    item_code: string;
+    item_name: string;
+    quantity: number;
+    unit: string;
+    sell_price?: number;
+  }>;
+}
+
+export async function apiGetStockOutRecords(): Promise<StockOutRecord[]> {
+  const res = await fetch(`${BASE_URL}/stock/out`);
+  if (!res.ok) throw new Error("Không thể tải danh sách phiếu xuất kho");
+  return res.json();
+}
+
+export async function apiGetStockOutRecord(id: string): Promise<StockOutRecord> {
+  const res = await fetch(`${BASE_URL}/stock/out/${id}`);
+  if (!res.ok) throw new Error("Không tìm thấy phiếu xuất kho");
+  return res.json();
+}
+
+export async function apiCreateStockOut(data: StockOutBatchCreate): Promise<StockOutRecord> {
+  const res = await fetch(`${BASE_URL}/stock/out`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || "Không thể tạo phiếu xuất kho");
+  }
+  return res.json();
+}
+
+export async function apiDeleteStockOut(id: string): Promise<void> {
+  const res = await fetch(`${BASE_URL}/stock/out/${id}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) throw new Error("Không thể xóa phiếu xuất kho");
+}
+
+
+// ========================================
+// COMPANY & WAREHOUSE APIs
+// ========================================
+
+export interface CompanyInfo {
+  id: number;
+  name: string;
+  logo: string;
+  tax_id: string;
+  address: string;
+  phone: string;
+  email: string;
+  bank_name: string;
+  bank_account: string;
+  bank_branch: string;
+}
+
+export interface CompanyInfoUpdate {
+  name?: string;
+  logo?: string;
+  tax_id?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  bank_name?: string;
+  bank_account?: string;
+  bank_branch?: string;
+}
+
+export interface WarehouseManager {
+  name: string;
+  position: string;
+}
+
+export interface Warehouse {
+  id: number;
+  name: string;
+  code: string;
+  address: string;
+  phone: string;
+  managers: WarehouseManager[];
+  notes: string;
+  created_at: string;
+  is_active: boolean;
+}
+
+export interface WarehouseCreate {
+  name: string;
+  code: string;
+  address?: string;
+  phone?: string;
+  managers: WarehouseManager[];
+  notes: string;
+}
+
+export interface WarehouseUpdate {
+  name?: string;
+  code?: string;
+  address?: string;
+  phone?: string;
+  managers?: WarehouseManager[];
+  notes?: string;
+}
+
+// Company APIs
+export async function apiGetCompanyInfo(): Promise<CompanyInfo | null> {
+  const res = await fetch(`${BASE_URL}/company`);
+  if (!res.ok) throw new Error("Không thể tải thông tin công ty");
+  const data = await res.json();
+  return data || null;
+}
+
+export async function apiCreateOrUpdateCompanyInfo(data: CompanyInfoUpdate): Promise<CompanyInfo> {
+  const res = await fetch(`${BASE_URL}/company`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || "Không thể lưu thông tin công ty");
+  }
+  return res.json();
+}
+
+export async function apiUpdateCompanyInfo(data: CompanyInfoUpdate): Promise<CompanyInfo> {
+  const res = await fetch(`${BASE_URL}/company`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || "Không thể cập nhật thông tin công ty");
+  }
+  return res.json();
+}
+
+export interface LogoUploadResponse {
+  logo_url: string;
+  filename: string;
+  size: number;
+  dimensions: { width: number; height: number };
+}
+
+export async function apiUploadCompanyLogo(file: File): Promise<LogoUploadResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  const res = await fetch(`${BASE_URL}/company/upload-logo`, {
+    method: 'POST',
+    body: formData,
+  });
+  
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || "Không thể tải logo lên");
+  }
+  return res.json();
+}
+
+// Warehouse APIs
+export async function apiGetWarehouses(): Promise<Warehouse[]> {
+  const res = await fetch(`${BASE_URL}/warehouses`);
+  if (!res.ok) throw new Error("Không thể tải danh sách kho");
+  return res.json();
+}
+
+export async function apiGetActiveWarehouse(): Promise<Warehouse | null> {
+  const res = await fetch(`${BASE_URL}/warehouses/active`);
+  if (!res.ok) throw new Error("Không thể tải kho active");
+  const data = await res.json();
+  return data || null;
+}
+
+export async function apiCreateWarehouse(data: WarehouseCreate): Promise<Warehouse> {
+  const res = await fetch(`${BASE_URL}/warehouses`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || "Không thể tạo kho");
+  }
+  return res.json();
+}
+
+export async function apiUpdateWarehouse(id: number, data: WarehouseUpdate): Promise<Warehouse> {
+  const res = await fetch(`${BASE_URL}/warehouses/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || "Không thể cập nhật kho");
+  }
+  return res.json();
+}
+
+export async function apiDeleteWarehouse(id: number): Promise<void> {
+  const res = await fetch(`${BASE_URL}/warehouses/${id}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) throw new Error("Không thể xóa kho");
+}
+
+export async function apiSetActiveWarehouse(id: number): Promise<void> {
+  const res = await fetch(`${BASE_URL}/warehouses/${id}/set-active`, {
+    method: 'PUT',
+  });
+  if (!res.ok) throw new Error("Không thể đổi kho active");
 }

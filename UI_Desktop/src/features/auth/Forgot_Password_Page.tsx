@@ -6,7 +6,7 @@
 
 import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaArrowLeft, FaEnvelope, FaCheckCircle } from 'react-icons/fa';
+import Icon from '../../components/ui/Icon';
 
 export default function Forgot_Password_Page() {
   const navigate = useNavigate();
@@ -70,7 +70,7 @@ export default function Forgot_Password_Page() {
           onClick={() => navigate('/login')}
           className="mb-6 flex items-center gap-2 text-zinc-400 hover:text-white transition-colors"
         >
-          <FaArrowLeft size={16} />
+          <Icon name="arrow-left" size="md" />
           <span>Quay lại đăng nhập</span>
         </button>
 
@@ -89,7 +89,7 @@ export default function Forgot_Password_Page() {
             // Success message
             <div className="text-center space-y-6">
               <div className="inline-flex items-center justify-center w-16 h-16 bg-green-500/20 rounded-full">
-                <FaCheckCircle className="text-green-500" size={32} />
+                <Icon name="check-circle" size="2x" className="text-green-500" />
               </div>
               <div>
                 <h3 className="text-xl font-semibold text-white mb-2">
@@ -131,7 +131,7 @@ export default function Forgot_Password_Page() {
                     disabled={loading}
                     autoFocus
                   />
-                  <FaEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={16} />
+                  <Icon name="envelope" size="md" className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" />
                 </div>
               </div>
 

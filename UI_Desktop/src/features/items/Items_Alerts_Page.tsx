@@ -1,7 +1,7 @@
 /** Items_Alerts_Page.tsx - Cảnh báo tồn kho */
 
 import { useState, useEffect } from 'react';
-import { FaExclamationTriangle, FaBox, FaCalendar, FaChartLine, FaArrowDown, FaArrowUp, FaBell } from 'react-icons/fa';
+import Icon from '../../components/ui/Icon';
 
 interface AlertItem {
   id: string;
@@ -112,8 +112,8 @@ export default function Items_Alerts_Page() {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-zinc-500 dark:text-zinc-400">Đang tải dữ liệu...</p>
+          <div className="w-16 h-16 border-4 border-[var(--primary)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-[var(--text-3)]">Đang tải dữ liệu...</p>
         </div>
       </div>
     );
@@ -121,113 +121,113 @@ export default function Items_Alerts_Page() {
 
   return (
     <div className="space-y-6">
-      {/* Stats Cards */}
+      {/* Stats Cards - KHÔNG shadow, border-based depth, KHÔNG transition-all */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         {/* Tổng cảnh báo */}
-        <div className="liquid-glass dark:liquid-glass-dark rounded-[24px] border border-black/10 dark:border-white/10 shadow-ios p-6">
+        <div className="bg-[var(--surface-1)] rounded-[var(--radius-2xl)] border border-[var(--border)] p-6 transition-colors duration-150 hover:border-[var(--border-hover)]">
           <div className="flex items-center justify-between mb-3">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-red-500/20 to-orange-500/20 flex items-center justify-center">
-              <FaBell className="text-danger text-xl" />
+            <div className="w-12 h-12 rounded-[var(--radius-md)] bg-[var(--danger-light)] flex items-center justify-center">
+              <Icon name="bell" size="lg" className="text-[var(--danger)]" />
             </div>
-            <span className="text-3xl font-bold text-danger">{alerts.length}</span>
+            <span className="text-3xl font-bold text-[var(--danger)]">{alerts.length}</span>
           </div>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400 font-medium">Tổng cảnh báo</p>
+          <p className="text-sm text-[var(--text-2)] font-medium">Tổng cảnh báo</p>
         </div>
 
         {/* Cực kỳ thấp */}
-        <div className="liquid-glass dark:liquid-glass-dark rounded-[24px] border border-black/10 dark:border-white/10 shadow-ios p-6">
+        <div className="bg-[var(--surface-1)] rounded-[var(--radius-2xl)] border border-[var(--border)] p-6 transition-colors duration-150 hover:border-[var(--border-hover)]">
           <div className="flex items-center justify-between mb-3">
-            <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center">
-              <FaArrowDown className="text-red-500 text-xl" />
+            <div className="w-12 h-12 rounded-[var(--radius-md)] bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+              <Icon name="arrow-down" size="lg" className="text-red-500" />
             </div>
             <span className="text-3xl font-bold text-red-500">{criticalCount}</span>
           </div>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400 font-medium">Cực kỳ thấp</p>
+          <p className="text-sm text-[var(--text-2)] font-medium">Cực kỳ thấp</p>
         </div>
 
         {/* Thấp */}
-        <div className="liquid-glass dark:liquid-glass-dark rounded-[24px] border border-black/10 dark:border-white/10 shadow-ios p-6">
+        <div className="bg-[var(--surface-1)] rounded-[var(--radius-2xl)] border border-[var(--border)] p-6 transition-colors duration-150 hover:border-[var(--border-hover)]">
           <div className="flex items-center justify-between mb-3">
-            <div className="w-12 h-12 rounded-full bg-warning/20 flex items-center justify-center">
-              <FaArrowDown className="text-warning text-xl" />
+            <div className="w-12 h-12 rounded-[var(--radius-md)] bg-[var(--warning-light)] flex items-center justify-center">
+              <Icon name="arrow-down" size="lg" className="text-[var(--warning)]" />
             </div>
-            <span className="text-3xl font-bold text-warning">{warningCount}</span>
+            <span className="text-3xl font-bold text-[var(--warning)]">{warningCount}</span>
           </div>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400 font-medium">Thấp</p>
+          <p className="text-sm text-[var(--text-2)] font-medium">Thấp</p>
         </div>
 
         {/* Cần nhập thêm */}
-        <div className="liquid-glass dark:liquid-glass-dark rounded-[24px] border border-black/10 dark:border-white/10 shadow-ios p-6">
+        <div className="bg-[var(--surface-1)] rounded-[var(--radius-2xl)] border border-[var(--border)] p-6 transition-colors duration-150 hover:border-[var(--border-hover)]">
           <div className="flex items-center justify-between mb-3">
-            <div className="w-12 h-12 rounded-full bg-info/20 flex items-center justify-center">
-              <FaBox className="text-info text-xl" />
+            <div className="w-12 h-12 rounded-[var(--radius-md)] bg-[var(--info-light)] flex items-center justify-center">
+              <Icon name="archive" size="lg" className="text-[var(--info)]" />
             </div>
-            <span className="text-3xl font-bold text-info">{lowCount}</span>
+            <span className="text-3xl font-bold text-[var(--info)]">{lowCount}</span>
           </div>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400 font-medium">Cần nhập thêm</p>
+          <p className="text-sm text-[var(--text-2)] font-medium">Cần nhập thêm</p>
         </div>
 
         {/* Tồn kho quá nhiều */}
-        <div className="liquid-glass dark:liquid-glass-dark rounded-[24px] border border-black/10 dark:border-white/10 shadow-ios p-6">
+        <div className="bg-[var(--surface-1)] rounded-[var(--radius-2xl)] border border-[var(--border)] p-6 transition-colors duration-150 hover:border-[var(--border-hover)]">
           <div className="flex items-center justify-between mb-3">
-            <div className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center">
-              <FaArrowUp className="text-purple-400 text-xl" />
+            <div className="w-12 h-12 rounded-[var(--radius-md)] bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+              <Icon name="arrow-up" size="lg" className="text-purple-500" />
             </div>
-            <span className="text-3xl font-bold text-purple-400">{overstockCount}</span>
+            <span className="text-3xl font-bold text-purple-500">{overstockCount}</span>
           </div>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400 font-medium">Tồn kho quá nhiều</p>
+          <p className="text-sm text-[var(--text-2)] font-medium">Tồn kho quá nhiều</p>
         </div>
       </div>
 
-      {/* Filter Tabs */}
-      <div className="liquid-glass dark:liquid-glass-dark rounded-[24px] border border-black/10 dark:border-white/10 shadow-ios p-2">
+      {/* Filter Tabs - KHÔNG shadow */}
+      <div className="bg-[var(--surface-1)] rounded-[var(--radius-2xl)] border border-[var(--border)] p-2">
         <div className="flex gap-2">
           <button
             onClick={() => setFilter('all')}
-            className={`flex-1 px-4 py-2.5 rounded-[16px] font-medium transition-all ${
+            className={`flex-1 px-4 py-2.5 rounded-[var(--radius-lg)] font-medium transition-colors duration-150 ${
               filter === 'all'
-                ? 'bg-primary/10 text-primary border border-primary/30'
-                : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                ? 'bg-[var(--primary-light)] text-[var(--primary)] border border-[var(--primary)]/30'
+                : 'text-[var(--text-2)] hover:bg-[var(--surface-2)] border border-transparent'
             }`}
           >
             Tất cả ({alerts.length})
           </button>
           <button
             onClick={() => setFilter('critical')}
-            className={`flex-1 px-4 py-2.5 rounded-[16px] font-medium transition-all ${
+            className={`flex-1 px-4 py-2.5 rounded-[var(--radius-lg)] font-medium transition-all duration-150 ${
               filter === 'critical'
-                ? 'bg-danger/10 text-danger border border-danger/30'
-                : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                ? 'bg-[var(--danger-light)] text-[var(--danger)] border border-[var(--danger)]/30'
+                : 'text-[var(--text-2)] hover:bg-[var(--surface-2)] border border-transparent'
             }`}
           >
             Cực kỳ thấp ({criticalCount})
           </button>
           <button
             onClick={() => setFilter('warning')}
-            className={`flex-1 px-4 py-2.5 rounded-[16px] font-medium transition-all ${
+            className={`flex-1 px-4 py-2.5 rounded-[var(--radius-lg)] font-medium transition-all duration-150 ${
               filter === 'warning'
-                ? 'bg-warning/10 text-warning border border-warning/30'
-                : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                ? 'bg-[var(--warning-light)] text-[var(--warning)] border border-[var(--warning)]/30'
+                : 'text-[var(--text-2)] hover:bg-[var(--surface-2)] border border-transparent'
             }`}
           >
             Thấp ({warningCount})
           </button>
           <button
             onClick={() => setFilter('low')}
-            className={`flex-1 px-4 py-2.5 rounded-[16px] font-medium transition-all ${
+            className={`flex-1 px-4 py-2.5 rounded-[var(--radius-lg)] font-medium transition-all duration-150 ${
               filter === 'low'
-                ? 'bg-info/10 text-info border border-info/30'
-                : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                ? 'bg-[var(--info-light)] text-[var(--info)] border border-[var(--info)]/30'
+                : 'text-[var(--text-2)] hover:bg-[var(--surface-2)] border border-transparent'
             }`}
           >
             Cần nhập ({lowCount})
           </button>
           <button
             onClick={() => setFilter('overstock')}
-            className={`flex-1 px-4 py-2.5 rounded-[16px] font-medium transition-all ${
+            className={`flex-1 px-4 py-2.5 rounded-[var(--radius-lg)] font-medium transition-all duration-150 ${
               filter === 'overstock'
-                ? 'bg-purple-500/10 text-purple-400 border border-purple-500/30'
-                : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                ? 'bg-[var(--overstock-light)] text-[var(--overstock)] border border-[var(--overstock)]/30'
+                : 'text-[var(--text-2)] hover:bg-[var(--surface-2)] border border-transparent'
             }`}
           >
             Tồn quá nhiều ({overstockCount})
@@ -235,12 +235,14 @@ export default function Items_Alerts_Page() {
         </div>
       </div>
 
-      {/* Alerts List */}
+      {/* Alerts List - KHÔNG shadow */}
       <div className="space-y-4">
         {filteredAlerts.length === 0 ? (
-          <div className="liquid-glass dark:liquid-glass-dark rounded-[24px] border border-black/10 dark:border-white/10 shadow-ios p-12 text-center">
-            <FaBox className="text-5xl text-zinc-400 dark:text-zinc-600 mx-auto mb-4" />
-            <p className="text-zinc-500 dark:text-zinc-400">Không có cảnh báo nào</p>
+          <div className="bg-[var(--surface-1)] rounded-[var(--radius-2xl)] border border-[var(--border)] p-12 text-center">
+            <span className="w-16 h-16 flex items-center justify-center mx-auto mb-4 rounded-full bg-[var(--surface-2)]">
+              <Icon name="archive" size="xl" className="opacity-40" />
+            </span>
+            <p className="text-[var(--text-3)]">Không có cảnh báo nào</p>
           </div>
         ) : (
           filteredAlerts.map(alert => {
@@ -249,35 +251,35 @@ export default function Items_Alerts_Page() {
             return (
               <div
                 key={alert.id}
-                className="liquid-glass dark:liquid-glass-dark rounded-[24px] border border-black/10 dark:border-white/10 shadow-ios p-6 hover:scale-[1.01] transition-transform"
+                className="bg-[var(--surface-1)] rounded-[var(--radius-2xl)] border border-[var(--border)] p-6 transition-colors duration-150 hover:border-[var(--border-hover)]"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                      <h3 className="text-lg font-semibold text-[var(--text-1)]">
                         {alert.name}
                       </h3>
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusBadge(alert.status)}`}>
+                      <span className={`px-3 py-1 rounded-[var(--radius-sm)] text-xs font-medium border ${getStatusBadge(alert.status)}`}>
                         {getStatusText(alert.status)}
                       </span>
                     </div>
-                    <div className="flex items-center gap-4 text-sm text-zinc-500 dark:text-zinc-400">
+                    <div className="flex items-center gap-4 text-sm text-[var(--text-3)]">
                       <span>SKU: {alert.sku}</span>
                       <span>•</span>
                       <span>{alert.category}</span>
                       <span>•</span>
                       <span className="flex items-center gap-1">
-                        <FaCalendar size={12} />
+                        <Icon name="calendar" size="sm" />
                         {new Date(alert.lastUpdate).toLocaleString('vi-VN')}
                       </span>
                     </div>
                   </div>
                   {alert.status === 'overstock' ? (
-                    <button className="px-4 py-2 rounded-[16px] bg-purple-500 text-white font-medium hover:scale-105 transition-transform shadow-ios hover:bg-purple-600">
+                    <button className="px-4 py-2 rounded-[var(--radius-lg)] bg-purple-500 text-white font-medium transition-all duration-150 hover:bg-purple-600 border border-purple-500">
                       Xuất kho
                     </button>
                   ) : (
-                    <button className="px-4 py-2 rounded-[16px] bg-success text-white font-medium hover:scale-105 transition-transform shadow-ios hover:bg-success/90">
+                    <button className="px-4 py-2 rounded-[var(--radius-lg)] bg-[var(--success)] text-white font-medium transition-all duration-150 hover:opacity-90 border border-[var(--success)]">
                       Nhập kho ngay
                     </button>
                   )}
@@ -286,37 +288,37 @@ export default function Items_Alerts_Page() {
                 {/* Stock Progress */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-zinc-600 dark:text-zinc-400 flex items-center gap-2">
-                      <FaChartLine size={14} />
+                    <span className="text-[var(--text-2)] flex items-center gap-2">
+                      <Icon name="chart" size="sm" />
                       Tồn kho hiện tại
                     </span>
                     {alert.status === 'overstock' ? (
-                      <span className="font-bold text-zinc-900 dark:text-zinc-100">
+                      <span className="font-bold text-[var(--text-1)]">
                         {alert.currentStock} / {alert.maxStock} (tối đa)
                       </span>
                     ) : (
-                      <span className="font-bold text-zinc-900 dark:text-zinc-100">
+                      <span className="font-bold text-[var(--text-1)]">
                         {alert.currentStock} / {alert.minStock} (tối thiểu)
                       </span>
                     )}
                   </div>
-                  <div className="relative w-full h-3 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
+                  <div className="relative w-full h-3 bg-[var(--surface-2)] rounded-full overflow-hidden">
                     <div
-                      className={`absolute left-0 top-0 h-full rounded-full transition-all duration-500 ${
-                        alert.status === 'critical' ? 'bg-danger' :
-                        alert.status === 'warning' ? 'bg-warning' :
+                      className={`absolute left-0 top-0 h-full rounded-full transition-all duration-300 ${
+                        alert.status === 'critical' ? 'bg-[var(--danger)]' :
+                        alert.status === 'warning' ? 'bg-[var(--warning)]' :
                         alert.status === 'overstock' ? 'bg-purple-500' :
-                        'bg-info'
+                        'bg-[var(--info)]'
                       }`}
                       style={{ width: `${Math.min(percentage, 100)}%` }}
                     />
                   </div>
                   {alert.status === 'overstock' ? (
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    <p className="text-xs text-[var(--text-3)]">
                       Vượt quá <strong>{alert.currentStock - alert.maxStock}</strong> sản phẩm so với ngưỡng tối đa
                     </p>
                   ) : (
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    <p className="text-xs text-[var(--text-3)]">
                       Cần nhập thêm tối thiểu <strong>{alert.minStock - alert.currentStock}</strong> sản phẩm
                     </p>
                   )}

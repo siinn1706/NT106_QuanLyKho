@@ -20,4 +20,7 @@ export default defineConfig({
   
   // Prevent vite from obscuring rust errors
   clearScreen: false,
+  
+  // Assure .xlsx files are treated as assets
+  assetsInclude: ['**/*.xlsx'],
 });

@@ -7,6 +7,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiGetDashboardStats, DashboardStats } from '../../app/api_client';
+import Icon from '../../components/ui/Icon';
+import CustomSelect from '../../components/ui/CustomSelect';
 
 export default function Dashboard_Page() {
   const navigate = useNavigate();
@@ -46,8 +48,8 @@ export default function Dashboard_Page() {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-zinc-500 dark:text-zinc-400">Đang tải dữ liệu...</p>
+          <div className="w-16 h-16 border-4 border-[var(--primary)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-[var(--text-3)]">Đang tải dữ liệu...</p>
         </div>
       </div>
     );
@@ -63,21 +65,23 @@ export default function Dashboard_Page() {
 
   return (
     <div className="space-y-6">
-      {/* Stats Cards */}
+      {/* Stats Cards - KHÔNG shadow, border-based depth */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Card 1: Uptime */}
         <div 
           onClick={() => navigate('/reports')}
-          className="liquid-glass dark:liquid-glass-dark rounded-[24px] border border-black/10 dark:border-white/10 p-6 shadow-ios transition-transform hover:scale-[1.02] cursor-pointer"
+          className="bg-[var(--surface-1)] rounded-[var(--radius-2xl)] border border-[var(--border)] p-6 transition-colors duration-150 hover:border-[var(--border-hover)] cursor-pointer"
         >
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+            <h3 className="text-sm font-medium text-[var(--text-3)]">
               Hiệu suất hệ thống
             </h3>
-            <span className="text-2xl">📈</span>
+            <span className="w-10 h-10 flex items-center justify-center rounded-[var(--radius-md)] bg-[var(--success-light)]">
+              <Icon name="stats" size="lg" className="text-[var(--success)]" />
+            </span>
           </div>
-          <p className="text-4xl font-bold text-success mb-2">{safeStats.system_uptime || 0}%</p>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+          <p className="text-4xl font-bold text-[var(--success)] mb-2">{safeStats.system_uptime || 0}%</p>
+          <p className="text-sm text-[var(--text-3)]">
             Uptime trong 7 ngày qua
           </p>
         </div>
@@ -85,16 +89,18 @@ export default function Dashboard_Page() {
         {/* Card 2: Issues */}
         <div 
           onClick={() => navigate('/items/alerts')}
-          className="liquid-glass dark:liquid-glass-dark rounded-[24px] border border-black/10 dark:border-white/10 p-6 shadow-ios transition-all hover:scale-[1.02] cursor-pointer"
+          className="bg-[var(--surface-1)] rounded-[var(--radius-2xl)] border border-[var(--border)] p-6 transition-colors duration-150 hover:border-[var(--border-hover)] cursor-pointer"
         >
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+            <h3 className="text-sm font-medium text-[var(--text-3)]">
               Cảnh báo hàng tồn kho
             </h3>
-            <span className="text-2xl">⚠️</span>
+            <span className="w-10 h-10 flex items-center justify-center rounded-[var(--radius-md)] bg-[var(--danger-light)]">
+              <Icon name="warning" size="lg" className="text-[var(--danger)]" />
+            </span>
           </div>
-          <p className="text-4xl font-bold text-danger mb-2">{safeStats.low_stock_count}</p>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+          <p className="text-4xl font-bold text-[var(--danger)] mb-2">{safeStats.low_stock_count}</p>
+          <p className="text-sm text-[var(--text-3)]">
             Hàng hoá cần nhập thêm
           </p>
         </div>
@@ -102,100 +108,104 @@ export default function Dashboard_Page() {
         {/* Card 3: Usage */}
         <div 
           onClick={() => navigate('/items/tracking')}
-          className="liquid-glass dark:liquid-glass-dark rounded-[24px] border border-black/10 dark:border-white/10 p-6 shadow-ios transition-all hover:scale-[1.02] cursor-pointer"
+          className="bg-[var(--surface-1)] rounded-[var(--radius-2xl)] border border-[var(--border)] p-6 transition-colors duration-150 hover:border-[var(--border-hover)] cursor-pointer"
         >
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+            <h3 className="text-sm font-medium text-[var(--text-3)]">
               Tỷ lệ sử dụng kho
             </h3>
-            <span className="text-2xl">📦</span>
+            <span className="w-10 h-10 flex items-center justify-center rounded-[var(--radius-md)] bg-[var(--primary-light)]">
+              <Icon name="archive" size="lg" className="text-[var(--primary)]" />
+            </span>
           </div>
           <div className="flex items-end gap-2 mb-2">
             <p className="text-4xl font-bold">{safeStats.warehouse_usage || 0}%</p>
             <div className="flex-1 mb-2">
-              <div className="h-3 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
-                <div className="h-full bg-success rounded-full" style={{ width: `${safeStats.warehouse_usage || 0}%` }}></div>
+              <div className="h-3 bg-[var(--surface-2)] rounded-full overflow-hidden">
+                <div className="h-full bg-[var(--success)] rounded-full transition-all duration-300" style={{ width: `${safeStats.warehouse_usage || 0}%` }}></div>
               </div>
             </div>
           </div>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+          <p className="text-sm text-[var(--text-3)]">
             Công suất hiện tại
           </p>
         </div>
       </div>
 
-      {/* Equipment and Inventory Status Table */}
-      <div className="liquid-glass dark:liquid-glass-dark rounded-[24px] border border-black/10 dark:border-white/10 shadow-ios overflow-hidden">
-        <div className="p-6 border-b border-black/10 dark:border-white/10 flex items-center justify-between">
+      {/* Equipment and Inventory Status Table - KHÔNG shadow */}
+      <div className="bg-[var(--surface-1)] rounded-[var(--radius-2xl)] border border-[var(--border)]">
+        <div className="p-6 border-b border-[var(--border)] flex items-center justify-between">
           <h2 className="text-xl font-semibold">Trạng thái Hàng hoá và Tồn kho</h2>
-          <div className="flex gap-2">
-            <select 
+          <div className="flex gap-2 relative z-10">
+            <CustomSelect
               value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="px-4 py-2 liquid-glass-ui dark:liquid-glass-ui-dark border border-black/10 dark:border-white/10 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary/30 text-sm shadow-ios transition-all hover:scale-[1.02]"
-            >
-              <option value="all">Tất cả danh mục</option>
-              <option value="raw">Nguyên liệu</option>
-              <option value="finished">Thành phẩm</option>
-              <option value="semi">Bán thành phẩm</option>
-            </select>
-            <select 
+              onChange={setSelectedCategory}
+              size="sm"
+              options={[
+                { value: 'all', label: 'Tất cả danh mục' },
+                { value: 'raw', label: 'Nguyên liệu' },
+                { value: 'finished', label: 'Thành phẩm' },
+                { value: 'semi', label: 'Bán thành phẩm' },
+              ]}
+            />
+            <CustomSelect
               value={timeRange}
-              onChange={(e) => setTimeRange(e.target.value)}
-              className="px-4 py-2 liquid-glass-ui dark:liquid-glass-ui-dark border border-black/10 dark:border-white/10 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary/30 text-sm shadow-ios transition-all hover:scale-[1.02]"
-            >
-              <option value="7days">7 ngày qua</option>
-              <option value="15days">15 ngày qua</option>
-              <option value="30days">30 ngày qua</option>
-              <option value="prev-month">Tháng trước</option>
-            </select>
+              onChange={setTimeRange}
+              size="sm"
+              options={[
+                { value: '7days', label: '7 ngày qua' },
+                { value: '15days', label: '15 ngày qua' },
+                { value: '30days', label: '30 ngày qua' },
+                { value: 'prev-month', label: 'Tháng trước' },
+              ]}
+            />
           </div>
         </div>
 
-        {/* Table */}
+        {/* Table - KHÔNG shadow, border-based */}
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="liquid-glass-ui dark:liquid-glass-ui-dark">
+            <thead className="bg-[var(--surface-2)]">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-[var(--text-3)] uppercase tracking-wider">
                   STT
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-[var(--text-3)] uppercase tracking-wider">
                   Tiêu đề
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-[var(--text-3)] uppercase tracking-wider">
                   Ghi chú
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-[var(--text-3)] uppercase tracking-wider">
                   Thời gian
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-[var(--text-3)] uppercase tracking-wider">
                   Trạng thái
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+            <tbody className="divide-y divide-[var(--border)]">
               {safeStats.recent_transactions.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
+                  <td colSpan={5} className="px-6 py-8 text-center text-sm text-[var(--text-3)]">
                     Chưa có giao dịch nào
                   </td>
                 </tr>
               ) : (
                 safeStats.recent_transactions.map((txn, index) => (
-                  <tr key={txn.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors">
+                  <tr key={txn.id} className="hover:bg-[var(--surface-2)] transition-colors duration-100">
                     <td className="px-6 py-4 whitespace-nowrap text-sm">{index + 1}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       {txn.type === 'in' ? 'Nhập kho' : 'Xuất kho'} - Item {txn.item_id}
                     </td>
-                    <td className="px-6 py-4 text-sm text-zinc-500 dark:text-zinc-400">
+                    <td className="px-6 py-4 text-sm text-[var(--text-2)]">
                       {txn.note || `Số lượng: ${txn.quantity}`}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       {new Date(txn.timestamp).toLocaleString('vi-VN')}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-3 py-1 text-xs font-medium rounded-full ${txn.type === 'in' ? 'bg-success/10 text-success' : 'bg-info/10 text-info'}`}>
+                      <span className={`px-3 py-1 text-xs font-medium rounded-[var(--radius-sm)] ${txn.type === 'in' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300'}`}>
                         {txn.type === 'in' ? 'Nhập kho' : 'Xuất kho'}
                       </span>
                     </td>
@@ -207,31 +217,31 @@ export default function Dashboard_Page() {
         </div>
       </div>
 
-      {/* Equipment Status Cards */}
+      {/* Equipment Status Cards - KHÔNG shadow */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Card: Laboratory Equipment Status */}
-        <div className="liquid-glass dark:liquid-glass-dark rounded-[24px] border border-black/10 dark:border-white/10 p-6 shadow-ios transition-all hover:scale-[1.02]">
+        <div className="bg-[var(--surface-1)] rounded-[var(--radius-2xl)] border border-[var(--border)] p-6 transition-all duration-150 hover:border-[var(--border-hover)]">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold">Trạng thái Kho Nguyên liệu</h3>
-            <div className="w-3 h-3 bg-success rounded-full"></div>
+            <div className="w-3 h-3 bg-[var(--success)] rounded-full"></div>
           </div>
           <div className="space-y-4">
             <div>
               <div className="flex justify-between text-sm mb-2">
-                <span className="text-zinc-600 dark:text-zinc-400">Mức độ sử dụng</span>
+                <span className="text-[var(--text-2)]">Mức độ sử dụng</span>
                 <span className="font-semibold">0%</span>
               </div>
-              <div className="h-2 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
-                <div className="h-full bg-success rounded-full" style={{ width: '0%' }}></div>
+              <div className="h-2 bg-[var(--surface-2)] rounded-full overflow-hidden">
+                <div className="h-full bg-[var(--success)] rounded-full transition-all duration-300" style={{ width: '0%' }}></div>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <p className="text-zinc-500 dark:text-zinc-400">Lần bảo trì cuối</p>
+                <p className="text-[var(--text-3)]">Lần bảo trì cuối</p>
                 <p className="font-semibold">N/A</p>
               </div>
               <div>
-                <p className="text-zinc-500 dark:text-zinc-400">Bảo trì tiếp theo</p>
+                <p className="text-[var(--text-3)]">Bảo trì tiếp theo</p>
                 <p className="font-semibold">N/A</p>
               </div>
             </div>
@@ -239,28 +249,28 @@ export default function Dashboard_Page() {
         </div>
 
         {/* Card: Radiology Equipment Maintenance */}
-        <div className="liquid-glass dark:liquid-glass-dark rounded-[24px] border border-black/10 dark:border-white/10 p-6 shadow-ios transition-all hover:scale-[1.02]">
+        <div className="bg-[var(--surface-1)] rounded-[var(--radius-2xl)] border border-[var(--border)] p-6 transition-all duration-150 hover:border-[var(--border-hover)]">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold">Trạng thái Kho Thành phẩm</h3>
-            <div className="w-3 h-3 bg-zinc-400 rounded-full"></div>
+            <div className="w-3 h-3 bg-[var(--text-3)] rounded-full"></div>
           </div>
           <div className="space-y-4">
             <div>
               <div className="flex justify-between text-sm mb-2">
-                <span className="text-zinc-600 dark:text-zinc-400">Bảo trì Máy đóng gói</span>
+                <span className="text-[var(--text-2)]">Bảo trì Máy đóng gói</span>
                 <span className="font-semibold">0%</span>
               </div>
-              <div className="h-2 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
-                <div className="h-full bg-zinc-400 rounded-full" style={{ width: '0%' }}></div>
+              <div className="h-2 bg-[var(--surface-2)] rounded-full overflow-hidden">
+                <div className="h-full bg-[var(--text-3)] rounded-full transition-all duration-300" style={{ width: '0%' }}></div>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <p className="text-zinc-500 dark:text-zinc-400">Lần bảo trì cuối</p>
+                <p className="text-[var(--text-3)]">Lần bảo trì cuối</p>
                 <p className="font-semibold">N/A</p>
               </div>
               <div>
-                <p className="text-zinc-500 dark:text-zinc-400">Đã lên lịch</p>
+                <p className="text-[var(--text-3)]">Đã lên lịch</p>
                 <p className="font-semibold">N/A</p>
               </div>
             </div>
