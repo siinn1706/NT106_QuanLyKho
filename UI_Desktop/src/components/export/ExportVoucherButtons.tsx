@@ -36,10 +36,8 @@ export const ExportVoucherButtons: React.FC<ExportVoucherButtonsProps> = ({
 
     setIsExportingExcel(true);
     try {
-      const success = await exportToExcel(data);
-      if (success) {
-        alert('Xuất Excel thành công!');
-      }
+      await exportToExcel(data);
+      // Alert đã được xử lý trong exportToExcel
     } catch (error) {
       console.error('Export Excel error:', error);
       alert('Có lỗi xảy ra khi xuất Excel');
@@ -53,10 +51,8 @@ export const ExportVoucherButtons: React.FC<ExportVoucherButtonsProps> = ({
 
     setIsExportingPDF(true);
     try {
-      const success = await exportToPdf(data);
-      if (success) {
-        alert('Xuất PDF thành công!');
-      }
+      await exportToPdf(data);
+      // Alert đã được xử lý trong exportToPdf
     } catch (error) {
       console.error('Export PDF error:', error);
       alert('Có lỗi xảy ra khi xuất PDF');

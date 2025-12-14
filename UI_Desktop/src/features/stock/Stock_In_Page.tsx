@@ -933,6 +933,15 @@ export default function Stock_In_Page() {
                 <p className="text-[14px] font-semibold text-[var(--success)]">+{selectedRecord.total_quantity}</p>
               </div>
               <div>
+                <p className="text-[12px] text-[var(--text-3)]">Phương thức thanh toán</p>
+                <p className="text-[14px] font-medium text-[var(--text-1)]">
+                  {selectedRecord.payment_method === 'tiền_mặt' && 'Tiền mặt'}
+                  {selectedRecord.payment_method === 'chuyển_khoản' && 'Chuyển khoản'}
+                  {selectedRecord.payment_method === 'công_nợ' && 'Công nợ'}
+                  {!selectedRecord.payment_method && 'Tiền mặt'}
+                </p>
+              </div>
+              <div>
                 <p className="text-[12px] text-[var(--text-3)]">Tổng tiền (trước thuế)</p>
                 <p className="text-[14px] font-semibold text-[var(--text-1)]">{formatCurrency(selectedRecord.total_amount)}</p>
               </div>

@@ -9,7 +9,7 @@
  */
 
 import { save } from '@tauri-apps/plugin-dialog';
-import { writeFile } from '@tauri-apps/plugin-fs';
+import { writeFile, BaseDirectory } from '@tauri-apps/plugin-fs';
 
 // API Base URL (điều chỉnh theo môi trường)
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
@@ -120,13 +120,17 @@ export async function exportToExcel(data: VoucherExportData): Promise<boolean> {
       return false;
     }
 
-    // Write file
-    await writeFile(filePath, new Uint8Array(arrayBuffer));
+    // Write file using explicit options
+    const uint8Array = new Uint8Array(arrayBuffer);
+    await writeFile(filePath, uint8Array);
+    
+    alert(`Đã xuất file thành công: ${filePath}`);
 
     return true;
   } catch (error) {
     console.error('Export Excel error:', error);
-    alert(`Lỗi khi xuất Excel: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    alert(`Lỗi khi xuất Excel: ${errorMsg}`);
     return false;
   }
 }
@@ -185,13 +189,17 @@ export async function exportToPdf(data: VoucherExportData): Promise<boolean> {
       return false;
     }
 
-    // Write file
-    await writeFile(filePath, new Uint8Array(arrayBuffer));
+    // Write file using explicit options
+    const uint8Array = new Uint8Array(arrayBuffer);
+    await writeFile(filePath, uint8Array);
+    
+    alert(`Đã xuất file thành công: ${filePath}`);
 
     return true;
   } catch (error) {
     console.error('Export PDF error:', error);
-    alert(`Lỗi khi xuất PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    alert(`Lỗi khi xuất PDF: ${errorMsg}`);
     return false;
   }
 }
