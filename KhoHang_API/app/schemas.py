@@ -105,11 +105,12 @@ class Supplier(SupplierBase, ORMModel):
 class ItemBase(BaseModel):
     name: str
     sku: str
-    quantity: int
     unit: str
     price: float
     category: str
     supplier_id: Optional[int] = None
+    # Thêm trường này để biết khi nào là "Hàng thiếu"
+    min_stock: int = 10  # Định mức tồn kho tối thiểu
 
 
 class ItemCreate(ItemBase):
