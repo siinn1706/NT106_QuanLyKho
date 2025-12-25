@@ -2,9 +2,11 @@
 
 import { useEffect } from 'react';
 import { BrowserRouter } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import { useUIStore } from './state/ui_store';
 import { useCompanyStore } from './state/company_store';
 import AppRoutes from './app/routes';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 import './styles/index.css';
 
@@ -27,8 +29,11 @@ export default function App() {
   }, [initialize]);
 
   return (
-    <BrowserRouter>
-      <AppRoutes />
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <AppRoutes />
+        <Toaster />
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 }

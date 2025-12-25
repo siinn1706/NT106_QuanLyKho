@@ -9,13 +9,13 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import Icon from './Icon';
 import { 
   ProductLookupResult, 
   searchProductsMock, 
   lookupProductByCodeMock,
   getAllProductsMock 
 } from '../../app/product_lookup';
+import Icon from './Icon';
 
 interface ProductCodeInputProps {
   value: string;

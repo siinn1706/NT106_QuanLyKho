@@ -5,9 +5,10 @@ import { useAuthStore } from '../state/auth_store';
 import { useCompanyStore, Warehouse, type WarehouseManager } from '../state/company_store';
 import { apiLogout, apiUploadCompanyLogo } from '../app/api_client';
 import { BASE_URL } from '../app/api_client';
-import Icon from './ui/Icon';
 import CustomSelect from './ui/CustomSelect';
 import PasskeyModal from './ui/PasskeyModal';
+import Icon from './ui/Icon';
+import { showToast } from '../utils/toast';
 
 type TabKey = 'general' | 'company' | 'warehouse' | 'account' | 'notifications' | 'about';
 
@@ -80,21 +81,21 @@ export default function SettingsModal({ isOpen, onClose, initialTab = 'general' 
   if (!isOpen) return null;
 
   const handleCheckUpdate = () => {
-    alert('Đang kiểm tra cập nhật...');
+    showToast.info('Đang kiểm tra cập nhật...');
     setTimeout(() => {
-      alert('Bạn đang sử dụng phiên bản mới nhất!');
+      showToast.info('Bạn đang sử dụng phiên bản mới nhất!');
     }, 1000);
   };
 
   const handleClearCache = () => {
     if (confirm('Bạn có chắc muốn xóa cache? Điều này có thể làm chậm lần khởi động tiếp theo.')) {
       localStorage.clear();
-      alert('Đã xóa cache thành công!');
+      showToast.info('Đã xóa cache thành công!');
     }
   };
 
   const handleExportData = () => {
-    alert('Chức năng xuất dữ liệu đang được phát triển...');
+    showToast.info('Chức năng xuất dữ liệu đang được phát triển...');
   };
 
   const handleLogout = async () => {
@@ -119,7 +120,7 @@ export default function SettingsModal({ isOpen, onClose, initialTab = 'general' 
 
   const handleSaveCompanyInfo = () => {
     updateCompanyInfo(companyForm);
-    alert('Đã lưu thông tin công ty!');
+    showToast.info('Đã lưu thông tin công ty!');
   };
 
   const handleLogoUpload = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -128,14 +129,14 @@ export default function SettingsModal({ isOpen, onClose, initialTab = 'general' 
 
     // Check size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
-      alert('Kích thước ảnh tối đa 10MB!');
+      showToast.info('Kích thước ảnh tối đa 10MB!');
       return;
     }
 
     // Check file type
     const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
     if (!allowedTypes.includes(file.type)) {
-      alert('Định dạng ảnh phải là PNG, JPG, JPEG hoặc WEBP!');
+      showToast.info('Định dạng ảnh phải là PNG, JPG, JPEG hoặc WEBP!');
       return;
     }
 
@@ -143,10 +144,10 @@ export default function SettingsModal({ isOpen, onClose, initialTab = 'general' 
       // Upload via API
       const response = await apiUploadCompanyLogo(file);
       setCompanyForm((prev) => ({ ...prev, logo: response.logo_url }));
-      alert('Logo đã được tải lên thành công!');
+      showToast.info('Logo đã được tải lên thành công!');
     } catch (error) {
       console.error('Upload logo failed:', error);
-      alert(error instanceof Error ? error.message : 'Không thể tải logo lên. Vui lòng thử lại!');
+      showToast.info(error instanceof Error ? error.message : 'Không thể tải logo lên. Vui lòng thử lại!');
     }
   };
 
@@ -177,7 +178,7 @@ export default function SettingsModal({ isOpen, onClose, initialTab = 'general' 
   // Manager handlers
   const handleAddManager = () => {
     if (!managerForm.name.trim() || !managerForm.position.trim()) {
-      alert('Vui lòng nhập tên và chức vụ!');
+      showToast.info('Vui lòng nhập tên và chức vụ!');
       return;
     }
     
@@ -210,7 +211,7 @@ export default function SettingsModal({ isOpen, onClose, initialTab = 'general' 
 
   const handleAddWarehouse = () => {
     if (!warehouseForm.name.trim() || !warehouseForm.code.trim()) {
-      alert('Vui lòng nhập tên kho và mã kho!');
+      showToast.info('Vui lòng nhập tên kho và mã kho!');
       return;
     }
     addWarehouse(warehouseForm);
@@ -233,7 +234,7 @@ export default function SettingsModal({ isOpen, onClose, initialTab = 'general' 
   const handleUpdateWarehouse = () => {
     if (!editingWarehouseId) return;
     if (!warehouseForm.name.trim() || !warehouseForm.code.trim()) {
-      alert('Vui lòng nhập tên kho và mã kho!');
+      showToast.info('Vui lòng nhập tên kho và mã kho!');
       return;
     }
     // Yêu cầu passkey trước khi update
@@ -254,7 +255,7 @@ export default function SettingsModal({ isOpen, onClose, initialTab = 'general' 
     // TODO: Validate passkey với backend
     // Giả sử passkey đúng là "123456" (sẽ thay bằng API call)
     if (passkey !== '123456') {
-      alert('Passkey không chính xác!');
+      showToast.info('Passkey không chính xác!');
       setShowPasskeyModal(false);
       return;
     }
@@ -283,19 +284,19 @@ export default function SettingsModal({ isOpen, onClose, initialTab = 'general' 
   const handleChangePasskey = () => {
     // Validate
     if (!changePasskeyData.currentPassword || !changePasskeyData.newPasskey || !changePasskeyData.confirmPasskey) {
-      alert('Vui lòng điền đầy đủ thông tin!');
+      showToast.info('Vui lòng điền đầy đủ thông tin!');
       return;
     }
     if (changePasskeyData.newPasskey.length !== 6 || !/^\d{6}$/.test(changePasskeyData.newPasskey)) {
-      alert('Passkey phải là 6 chữ số!');
+      showToast.info('Passkey phải là 6 chữ số!');
       return;
     }
     if (changePasskeyData.newPasskey !== changePasskeyData.confirmPasskey) {
-      alert('Passkey mới không khớp!');
+      showToast.info('Passkey mới không khớp!');
       return;
     }
     // TODO: Call API để đổi passkey (BE sẽ verify password và gửi mail)
-    alert('Đã gửi yêu cầu đổi passkey. Vui lòng kiểm tra email!');
+    showToast.info('Đã gửi yêu cầu đổi passkey. Vui lòng kiểm tra email!');
     setShowChangePasskeyModal(false);
     setChangePasskeyData({ currentPassword: '', newPasskey: '', confirmPasskey: '' });
   };
@@ -303,11 +304,11 @@ export default function SettingsModal({ isOpen, onClose, initialTab = 'general' 
   const handleForgotPasskey = () => {
     // Validate
     if (!forgotPasskeyData.password || !forgotPasskeyData.email) {
-      alert('Vui lòng điền đầy đủ thông tin!');
+      showToast.info('Vui lòng điền đầy đủ thông tin!');
       return;
     }
     // TODO: Call API để gửi passkey mới qua email (BE sẽ verify password)
-    alert('Đã gửi passkey mới đến email của bạn!');
+    showToast.info('Đã gửi passkey mới đến email của bạn!');
     setShowForgotPasskeyModal(false);
     setForgotPasskeyData({ password: '', email: '' });
   };
@@ -1181,7 +1182,7 @@ export default function SettingsModal({ isOpen, onClose, initialTab = 'general' 
                 <div className="p-4 rounded-xl border-2 bg-[var(--danger-light)] border-[var(--danger)]/30">
                   <div className="flex items-center gap-3 mb-3">
                     <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-[var(--danger)]/20">
-                      <Icon name="signOut" size="lg" className="text-[var(--danger)]" />
+                      <Icon name="logout" size="lg" className="text-[var(--danger)]" />
                     </div>
                     <div>
                       <h4 className="font-semibold text-[var(--danger)]">Đăng xuất</h4>
@@ -1189,7 +1190,7 @@ export default function SettingsModal({ isOpen, onClose, initialTab = 'general' 
                     </div>
                   </div>
                   <button onClick={handleLogout} className="w-full px-4 py-2 rounded-xl transition-colors duration-150 font-semibold bg-[var(--danger)] hover:opacity-90 text-white">
-                    <Icon name="signOut" size="sm" className="inline mr-2" />
+                    <Icon name="logout" size="sm" className="inline mr-2" />
                     Đăng xuất ngay
                   </button>
                 </div>

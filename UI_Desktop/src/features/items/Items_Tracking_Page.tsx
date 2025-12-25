@@ -3,8 +3,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { apiGetItems, Item } from '../../app/api_client';
 import { useUIStore } from '../../state/ui_store';
-import Icon from '../../components/ui/Icon';
 import DatePicker from '../../components/ui/DatePicker';
+import Icon from '../../components/ui/Icon';
 
 export default function Items_Tracking_Page() {
   const [items, setItems] = useState<Item[]>([]);

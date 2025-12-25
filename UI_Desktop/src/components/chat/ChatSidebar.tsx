@@ -64,7 +64,7 @@ export default function ChatSidebar({ onSelect, activeId, onToggle }:{
             }`}
             title="Thu gọn danh sách"
           >
-            <Icon name="chevronLeft" size="md" />
+            <Icon name="chevron-left" size="md" />
           </button>
         )}
       </div>

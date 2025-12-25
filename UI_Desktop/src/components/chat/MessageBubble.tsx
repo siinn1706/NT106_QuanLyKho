@@ -1,7 +1,7 @@
 import { useState } from "react";
-import Icon from "../ui/Icon";
 import { useUIStore } from "../../state/ui_store";
 import ReactMarkdown from "react-markdown";
+import Icon from "../ui/Icon";
 
 export default function MessageBubble({
   text,

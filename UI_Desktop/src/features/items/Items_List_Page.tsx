@@ -17,6 +17,7 @@ import Icon from '../../components/ui/Icon';
 import Modal from '../../components/ui/Modal';
 import CustomSelect from '../../components/ui/CustomSelect';
 import DatePicker from '../../components/ui/DatePicker';
+import { showToast } from '../../utils/toast';
 
 // ============================================
 // MOCK DATA - Dữ liệu mẫu khi chưa có BE
@@ -317,13 +318,13 @@ export default function Items_List_Page() {
       const created = await apiCreateItem(newItem);
       setItems([...items, created]);
       setShowAddModal(false);
-      alert('Thêm hàng hoá thành công!');
+      showToast.success('Thêm hàng hoá thành công!');
     } catch {
       // Mock: thêm vào state local
       const mockId = `ITEM${Date.now()}`;
       setItems([...items, { id: mockId, ...newItem } as Item]);
       setShowAddModal(false);
-      alert('Thêm hàng hoá thành công!');
+      showToast.success('Thêm hàng hoá thành công!');
     }
   };
 
@@ -352,7 +353,7 @@ export default function Items_List_Page() {
       const updated = await apiUpdateItem(selectedItem.id, updatedData);
       setItems(items.map(item => item.id === selectedItem.id ? updated : item));
       setShowEditModal(false);
-      alert('Cập nhật hàng hoá thành công!');
+      showToast.success('Cập nhật hàng hoá thành công!');
     } catch {
       // Mock: cập nhật state local
       setItems(items.map(item => 
@@ -361,7 +362,7 @@ export default function Items_List_Page() {
           : item
       ));
       setShowEditModal(false);
-      alert('Cập nhật hàng hoá thành công!');
+      showToast.success('Cập nhật hàng hoá thành công!');
     }
   };
 
@@ -380,12 +381,12 @@ export default function Items_List_Page() {
       await apiDeleteItem(selectedItem.id);
       setItems(items.filter(item => item.id !== selectedItem.id));
       setShowDeleteModal(false);
-      alert('Xoá hàng hoá thành công!');
+      showToast.success('Xoá hàng hoá thành công!');
     } catch {
       // Mock: xoá từ state local
       setItems(items.filter(item => item.id !== selectedItem.id));
       setShowDeleteModal(false);
-      alert('Xoá hàng hoá thành công!');
+      showToast.success('Xoá hàng hoá thành công!');
     }
   };
 
@@ -448,7 +449,7 @@ export default function Items_List_Page() {
                   : 'bg-[var(--danger-light)] text-[var(--danger)] border-[var(--danger)]/30 hover:border-[var(--danger)]'
               }`}
             >
-              <Icon name="exclamation-triangle" size="sm" />
+              <Icon name="warning" size="sm" />
               <span className="text-[13px] font-medium">{expiredCount} hàng đã hết hạn</span>
             </button>
           )}
@@ -483,7 +484,7 @@ export default function Items_List_Page() {
               onClick={() => setFilterStatus('all')}
               className="flex items-center gap-2 px-4 py-2 rounded-[var(--radius-md)] bg-[var(--surface-2)] text-[var(--text-2)] border border-[var(--border)] hover:border-[var(--border-hover)] transition-colors"
             >
-              <Icon name="times" size="sm" />
+              <Icon name="close" size="sm" />
               <span className="text-[13px] font-medium">Xoá bộ lọc</span>
             </button>
           )}

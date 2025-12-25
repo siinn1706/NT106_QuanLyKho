@@ -1,8 +1,9 @@
 /** Reports_Page.tsx - Báo cáo tổng hợp */
 
 import { useState, useEffect } from "react";
-import Icon from "../../components/ui/Icon";
 import { useUIStore } from "../../state/ui_store";
+import { BASE_URL } from "../../app/api_client";
+import Icon from "../../components/ui/Icon";
 
 export default function Reports_Page() {
   const [selectedReport, setSelectedReport] = useState<string>("inventory");
@@ -17,9 +18,9 @@ export default function Reports_Page() {
     const fetchReportsData = async () => {
       try {
         const [inventoryRes, trendRes, lowStockRes] = await Promise.all([
-          fetch('http://localhost:8000/reports/inventory-by-category').catch(() => null),
-          fetch('http://localhost:8000/reports/monthly-trend').catch(() => null),
-          fetch('http://localhost:8000/reports/low-stock-items').catch(() => null),
+          fetch(`${BASE_URL}/reports/inventory-by-category`).catch(() => null),
+          fetch(`${BASE_URL}/reports/monthly-trend`).catch(() => null),
+          fetch(`${BASE_URL}/reports/low-stock-items`).catch(() => null),
         ]);
 
         if (inventoryRes?.ok) {
@@ -116,7 +117,7 @@ export default function Reports_Page() {
               : "border-[var(--border)]"
           }`}
         >
-          <Icon name="chart-pie" className={`text-2xl mb-2 ${selectedReport === "inventory" ? "text-primary" : "text-[var(--text-2)]"}`} />
+          <Icon name="chart-pie" size="2x" className={`mb-2 ${selectedReport === "inventory" ? "text-primary" : "text-[var(--text-2)]"}`} />
           <div className="font-semibold text-[var(--text-1)]">Tồn kho</div>
           <div className="text-sm text-[var(--text-3)]">Theo danh mục</div>
         </button>
@@ -129,7 +130,7 @@ export default function Reports_Page() {
               : "border-[var(--border)]"
           }`}
         >
-          <Icon name="chart-line" className={`text-2xl mb-2 ${selectedReport === "trend" ? "text-success" : "text-[var(--text-2)]"}`} />
+          <Icon name="chart-line" size="2x" className={`mb-2 ${selectedReport === "trend" ? "text-success" : "text-[var(--text-2)]"}`} />
           <div className="font-semibold text-[var(--text-1)]">Xu hướng</div>
           <div className="text-sm text-[var(--text-3)]">Nhập/Xuất kho</div>
         </button>
@@ -142,7 +143,7 @@ export default function Reports_Page() {
               : "border-[var(--border)]"
           }`}
         >
-          <Icon name="chart-bar" className={`text-2xl mb-2 ${selectedReport === "lowstock" ? "text-warning" : "text-[var(--text-2)]"}`} />
+          <Icon name="chart-bar" size="2x" className={`mb-2 ${selectedReport === "lowstock" ? "text-warning" : "text-[var(--text-2)]"}`} />
           <div className="font-semibold text-[var(--text-1)]">Cảnh báo</div>
           <div className="text-sm text-[var(--text-3)]">Hàng sắp hết</div>
         </button>
@@ -155,7 +156,7 @@ export default function Reports_Page() {
               : "border-[var(--border)]"
           }`}
         >
-          <Icon name="chart-bar" className={`text-2xl mb-2 ${selectedReport === "damage" ? "text-danger" : "text-[var(--text-2)]"}`} />
+          <Icon name="chart-bar" size="2x" className={`mb-2 ${selectedReport === "damage" ? "text-danger" : "text-[var(--text-2)]"}`} />
           <div className="font-semibold text-[var(--text-1)]">Hư hỏng</div>
           <div className="text-sm text-[var(--text-3)]">Hàng lỗi/hủy</div>
         </button>

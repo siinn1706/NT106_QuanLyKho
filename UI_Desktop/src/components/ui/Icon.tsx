@@ -133,6 +133,12 @@ import {
   faRotate,
   faDatabase,
   faFileExport,
+  faPhone,
+  faCreditCard,
+  faHashtag,
+  faUniversity,
+  faStickyNote,
+  faInbox,
 } from '@fortawesome/free-solid-svg-icons';
 
 import {
@@ -315,6 +321,13 @@ const iconMap: Record<string, IconDefinition> = {
   'sync': faSync,
   'refresh': faRotate,
   'database': faDatabase,
+  'phone': faPhone,
+  'credit-card': faCreditCard,
+  'hashtag': faHashtag,
+  'university': faUniversity,
+  'sticky-note': faStickyNote,
+  'note': faStickyNote,
+  'inbox': faInbox,
 };
 
 export interface IconProps {

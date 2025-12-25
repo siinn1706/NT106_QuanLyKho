@@ -12,3 +12,5 @@ Pillow
 openpyxl
 reportlab
 num2words
+# Database
+sqlalchemy

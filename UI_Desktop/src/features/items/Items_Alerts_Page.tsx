@@ -289,7 +289,7 @@ export default function Items_Alerts_Page() {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-[var(--text-2)] flex items-center gap-2">
-                      <Icon name="chart" size="sm" />
+                      <Icon name="chart-bar" size="sm" />
                       Tồn kho hiện tại
                     </span>
                     {alert.status === 'overstock' ? (

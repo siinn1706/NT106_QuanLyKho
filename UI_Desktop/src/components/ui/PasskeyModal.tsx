@@ -120,7 +120,7 @@ export default function PasskeyModal({
 
           {error && (
             <div className="flex items-center gap-2 p-3 rounded-lg bg-[var(--danger-light)] border border-[var(--danger)]/30 mb-4">
-              <Icon name="alertTriangle" size="sm" className="text-[var(--danger)]" />
+              <Icon name="warning" size="sm" className="text-[var(--danger)]" />
               <p className="text-sm text-[var(--danger)]">{error}</p>
             </div>
           )}

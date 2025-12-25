@@ -8,17 +8,18 @@
  */
 
 import { useState, useEffect } from 'react';
-import Icon from '../../components/ui/Icon';
 import Modal from '../../components/ui/Modal';
 import DatePicker from '../../components/ui/DatePicker';
 import ProductCodeInput from '../../components/ui/ProductCodeInput';
 import PasskeyModal from '../../components/ui/PasskeyModal';
 import SupplierAutocomplete from '../../components/ui/SupplierAutocomplete';
+import Icon from '../../components/ui/Icon';
 import { ProductLookupResult } from '../../app/product_lookup';
 import { ExportVoucherButtons } from '../../components/export/ExportVoucherButtons';
 import { stockInToVoucherData } from '../../utils/export/voucherConverter';
 import { apiGetStockInRecords, apiCreateStockIn, apiDeleteStockIn, StockInRecord as APIStockInRecord, Supplier } from '../../app/api_client';
 import { useCompanyStore } from '../../state/company_store';
+import { showToast } from '../../utils/toast';
 
 // ============================================
 // INTERFACES
@@ -244,7 +245,7 @@ export default function Stock_In_Page() {
       availableStock: null,
       isLookedUp: false,
     });
-    alert('Không tìm thấy sản phẩm với mã này!');
+    showToast.error('Không tìm thấy sản phẩm với mã này!');
   };
   
   // Delete handlers
@@ -257,7 +258,7 @@ export default function Stock_In_Page() {
   const handleDeleteConfirm = async (passkey: string) => {
     // TODO: Validate passkey với backend
     if (passkey !== '123456') {
-      alert('Passkey không chính xác!');
+      showToast.error('Passkey không chính xác!');
       setShowDeletePasskeyModal(false);
       return;
     }
@@ -267,10 +268,10 @@ export default function Stock_In_Page() {
     try {
       await apiDeleteStockIn(pendingDeleteId);
       setRecords(records.filter(r => r.id !== pendingDeleteId));
-      alert('Đã xóa phiếu nhập kho thành công!');
+      showToast.success('Đã xóa phiếu nhập kho thành công!');
     } catch (error) {
       console.error('Delete stock in error:', error);
-      alert('Không thể xóa phiếu nhập kho!');
+      showToast.error('Không thể xóa phiếu nhập kho!');
     } finally {
       setShowDeletePasskeyModal(false);
       setPendingDeleteId(null);
@@ -291,17 +292,17 @@ export default function Stock_In_Page() {
     );
     
     if (validProducts.length === 0) {
-      alert('Vui lòng nhập ít nhất 1 sản phẩm!');
+      showToast.warning('Vui lòng nhập ít nhất 1 sản phẩm!');
       return;
     }
 
     if (!batchInfo.supplier.trim()) {
-      alert('Vui lòng nhập tên nhà cung cấp!');
+      showToast.warning('Vui lòng nhập tên nhà cung cấp!');
       return;
     }
 
     if (!activeWarehouse) {
-      alert('Vui lòng chọn kho hàng trong cài đặt!');
+      showToast.warning('Vui lòng chọn kho hàng trong cài đặt!');
       return;
     }
 
@@ -334,10 +335,10 @@ export default function Stock_In_Page() {
       setRecords([convertedRecord, ...records]);
       setShowModal(false);
       resetForm();
-      alert('Nhập kho thành công!');
+      showToast.success('Nhập kho thành công!');
     } catch (error) {
       console.error('Lỗi tạo phiếu nhập:', error);
-      alert(error instanceof Error ? error.message : 'Không thể tạo phiếu nhập kho');
+      showToast.error(error instanceof Error ? error.message : 'Không thể tạo phiếu nhập kho');
     }
   };
 
@@ -505,7 +506,7 @@ export default function Stock_In_Page() {
                 <tr>
                   <td colSpan={8} className="px-4 py-12 text-center">
                     <div className="flex items-center justify-center gap-2 text-[var(--text-3)]">
-                      <Icon name="spinner" size="md" className="animate-spin" />
+                      <Icon name="spinner" size="md" spin />
                       <span>Đang tải...</span>
                     </div>
                   </td>
@@ -658,7 +659,7 @@ export default function Stock_In_Page() {
                           : 'bg-[var(--surface-2)] text-[var(--text-2)] border-[var(--border)] hover:border-[var(--primary)]'
                       }`}
                     >
-                      <Icon name={method.icon} size="sm" />
+                      <Icon name={method.icon === 'dollar' ? 'dollar' : method.icon === 'bank' ? 'university' : method.icon} size="sm" />
                       {method.label}
                     </button>
                   ))}
@@ -670,7 +671,7 @@ export default function Stock_In_Page() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-[var(--surface-2)] rounded-[var(--radius-md)] border border-[var(--border)]">
                   <div>
                     <label className={labelClass}>
-                      <Icon name="hash" size="sm" className="opacity-60" />
+                      <Icon name="hashtag" size="sm" className="opacity-60" />
                       Số tài khoản
                     </label>
                     <input
@@ -683,7 +684,7 @@ export default function Stock_In_Page() {
                   </div>
                   <div>
                     <label className={labelClass}>
-                      <Icon name="bank" size="sm" className="opacity-60" />
+                      <Icon name="university" size="sm" className="opacity-60" />
                       Tên ngân hàng
                     </label>
                     <input
@@ -818,7 +819,7 @@ export default function Stock_In_Page() {
           {/* Note */}
           <div>
             <label className={labelClass}>
-              <Icon name="note" size="sm" className="opacity-60" />
+              <Icon name="sticky-note" size="sm" className="opacity-60" />
               Ghi chú chung
             </label>
             <textarea
@@ -832,7 +833,7 @@ export default function Stock_In_Page() {
           {/* Tax Rate */}
           <div>
             <label className={labelClass}>
-              <Icon name="percentage" size="sm" className="opacity-60" />
+              <Icon name="percent" size="sm" className="opacity-60" />
               Thuế suất (%)
             </label>
             <div className="flex items-center gap-3">

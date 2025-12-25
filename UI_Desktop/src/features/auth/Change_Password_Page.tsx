@@ -7,8 +7,8 @@
 import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../state/auth_store';
-import Icon from '../../components/ui/Icon';
 import { apiLogout } from '../../app/api_client';
+import Icon from '../../components/ui/Icon';
 
 export default function Change_Password_Page() {
   const navigate = useNavigate();

@@ -108,7 +108,7 @@ export default function ChatBot() {
               onClick={toggleChat}
               className="p-1 hover:bg-white/10 rounded transition-colors"
             >
-              <Icon name="times" className="text-white" />
+              <Icon name="close" className="text-white" />
             </button>
           </div>
 

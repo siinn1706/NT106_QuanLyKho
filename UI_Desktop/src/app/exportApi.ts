@@ -9,7 +9,7 @@
  */
 
 import { save } from '@tauri-apps/plugin-dialog';
-import { writeFile, BaseDirectory } from '@tauri-apps/plugin-fs';
+import { writeFile } from '@tauri-apps/plugin-fs';
 
 // API Base URL (điều chỉnh theo môi trường)
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';

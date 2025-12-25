@@ -1,28 +1,21 @@
 import { useState, useEffect, useRef } from "react";
-import Icon from "../ui/Icon";
 import MessageBubble from "./MessageBubble";
 import TypingIndicator from "./TypingIndicator";
 import { useUIStore } from "../../state/ui_store";
+import { useChatStore, Message } from "../../state/chat_store";
 import { apiChat } from "../../app/api_client";
-
-type Message = {
-  id: string;
-  conversationId: string;
-  sender: "user" | "agent" | "bot";
-  text: string;
-  createdAt: string;
-};
-
-const MOCK_MESSAGES: Message[] = [
-  { id: "m1", conversationId: "bot", sender: "bot", text: "Xin chào! Tôi là trợ lý N3T.", createdAt: new Date().toISOString() },
-];
+import Icon from "../ui/Icon";
 
 export default function ChatRoom({ conversationId, sidebarCollapsed, onExpandSidebar }: { 
   conversationId: string;
   sidebarCollapsed?: boolean;
   onExpandSidebar?: () => void;
 }) {
-  const [messages, setMessages] = useState<Message[]>([]);
+  // Lấy messages từ store - reactive, tự động cập nhật khi store thay đổi
+  const conversations = useChatStore((state) => state.conversations);
+  const addMessage = useChatStore((state) => state.addMessage);
+  const messages = conversations[conversationId] || [];
+  
   const [inputValue, setInputValue] = useState("");
   const [showCategories, setShowCategories] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
@@ -51,24 +44,26 @@ export default function ChatRoom({ conversationId, sidebarCollapsed, onExpandSid
     }, 100);
   };
 
-  useEffect(() => {
-    setMessages(MOCK_MESSAGES.filter((m) => m.conversationId === conversationId));
-  }, [conversationId]);
-
+  // Scroll to bottom khi messages thay đổi hoặc conversationId thay đổi
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, conversationId]);
 
   const handleSend = async () => {
     if (!inputValue.trim()) return;
-    const newMsg: Message = {
-      id: "m" + (messages.length + 1),
+    
+    // Tạo user message với timestamp unique
+    const userMsg: Message = {
+      id: `msg_${conversationId}_${Date.now()}_user`,
       conversationId,
       sender: "user",
       text: inputValue,
       createdAt: new Date().toISOString(),
     };
-    setMessages((prev) => [...prev, newMsg]);
+    
+    // Lưu vào store (UI sẽ tự động cập nhật vì messages là reactive)
+    addMessage(userMsg);
+    
     const userText = inputValue;
     setInputValue("");
 
@@ -79,22 +74,34 @@ export default function ChatRoom({ conversationId, sidebarCollapsed, onExpandSid
     try {
       const res = await apiChat({ prompt: userText, system_instruction: "Bạn là trợ lý kho N3T, trả lời ngắn gọn." });
       const botMsg: Message = {
-        id: "m" + (messages.length + 2),
+        id: `msg_${conversationId}_${Date.now()}_bot`,
         conversationId,
         sender: "bot",
         text: res.reply,
         createdAt: new Date().toISOString(),
       };
-      setMessages((prev) => [...prev, botMsg]);
+      
+      // Lưu vào store (UI sẽ tự động cập nhật)
+      addMessage(botMsg);
     } catch (e: any) {
+      // Xử lý lỗi với thông báo thân thiện hơn
+      let errorText = `❌ Lỗi: ${e?.message ?? String(e)}`;
+      
+      // Nếu là lỗi quota (429), hiển thị thông báo đặc biệt
+      if (e?.status === 429) {
+        errorText = e?.message || errorText;
+      }
+      
       const errMsg: Message = {
-        id: "m" + (messages.length + 2),
+        id: `msg_${conversationId}_${Date.now()}_error`,
         conversationId,
         sender: "bot",
-        text: `Lỗi gọi AI: ${e?.message ?? e}`,
+        text: errorText,
         createdAt: new Date().toISOString(),
       };
-      setMessages((prev) => [...prev, errMsg]);
+      
+      // Lưu vào store (UI sẽ tự động cập nhật)
+      addMessage(errMsg);
     } finally {
       // Ẩn typing indicator khi đã nhận được phản hồi
       setIsTyping(false);
@@ -205,8 +212,8 @@ export default function ChatRoom({ conversationId, sidebarCollapsed, onExpandSid
           placeholder="Nhập tin nhắn..."
           className={`flex-1 px-4 py-2.5 rounded-[24px] focus:outline-none focus:ring-1 transition-all hover:scale-[1.02] hover:-translate-y-0.5 ${
             isDarkMode
-              ? "liquid-glass-ui-dark text-white placeholder-zinc-500 focus:ring-blue-500/20"
-              : "liquid-glass-ui text-gray-900 placeholder-gray-400 focus:ring-blue-500/30"
+              ? "bg-zinc-800/80 border border-white/10 text-white placeholder-zinc-500 focus:ring-blue-500/20 focus:border-blue-500/30"
+              : "bg-white/90 border border-black/10 text-gray-900 placeholder-gray-400 focus:ring-blue-500/30 focus:border-blue-500/40"
           }`}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
@@ -215,7 +222,7 @@ export default function ChatRoom({ conversationId, sidebarCollapsed, onExpandSid
           }}
         />
         <button className="text-white p-3 rounded-full bg-blue-500 hover:bg-blue-600 hover:scale-105 transition-all duration-150 shadow-ios-lg liquid-glass-hover" onClick={handleSend} title="Gửi">
-          <Icon name="paper-plane" size="md" />
+          <Icon name="send" size="md" />
         </button>
       </div>
     </div>

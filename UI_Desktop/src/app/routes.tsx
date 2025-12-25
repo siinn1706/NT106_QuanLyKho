@@ -21,6 +21,7 @@ import Stock_InOut_Page from '../features/stock/Stock_InOut_Page';
 import Stock_In_Page from '../features/stock/Stock_In_Page';
 import Stock_Out_Page from '../features/stock/Stock_Out_Page';
 import Suppliers_Page from '../features/suppliers/Suppliers_Page';
+import Warehouse_Page from '../features/warehouses/Warehouse_Page';
 import Reports_Page from '../features/reports/Reports_Page';
 
 import Protected_Route from './Protected_Route';
@@ -124,6 +125,18 @@ export default function AppRoutes() {
           <Protected_Route>
             <Layout>
               <Suppliers_Page />
+            </Layout>
+          </Protected_Route>
+        }
+      />
+
+      {/* Kho hàng */}
+      <Route
+        path="/warehouses"
+        element={
+          <Protected_Route>
+            <Layout>
+              <Warehouse_Page />
             </Layout>
           </Protected_Route>
         }

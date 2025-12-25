@@ -6,16 +6,53 @@
 
 export const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
+// Helper to get auth headers
+async function getAuthHeaders(): Promise<HeadersInit> {
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+  };
+  
+  // Try to get Firebase token if available
+  try {
+    // @ts-ignore - Firebase might not be initialized yet
+    const { getAuth, getIdToken } = await import('firebase/auth');
+    const auth = getAuth();
+    const user = auth.currentUser;
+    
+    if (user) {
+      const token = await getIdToken(user);
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+  } catch (error) {
+    // Firebase not available or not initialized - continue without token
+    console.debug('Firebase auth not available:', error);
+  }
+  
+  return headers;
+}
+
+// Helper to make authenticated API calls
+async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  const headers = await getAuthHeaders();
+  return fetch(url, {
+    ...options,
+    headers: {
+      ...headers,
+      ...(options.headers || {}),
+    },
+  });
+}
+
 // Types cho dữ liệu (sẽ match với response từ BE)
 export interface Item {
-  id: string;
+  id: number;  // Changed from string to number to match backend
   name: string;
   sku: string;
   quantity: number;
   unit: string;
   price: number;
   category: string;
-  supplier_id?: string;
+  supplier_id?: number;  // Changed from string to number
   expiry_date?: string;    // Hạn sử dụng (ISO date string: "2024-12-31")
   min_stock?: number;      // Mức tồn kho tối thiểu để cảnh báo
   description?: string;    // Mô tả sản phẩm
@@ -24,9 +61,9 @@ export interface Item {
 }
 
 export interface StockTransaction {
-  id: string;
+  id: number;  // Changed from string to number
   type: 'in' | 'out';
-  item_id: string;
+  item_id: number;  // Changed from string to number
   quantity: number;
   timestamp: string;
   note?: string;
@@ -47,7 +84,7 @@ export interface Supplier {
 
 // === API Hàng hoá ===
 export async function apiGetItems(): Promise<Item[]> {
-  const res = await fetch(`${BASE_URL}/items`);
+  const res = await apiFetch(`${BASE_URL}/items`);
   if (!res.ok) throw new Error("Không thể tải danh sách hàng hoá từ BE");
   return res.json();
   /* Expected JSON structure from BE (GET /items):
@@ -67,9 +104,8 @@ export async function apiGetItems(): Promise<Item[]> {
 }
 
 export async function apiCreateItem(item: Omit<Item, 'id'>): Promise<Item> {
-  const res = await fetch(`${BASE_URL}/items`, {
+  const res = await apiFetch(`${BASE_URL}/items`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(item),
   });
   if (!res.ok) throw new Error("Không thể thêm hàng hoá");
@@ -89,9 +125,8 @@ export async function apiCreateItem(item: Omit<Item, 'id'>): Promise<Item> {
 }
 
 export async function apiUpdateItem(id: string, item: Partial<Item>): Promise<Item> {
-  const res = await fetch(`${BASE_URL}/items/${id}`, {
+  const res = await apiFetch(`${BASE_URL}/items/${id}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(item),
   });
   if (!res.ok) throw new Error("Không thể cập nhật hàng hoá");
@@ -107,7 +142,7 @@ export async function apiUpdateItem(id: string, item: Partial<Item>): Promise<It
 }
 
 export async function apiDeleteItem(id: string): Promise<void> {
-  const res = await fetch(`${BASE_URL}/items/${id}`, {
+  const res = await apiFetch(`${BASE_URL}/items/${id}`, {
     method: 'DELETE',
   });
   if (!res.ok) throw new Error("Không thể xoá hàng hoá");
@@ -115,7 +150,7 @@ export async function apiDeleteItem(id: string): Promise<void> {
 
 // === API Nhập/Xuất kho ===
 export async function apiGetStockTransactions(): Promise<StockTransaction[]> {
-  const res = await fetch(`${BASE_URL}/stock/transactions`);
+  const res = await apiFetch(`${BASE_URL}/stock/transactions`);
   if (!res.ok) throw new Error("Không thể tải lịch sử nhập/xuất");
   return res.json();
   /* Expected JSON structure from BE (GET /stock/transactions):
@@ -136,9 +171,8 @@ export async function apiGetStockTransactions(): Promise<StockTransaction[]> {
 export async function apiCreateStockTransaction(
   transaction: Omit<StockTransaction, 'id' | 'timestamp'>
 ): Promise<StockTransaction> {
-  const res = await fetch(`${BASE_URL}/stock/transactions`, {
+  const res = await apiFetch(`${BASE_URL}/stock/transactions`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(transaction),
   });
   if (!res.ok) throw new Error("Không thể tạo giao dịch nhập/xuất");
@@ -156,7 +190,7 @@ export async function apiCreateStockTransaction(
 
 // === API Nhà cung cấp ===
 export async function apiGetSuppliers(): Promise<Supplier[]> {
-  const res = await fetch(`${BASE_URL}/suppliers`);
+  const res = await apiFetch(`${BASE_URL}/suppliers`);
   if (!res.ok) throw new Error("Không thể tải danh sách nhà cung cấp");
   return res.json();
   /* Expected JSON structure from BE (GET /suppliers):
@@ -172,9 +206,8 @@ export async function apiGetSuppliers(): Promise<Supplier[]> {
 }
 
 export async function apiCreateSupplier(supplier: Omit<Supplier, 'id' | 'outstanding_debt'>): Promise<Supplier> {
-  const res = await fetch(`${BASE_URL}/suppliers`, {
+  const res = await apiFetch(`${BASE_URL}/suppliers`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(supplier),
   });
   if (!res.ok) throw new Error("Không thể thêm nhà cung cấp");
@@ -254,8 +287,32 @@ export async function apiChat(req: AIChatRequest): Promise<AIChatResponse> {
   });
   if (!res.ok) {
     let msg = 'Gọi AI thất bại';
-    try { const e = await res.json(); msg = e.detail || msg; } catch {}
-    throw new Error(msg);
+    let retryAfter: number | null = null;
+    
+    try { 
+      const e = await res.json(); 
+      msg = e.detail || msg;
+      
+      // Kiểm tra nếu là lỗi quota (429)
+      if (res.status === 429) {
+        retryAfter = res.headers.get('Retry-After') 
+          ? parseInt(res.headers.get('Retry-After') || '0', 10) 
+          : null;
+        
+        // Format message thân thiện hơn
+        const minutes = retryAfter ? Math.ceil(retryAfter / 60) : null;
+        if (minutes && minutes > 0) {
+          msg = `⚠️ Đã vượt quá giới hạn sử dụng API Gemini.\n\nVui lòng thử lại sau ${minutes} phút.\n\nBạn có thể:\n• Chờ đợi và thử lại sau\n• Nâng cấp gói API Gemini để tăng quota\n• Liên hệ admin để được hỗ trợ`;
+        } else {
+          msg = `⚠️ Đã vượt quá giới hạn sử dụng API Gemini.\n\nVui lòng thử lại sau một lúc.\n\nBạn có thể:\n• Chờ đợi và thử lại sau\n• Nâng cấp gói API Gemini để tăng quota\n• Liên hệ admin để được hỗ trợ`;
+        }
+      }
+    } catch {}
+    
+    const error = new Error(msg);
+    (error as any).status = res.status;
+    (error as any).retryAfter = retryAfter;
+    throw error;
   }
   return res.json();
   /* Request body (POST /ai/chat):
@@ -462,9 +519,8 @@ export async function apiGetStockInRecord(id: string): Promise<StockInRecord> {
 }
 
 export async function apiCreateStockIn(data: StockInBatchCreate): Promise<StockInRecord> {
-  const res = await fetch(`${BASE_URL}/stock/in`, {
+  const res = await apiFetch(`${BASE_URL}/stock/in`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
   if (!res.ok) {
@@ -475,7 +531,7 @@ export async function apiCreateStockIn(data: StockInBatchCreate): Promise<StockI
 }
 
 export async function apiDeleteStockIn(id: string): Promise<void> {
-  const res = await fetch(`${BASE_URL}/stock/in/${id}`, {
+  const res = await apiFetch(`${BASE_URL}/stock/in/${id}`, {
     method: 'DELETE',
   });
   if (!res.ok) throw new Error("Không thể xóa phiếu nhập kho");
@@ -540,9 +596,8 @@ export async function apiGetStockOutRecord(id: string): Promise<StockOutRecord> 
 }
 
 export async function apiCreateStockOut(data: StockOutBatchCreate): Promise<StockOutRecord> {
-  const res = await fetch(`${BASE_URL}/stock/out`, {
+  const res = await apiFetch(`${BASE_URL}/stock/out`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
   if (!res.ok) {
@@ -553,7 +608,7 @@ export async function apiCreateStockOut(data: StockOutBatchCreate): Promise<Stoc
 }
 
 export async function apiDeleteStockOut(id: string): Promise<void> {
-  const res = await fetch(`${BASE_URL}/stock/out/${id}`, {
+  const res = await apiFetch(`${BASE_URL}/stock/out/${id}`, {
     method: 'DELETE',
   });
   if (!res.ok) throw new Error("Không thể xóa phiếu xuất kho");
@@ -633,9 +688,8 @@ export async function apiGetCompanyInfo(): Promise<CompanyInfo | null> {
 }
 
 export async function apiCreateOrUpdateCompanyInfo(data: CompanyInfoUpdate): Promise<CompanyInfo> {
-  const res = await fetch(`${BASE_URL}/company`, {
+  const res = await apiFetch(`${BASE_URL}/company`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
   if (!res.ok) {
@@ -646,9 +700,8 @@ export async function apiCreateOrUpdateCompanyInfo(data: CompanyInfoUpdate): Pro
 }
 
 export async function apiUpdateCompanyInfo(data: CompanyInfoUpdate): Promise<CompanyInfo> {
-  const res = await fetch(`${BASE_URL}/company`, {
+  const res = await apiFetch(`${BASE_URL}/company`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
   if (!res.ok) {
@@ -696,9 +749,8 @@ export async function apiGetActiveWarehouse(): Promise<Warehouse | null> {
 }
 
 export async function apiCreateWarehouse(data: WarehouseCreate): Promise<Warehouse> {
-  const res = await fetch(`${BASE_URL}/warehouses`, {
+  const res = await apiFetch(`${BASE_URL}/warehouses`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
   if (!res.ok) {
@@ -709,9 +761,8 @@ export async function apiCreateWarehouse(data: WarehouseCreate): Promise<Warehou
 }
 
 export async function apiUpdateWarehouse(id: number, data: WarehouseUpdate): Promise<Warehouse> {
-  const res = await fetch(`${BASE_URL}/warehouses/${id}`, {
+  const res = await apiFetch(`${BASE_URL}/warehouses/${id}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
   if (!res.ok) {
@@ -722,15 +773,52 @@ export async function apiUpdateWarehouse(id: number, data: WarehouseUpdate): Pro
 }
 
 export async function apiDeleteWarehouse(id: number): Promise<void> {
-  const res = await fetch(`${BASE_URL}/warehouses/${id}`, {
+  const res = await apiFetch(`${BASE_URL}/warehouses/${id}`, {
     method: 'DELETE',
   });
   if (!res.ok) throw new Error("Không thể xóa kho");
 }
 
 export async function apiSetActiveWarehouse(id: number): Promise<void> {
-  const res = await fetch(`${BASE_URL}/warehouses/${id}/set-active`, {
+  const res = await apiFetch(`${BASE_URL}/warehouses/${id}/set-active`, {
     method: 'PUT',
   });
   if (!res.ok) throw new Error("Không thể đổi kho active");
+}
+
+// === API Warehouse Inventory Statistics ===
+export interface WarehouseItemStatus {
+  item_id: string;
+  item_code: string;
+  item_name: string;
+  unit: string;
+  total_in: number;
+  total_out: number;
+  current_stock: number;
+  damaged: number;
+  missing: number;
+  min_stock: number;
+  status: 'normal' | 'low_stock' | 'out_of_stock' | 'damaged';
+}
+
+export interface WarehouseInventoryStats {
+  warehouse_id: number;
+  warehouse_code: string;
+  warehouse_name: string;
+  total_items: number;
+  total_quantity: number;
+  items_in_stock: number;
+  items_low_stock: number;
+  items_out_of_stock: number;
+  items_damaged: number;
+  items_missing: number;
+  total_damaged: number;
+  total_missing: number;
+  items: WarehouseItemStatus[];
+}
+
+export async function apiGetWarehouseInventory(warehouseId: number): Promise<WarehouseInventoryStats> {
+  const res = await fetch(`${BASE_URL}/warehouses/${warehouseId}/inventory`);
+  if (!res.ok) throw new Error("Không thể tải thống kê hàng hóa trong kho");
+  return res.json();
 }

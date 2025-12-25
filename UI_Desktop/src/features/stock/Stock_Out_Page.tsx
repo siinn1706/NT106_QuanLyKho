@@ -8,17 +8,18 @@
  */
 
 import { useState, useEffect } from 'react';
-import Icon from '../../components/ui/Icon';
 import Modal from '../../components/ui/Modal';
 import CustomSelect from '../../components/ui/CustomSelect';
 import DatePicker from '../../components/ui/DatePicker';
 import ProductCodeInput from '../../components/ui/ProductCodeInput';
 import PasskeyModal from '../../components/ui/PasskeyModal';
+import Icon from '../../components/ui/Icon';
 import { ProductLookupResult } from '../../app/product_lookup';
 import { ExportVoucherButtons } from '../../components/export/ExportVoucherButtons';
 import { stockOutToVoucherData } from '../../utils/export/voucherConverter';
 import { apiGetStockOutRecords, apiCreateStockOut, apiDeleteStockOut, StockOutRecord as APIStockOutRecord } from '../../app/api_client';
 import { useCompanyStore } from '../../state/company_store';
+import { showSuccess, showError, showWarning } from '../../utils/toast';
 
 // ============================================
 // INTERFACES
@@ -250,7 +251,7 @@ export default function Stock_Out_Page() {
       availableStock: null,
       isLookedUp: false,
     });
-    alert('Không tìm thấy sản phẩm với mã này!');
+    showWarning('Không tìm thấy sản phẩm với mã này!');
   };
   
   // Delete handlers
@@ -263,7 +264,7 @@ export default function Stock_Out_Page() {
   const handleDeleteConfirm = async (passkey: string) => {
     // TODO: Validate passkey với backend
     if (passkey !== '123456') {
-      alert('Passkey không chính xác!');
+      showError('Passkey không chính xác!');
       setShowDeletePasskeyModal(false);
       return;
     }
@@ -273,10 +274,10 @@ export default function Stock_Out_Page() {
     try {
       await apiDeleteStockOut(pendingDeleteId);
       setRecords(records.filter(r => r.id !== pendingDeleteId));
-      alert('Đã xóa phiếu xuất kho thành công!');
+      showSuccess('Đã xóa phiếu xuất kho thành công!');
     } catch (error) {
       console.error('Delete stock out error:', error);
-      alert('Không thể xóa phiếu xuất kho!');
+      showError('Không thể xóa phiếu xuất kho!');
     } finally {
       setShowDeletePasskeyModal(false);
       setPendingDeleteId(null);
@@ -297,7 +298,7 @@ export default function Stock_Out_Page() {
 
     // Kiểm tra warehouse
     if (!activeWarehouse) {
-      alert('Vui lòng chọn kho hàng trước khi tạo phiếu xuất!');
+      showWarning('Vui lòng chọn kho hàng trước khi tạo phiếu xuất!');
       return;
     }
     
@@ -306,12 +307,12 @@ export default function Stock_Out_Page() {
     );
     
     if (validProducts.length === 0) {
-      alert('Vui lòng nhập ít nhất 1 sản phẩm!');
+      showWarning('Vui lòng nhập ít nhất 1 sản phẩm!');
       return;
     }
 
     if (!batchInfo.recipient.trim()) {
-      alert('Vui lòng nhập tên người nhận!');
+      showWarning('Vui lòng nhập tên người nhận!');
       return;
     }
 
@@ -321,7 +322,7 @@ export default function Stock_Out_Page() {
     );
     
     if (overStockProducts.length > 0) {
-      alert(`Có ${overStockProducts.length} sản phẩm vượt quá số lượng tồn kho!`);
+        showError(`Có ${overStockProducts.length} sản phẩm vượt quá số lượng tồn kho!`);
       return;
     }
 
@@ -329,7 +330,7 @@ export default function Stock_Out_Page() {
     if (isSale) {
       const missingPriceProducts = validProducts.filter(p => !p.sellPrice || parseFloat(p.sellPrice) <= 0);
       if (missingPriceProducts.length > 0) {
-        alert(`Vui lòng nhập giá bán cho tất cả ${missingPriceProducts.length} sản phẩm!`);
+        showWarning(`Vui lòng nhập giá bán cho tất cả ${missingPriceProducts.length} sản phẩm!`);
         return;
       }
     }
@@ -364,10 +365,10 @@ export default function Stock_Out_Page() {
       setRecords([convertedRecord, ...records]);
       setShowModal(false);
       resetForm();
-      alert('Xuất kho thành công!');
+      showSuccess('Xuất kho thành công!');
     } catch (error) {
       console.error('Lỗi tạo phiếu xuất:', error);
-      alert(error instanceof Error ? error.message : 'Không thể tạo phiếu xuất kho');
+      showError(error instanceof Error ? error.message : 'Không thể tạo phiếu xuất kho');
     }
   };
 
@@ -527,7 +528,7 @@ export default function Stock_Out_Page() {
                 <tr>
                   <td colSpan={8} className="px-4 py-12 text-center">
                     <div className="flex items-center justify-center gap-2 text-[var(--text-3)]">
-                      <Icon name="spinner" size="md" className="animate-spin" />
+                      <Icon name="spinner" size="md" spin />
                       <span>Đang tải...</span>
                     </div>
                   </td>
@@ -782,7 +783,7 @@ export default function Stock_Out_Page() {
           {/* Note */}
           <div>
             <label className={labelClass}>
-              <Icon name="note" size="sm" className="opacity-60" />
+              <Icon name="sticky-note" size="sm" className="opacity-60" />
               Ghi chú chung
             </label>
             <textarea
@@ -797,7 +798,7 @@ export default function Stock_Out_Page() {
           {isSale && (
             <div>
               <label className={labelClass}>
-                <Icon name="percentage" size="sm" className="opacity-60" />
+                <Icon name="percent" size="sm" className="opacity-60" />
                 Thuế suất (%)
               </label>
               <div className="flex items-center gap-3">
@@ -864,7 +865,7 @@ export default function Stock_Out_Page() {
                             : 'bg-[var(--surface-2)] text-[var(--text-2)] border-[var(--border)] hover:border-[var(--primary)]'
                         }`}
                       >
-                        <Icon name={method.icon} size="sm" />
+                        <Icon name={method.icon === 'dollar' ? 'dollar' : method.icon === 'bank' ? 'university' : method.icon} size="sm" />
                         {method.label}
                       </button>
                     ))}
@@ -876,7 +877,7 @@ export default function Stock_Out_Page() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-[var(--surface-2)] rounded-[var(--radius-md)] border border-[var(--border)]">
                     <div>
                       <label className={labelClass}>
-                        <Icon name="hash" size="sm" className="opacity-60" />
+                        <Icon name="hashtag" size="sm" className="opacity-60" />
                         Số tài khoản người nhận
                       </label>
                       <input
@@ -889,7 +890,7 @@ export default function Stock_Out_Page() {
                     </div>
                     <div>
                       <label className={labelClass}>
-                        <Icon name="bank" size="sm" className="opacity-60" />
+                        <Icon name="university" size="sm" className="opacity-60" />
                         Tên ngân hàng
                       </label>
                       <input

@@ -5,8 +5,11 @@ import { useAuthStore } from '../state/auth_store';
 import { useCompanyStore } from '../state/company_store';
 import ChatWidget from './chat/ChatWidget';
 import SettingsModal from './SettingsModal';
+import GlobalSearch from './GlobalSearch';
+import NotificationsPanel from './NotificationsPanel';
 import { apiLogout } from '../app/api_client';
 import Icon from './ui/Icon';
+import { useKeyboardShortcuts, commonShortcuts } from '../hooks/useKeyboardShortcuts';
 
 interface LayoutProps {
   children: ReactNode;
@@ -58,6 +61,7 @@ export default function Layout({ children }: LayoutProps) {
       ]
     },
     { id: 'suppliers', label: 'Nhà cung cấp', icon: 'building', path: '/suppliers' },
+    { id: 'warehouses', label: 'Kho hàng', icon: 'warehouse', path: '/warehouses' },
     { id: 'reports', label: 'Báo cáo', icon: 'chart', path: '/reports' },
   ];
 
@@ -116,6 +120,11 @@ export default function Layout({ children }: LayoutProps) {
       return { title: 'Nhà cung cấp', subtitle: null };
     }
     
+    // Kho hàng
+    if (path === '/warehouses') {
+      return { title: 'Kho hàng', subtitle: null };
+    }
+    
     // Báo cáo
     if (path === '/reports') {
       return { title: 'Báo cáo', subtitle: null };
@@ -126,6 +135,29 @@ export default function Layout({ children }: LayoutProps) {
   };
 
   const pageInfo = getPageInfo();
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts([
+    ...commonShortcuts,
+    {
+      key: '1',
+      ctrl: true,
+      action: () => navigate('/dashboard'),
+      description: 'Về trang chủ',
+    },
+    {
+      key: '2',
+      ctrl: true,
+      action: () => navigate('/items'),
+      description: 'Mở hàng hóa',
+    },
+    {
+      key: '3',
+      ctrl: true,
+      action: () => navigate('/stock'),
+      description: 'Mở nhập/xuất kho',
+    },
+  ]);
 
   return (
     <div className="flex h-screen bg-[var(--bg)] text-[var(--text-1)]">
@@ -149,7 +181,7 @@ export default function Layout({ children }: LayoutProps) {
             className="w-10 h-10 flex items-center justify-center hover:bg-[var(--surface-2)] rounded-[var(--radius-md)] transition-colors duration-150 flex-shrink-0"
             title={isSidebarCollapsed ? 'Mở rộng' : 'Thu gọn'}
           >
-            <Icon name={isSidebarCollapsed ? 'bars' : 'chevronLeft'} size="md" />
+            <Icon name={isSidebarCollapsed ? 'bars' : 'chevron-left'} size="md" />
           </button>
         </div>
         {/* Menu items */}
@@ -177,7 +209,7 @@ export default function Layout({ children }: LayoutProps) {
                   }`}
                   title={isSidebarCollapsed ? item.label : undefined}
                 >
-                  <Icon name={item.icon} size={isSidebarCollapsed ? 'lg' : 'md'} className="flex-shrink-0" />
+                  <Icon name={item.icon === 'home' ? 'home' : item.icon === 'box' ? 'box' : item.icon === 'exchange' ? 'exchange' : item.icon === 'building' ? 'building' : item.icon === 'warehouse' ? 'warehouse' : item.icon === 'chart' ? 'chart-bar' : item.icon} size={isSidebarCollapsed ? 'lg' : 'md'} className="flex-shrink-0" />
                   {!isSidebarCollapsed && (
                     <>
                       <span className="flex-1 text-left font-medium whitespace-nowrap">
@@ -189,13 +221,9 @@ export default function Layout({ children }: LayoutProps) {
                         </span>
                       )}
                       {hasSubItems && (
-                        <Icon 
-                          name="chevronLeft" 
-                          size="sm" 
-                          className={`flex-shrink-0 transition-transform duration-200 ${
+                        <Icon name="chevron-left" size="sm" className={`flex-shrink-0 transition-transform duration-200 ${
                             isExpanded ? 'rotate-[-90deg]' : ''
-                          }`}
-                        />
+                          }`} />
                       )}
                     </>
                   )}
@@ -238,7 +266,7 @@ export default function Layout({ children }: LayoutProps) {
                   <p className="font-medium text-sm truncate whitespace-nowrap">{user?.name || 'Admin User'}</p>
                   <p className="text-xs text-[var(--text-3)] truncate whitespace-nowrap">{user?.email || 'user@example.com'}</p>
                 </div>
-                <Icon name={userMenuOpen ? 'chevronUp' : 'chevronDown'} size="sm" className="flex-shrink-0" />
+                <Icon name={userMenuOpen ? 'chevron-up' : 'chevron-down'} size="sm" className="flex-shrink-0" />
               </button>
 
               {/* Dropdown menu - border-based, no shadow */}
@@ -274,7 +302,7 @@ export default function Layout({ children }: LayoutProps) {
                     }}
                     className="w-full px-4 py-3 flex items-center gap-3 hover:bg-[var(--surface-2)] transition-colors duration-150 text-left border-t border-[var(--border)]"
                   >
-                    <Icon name="cog" size="md" />
+                    <Icon name="settings" size="md" />
                     <span className="text-sm">Cài đặt</span>
                   </button>
                   <button
@@ -284,7 +312,7 @@ export default function Layout({ children }: LayoutProps) {
                     }}
                     className="w-full px-4 py-3 flex items-center gap-3 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors duration-150 text-left text-[var(--danger)] border-t border-[var(--border)]"
                   >
-                    <Icon name="signOut" size="md" />
+                    <Icon name="logout" size="md" />
                     <span className="text-sm font-medium">Đăng xuất</span>
                   </button>
                 </div>
@@ -299,7 +327,7 @@ export default function Layout({ children }: LayoutProps) {
             <h1 className="text-xl font-semibold leading-none">{pageInfo.title}</h1>
             {pageInfo.subtitle && (
               <>
-                <Icon name="chevronRight" size="xs" className="text-[var(--text-3)]" />
+                <Icon name="chevron-right" size="xs" className="text-[var(--text-3)]" />
                 <span className="text-base text-[var(--text-2)] leading-none">
                   {pageInfo.subtitle}
                 </span>
@@ -321,14 +349,8 @@ export default function Layout({ children }: LayoutProps) {
                 <span className="max-w-[150px] truncate">{activeWarehouse.code}</span>
               </button>
             )}
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Tìm kiếm hàng hoá, báo cáo..."
-                className="w-80 pl-10 pr-4 py-2 bg-[var(--surface-2)] border border-[var(--border)] rounded-[var(--radius-md)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] transition-all duration-150"
-              />
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-3)]"><Icon name="search" size="md" /></span>
-            </div>
+            <GlobalSearch />
+            <NotificationsPanel />
             <button
               onClick={toggleDarkMode}
               className="p-2 hover:bg-[var(--surface-2)] rounded-[var(--radius-md)] transition-colors duration-150"
@@ -344,7 +366,7 @@ export default function Layout({ children }: LayoutProps) {
               className="p-2 hover:bg-[var(--surface-2)] rounded-[var(--radius-md)] transition-colors duration-150"
               title="Cài đặt"
             >
-              <Icon name="cog" size="lg" />
+              <Icon name="settings" size="lg" />
             </button>
           </div>
         </header>

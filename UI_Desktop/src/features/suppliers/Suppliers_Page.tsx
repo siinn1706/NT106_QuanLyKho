@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react';
 import { apiGetSuppliers, apiCreateSupplier, apiGetSupplierTransactions, Supplier, SupplierTransactions } from '../../app/api_client';
 import { useUIStore } from '../../state/ui_store';
-import Icon from '../../components/ui/Icon';
 import Modal from '../../components/ui/Modal';
-
+import Icon from '../../components/ui/Icon';
+import { showToast } from '../../utils/toast';
 interface SupplierForm {
   name: string;
   tax_id: string;
@@ -20,7 +20,6 @@ interface SupplierForm {
 export default function Suppliers_Page() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
-  const isDarkMode = useUIStore((state) => state.isDarkMode);
   
   // Form modal states
   const [showFormModal, setShowFormModal] = useState(false);
@@ -99,24 +98,24 @@ export default function Suppliers_Page() {
   
   const handleSubmit = async () => {
     if (!formData.name.trim()) {
-      alert('Vui lòng nhập tên nhà cung cấp!');
+      showToast.warning('Vui lòng nhập tên nhà cung cấp!');
       return;
     }
     
     try {
       if (editingSupplier) {
         // TODO: Call API update
-        alert('Chức năng cập nhật đang phát triển');
+        showToast.info('Chức năng cập nhật đang phát triển');
       } else {
         const newSupplier = await apiCreateSupplier(formData);
         setSuppliers([...suppliers, newSupplier]);
-        alert('Đã thêm nhà cung cấp thành công!');
+        showToast.success('Đã thêm nhà cung cấp thành công!');
       }
       setShowFormModal(false);
       resetForm();
     } catch (error) {
       console.error('Submit supplier error:', error);
-      alert('Không thể lưu nhà cung cấp!');
+      showToast.error('Không thể lưu nhà cung cấp!');
     }
   };
   
@@ -138,10 +137,10 @@ export default function Suppliers_Page() {
     }
   };
   
-  const handleDelete = (id: string) => {
+  const handleDelete = (_id: string) => {
     if (!confirm('Bạn có chắc muốn xóa nhà cung cấp này?')) return;
     // TODO: Call API delete
-    alert('Chức năng xóa đang phát triển');
+    showToast.info('Chức năng xóa đang phát triển');
   };
 
   return (
@@ -179,7 +178,7 @@ export default function Suppliers_Page() {
               <tr>
                 <td colSpan={6} className="px-4 py-12 text-center">
                   <div className="flex items-center justify-center gap-2 text-[var(--text-3)]">
-                    <Icon name="spinner" size="md" className="animate-spin" />
+                    <Icon name="spinner" size="md" spin />
                     <span>Đang tải...</span>
                   </div>
                 </td>
@@ -187,7 +186,7 @@ export default function Suppliers_Page() {
             ) : suppliers.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-4 py-12 text-center text-[var(--text-3)]">
-                  <Icon name="package" size="xl" className="mx-auto mb-3 opacity-50" />
+                  <Icon name="box-open" size="2x" className="mx-auto mb-3 opacity-50" />
                   <p>Chưa có nhà cung cấp nào</p>
                 </td>
               </tr>
@@ -214,9 +213,9 @@ export default function Suppliers_Page() {
                       <button 
                         onClick={() => handleOpenEditModal(sup)}
                         className="h-8 px-3 rounded-[var(--radius-sm)] bg-[var(--primary-light)] text-[var(--primary)] text-[13px] font-medium border border-[var(--primary)]/20 hover:border-[var(--primary)]/40 transition-colors"
-                      >
-                        <Icon name="edit" size="sm" />
-                      </button>
+                        >
+                        <Icon name="pen" size="sm" />
+                        </button>
                       <button 
                         onClick={() => handleDelete(sup.id)}
                         className="h-8 px-3 rounded-[var(--radius-sm)] bg-[var(--danger-light)] text-[var(--danger)] text-[13px] font-medium border border-[var(--danger)]/20 hover:border-[var(--danger)]/40 transition-colors"
@@ -418,11 +417,11 @@ export default function Suppliers_Page() {
                         {selectedSupplier.outstanding_debt.toLocaleString('vi-VN')} ₫
                       </p>
                     </div>
-                    <Icon 
-                      name={selectedSupplier.outstanding_debt > 0 ? 'alert-circle' : 'check-circle'} 
-                      size="xl" 
-                      className={selectedSupplier.outstanding_debt > 0 ? 'text-[var(--warning)]' : 'text-[var(--success)]'}
-                    />
+                    {selectedSupplier.outstanding_debt > 0 ? (
+                      <Icon name="danger" size="2x" className="text-[var(--warning)]" />
+                    ) : (
+                      <Icon name="check-circle" size="2x" className="text-[var(--success)]" />
+                    )}
                   </div>
                 </div>
 
@@ -501,12 +500,12 @@ export default function Suppliers_Page() {
                 {/* Transaction List */}
                 {loadingTransactions ? (
                   <div className="flex items-center justify-center py-12">
-                    <Icon name="spinner" size="lg" className="animate-spin text-[var(--text-3)]" />
+                    <Icon name="spinner" size="lg" spin className="text-[var(--text-3)]" />
                     <span className="ml-3 text-[var(--text-3)]">Đang tải lịch sử...</span>
                   </div>
                 ) : supplierTransactions && supplierTransactions.total_transactions === 0 ? (
                   <div className="text-center py-12 text-[var(--text-3)]">
-                    <Icon name="inbox" size="xl" className="mx-auto mb-3 opacity-50" />
+                    <Icon name="inbox" size="2x" className="mx-auto mb-3 opacity-50" />
                     <p>Chưa có giao dịch nào với nhà cung cấp này</p>
                   </div>
                 ) : supplierTransactions && (

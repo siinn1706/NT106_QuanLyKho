@@ -7,8 +7,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiGetDashboardStats, DashboardStats } from '../../app/api_client';
-import Icon from '../../components/ui/Icon';
 import CustomSelect from '../../components/ui/CustomSelect';
+import Icon from '../../components/ui/Icon';
 
 export default function Dashboard_Page() {
   const navigate = useNavigate();
@@ -77,7 +77,7 @@ export default function Dashboard_Page() {
               Hiệu suất hệ thống
             </h3>
             <span className="w-10 h-10 flex items-center justify-center rounded-[var(--radius-md)] bg-[var(--success-light)]">
-              <Icon name="stats" size="lg" className="text-[var(--success)]" />
+              <Icon name="chart-line" size="lg" className="text-[var(--success)]" />
             </span>
           </div>
           <p className="text-4xl font-bold text-[var(--success)] mb-2">{safeStats.system_uptime || 0}%</p>
