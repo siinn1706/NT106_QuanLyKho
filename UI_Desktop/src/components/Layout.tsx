@@ -74,11 +74,10 @@ export default function Layout({ children }: LayoutProps) {
   };
 
   const handleLogout = async () => {
-    if (!confirm('Bạn có chắc muốn đăng xuất?')) return;
     try {
       await apiLogout();
     } catch (e) {
-      // ignore server-side logout errors
+      // ignore errors
     } finally {
       logout();
       navigate('/login');
@@ -88,55 +87,25 @@ export default function Layout({ children }: LayoutProps) {
   const getPageInfo = () => {
     const path = location.pathname;
     
-    // Dashboard
-    if (path === '/dashboard') {
-      return { title: 'Trang chủ', subtitle: null };
-    }
+    if (path === '/dashboard') return { title: 'Trang chủ', subtitle: null };
     
-    // Hàng hoá
-    if (path === '/items') {
-      return { title: 'Hàng hoá', subtitle: 'Danh sách hàng hoá' };
-    }
-    if (path === '/items/tracking') {
-      return { title: 'Hàng hoá', subtitle: 'Theo dõi hàng hoá' };
-    }
-    if (path === '/items/alerts') {
-      return { title: 'Hàng hoá', subtitle: 'Cảnh báo tồn kho' };
-    }
+    if (path === '/items') return { title: 'Hàng hoá', subtitle: 'Danh sách hàng hoá' };
+    if (path === '/items/tracking') return { title: 'Hàng hoá', subtitle: 'Theo dõi hàng hoá' };
+    if (path === '/items/alerts') return { title: 'Hàng hoá', subtitle: 'Cảnh báo tồn kho' };
     
-    // Nhập/Xuất kho
-    if (path === '/stock') {
-      return { title: 'Nhập/Xuất kho', subtitle: null };
-    }
-    if (path === '/stock/in') {
-      return { title: 'Nhập/Xuất kho', subtitle: 'Nhập kho' };
-    }
-    if (path === '/stock/out') {
-      return { title: 'Nhập/Xuất kho', subtitle: 'Xuất kho' };
-    }
+    if (path === '/stock') return { title: 'Nhập/Xuất kho', subtitle: null };
+    if (path === '/stock/in') return { title: 'Nhập/Xuất kho', subtitle: 'Nhập kho' };
+    if (path === '/stock/out') return { title: 'Nhập/Xuất kho', subtitle: 'Xuất kho' };
     
-    // Nhà cung cấp
-    if (path === '/suppliers') {
-      return { title: 'Nhà cung cấp', subtitle: null };
-    }
+    if (path === '/suppliers') return { title: 'Nhà cung cấp', subtitle: null };
+    if (path === '/warehouses') return { title: 'Kho hàng', subtitle: null };
+    if (path === '/reports') return { title: 'Báo cáo', subtitle: null };
     
-    // Kho hàng
-    if (path === '/warehouses') {
-      return { title: 'Kho hàng', subtitle: null };
-    }
-    
-    // Báo cáo
-    if (path === '/reports') {
-      return { title: 'Báo cáo', subtitle: null };
-    }
-    
-    // Default
     return { title: 'Trang chủ', subtitle: null };
   };
 
   const pageInfo = getPageInfo();
 
-  // Keyboard shortcuts
   useKeyboardShortcuts([
     ...commonShortcuts,
     {
@@ -161,7 +130,6 @@ export default function Layout({ children }: LayoutProps) {
 
   return (
     <div className="flex h-screen bg-[var(--bg)] text-[var(--text-1)]">
-      {/* Sidebar trái - border-based depth, không shadow */}
       <aside
         className={`${
           isSidebarCollapsed ? 'w-20' : 'w-64'
@@ -184,7 +152,7 @@ export default function Layout({ children }: LayoutProps) {
             <Icon name={isSidebarCollapsed ? 'bars' : 'chevron-left'} size="md" />
           </button>
         </div>
-        {/* Menu items */}
+        
         <nav className="flex-1 p-3 overflow-y-auto scrollbar-thin">
           {menuItems.map((item) => {
             const isExpanded = expandedSections.includes(item.id);
@@ -229,7 +197,6 @@ export default function Layout({ children }: LayoutProps) {
                   )}
                 </button>
                 
-                {/* Sub-items */}
                 {hasSubItems && isExpanded && !isSidebarCollapsed && (
                   <div className="ml-9 mt-1.5 space-y-1">
                     {item.subItems!.map(subItem => (
@@ -269,7 +236,6 @@ export default function Layout({ children }: LayoutProps) {
                 <Icon name={userMenuOpen ? 'chevron-up' : 'chevron-down'} size="sm" className="flex-shrink-0" />
               </button>
 
-              {/* Dropdown menu - border-based, no shadow */}
               {userMenuOpen && (
                 <div className="absolute bottom-full left-0 right-0 mb-2 mx-2 bg-[var(--surface-1)] rounded-[var(--radius-lg)] border border-[var(--border)] overflow-hidden">
                   <button
@@ -320,7 +286,7 @@ export default function Layout({ children }: LayoutProps) {
           </div>
         </div>
       </aside>
-      {/* Nội dung chính */}
+      
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="h-16 bg-[var(--surface-1)] border-b border-[var(--border)] flex items-center justify-between px-6">
           <div className="flex items-center gap-3">
@@ -335,7 +301,6 @@ export default function Layout({ children }: LayoutProps) {
             )}
           </div>
           <div className="flex items-center gap-4">
-            {/* Active Warehouse indicator */}
             {activeWarehouse && (
               <button
                 onClick={() => {
@@ -374,9 +339,7 @@ export default function Layout({ children }: LayoutProps) {
           {children}
         </main>
       </div>
-      {/* ChatWidget luôn xuất hiện ở mọi trang */}
       <ChatWidget />
-      {/* Settings Modal */}
       <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} initialTab={settingsTab} />
     </div>
   );
