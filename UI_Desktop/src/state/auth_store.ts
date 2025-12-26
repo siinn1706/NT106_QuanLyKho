@@ -14,7 +14,8 @@ export interface User {
 interface AuthState {
   isAuthenticated: boolean;
   user: User | null;
-  login: (user: User) => void;
+  token: string | null; // Đã thêm: biến lưu token
+  login: (user: User, token: string) => void; // Đã sửa: nhận thêm token
   logout: () => void;
 }
 
@@ -23,18 +24,21 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       isAuthenticated: false,
       user: null,
+      token: null, // Mặc định null
 
-      // gọi khi login/register thành công
-      login: (user) =>
+      // Gọi khi login/register thành công
+      login: (user, token) =>
         set({
           isAuthenticated: true,
           user,
+          token, // Lưu token vào store
         }),
 
       logout: () =>
         set({
           isAuthenticated: false,
           user: null,
+          token: null, // Xóa token khi đăng xuất
         }),
     }),
     {

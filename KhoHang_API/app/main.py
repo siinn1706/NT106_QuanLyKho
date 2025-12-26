@@ -36,20 +36,23 @@ from .db_helpers import (
     stock_out_record_model_to_schema,
 )
 
+from .database import get_datadir
+
 # =============================================================
 # Stock In/Out Records - Now using database
 # =============================================================
 
 # Tạo thư mục lưu uploads
-UPLOADS_DIR = Path("uploads")
-UPLOADS_DIR.mkdir(exist_ok=True)
+DATA_DIR = get_datadir()
+UPLOADS_DIR = DATA_DIR / "uploads"
+UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 LOGO_DIR = UPLOADS_DIR / "logos"
-LOGO_DIR.mkdir(exist_ok=True)
+LOGO_DIR.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(title="N3T KhoHang API", version="0.1.0")
 
 # Mount static files
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
 
 # CORS: dev thì cho phép tất cả, sau này có thể siết lại
 app.add_middleware(
@@ -340,7 +343,7 @@ def get_supplier_transactions(supplier_id: int, db: Session = Depends(get_db)):
 
 @app.get("/items", response_model=List[schemas.Item])
 def get_items(db: Session = Depends(get_db)):
-    """Lấy danh sách tất cả hàng hóa"""
+    """Lấy danh sách (Thường cho phép công khai hoặc tùy bạn)"""
     items = db.query(ItemModel).all()
     return [item_model_to_schema(i) for i in items]
 
@@ -349,14 +352,16 @@ def get_items(db: Session = Depends(get_db)):
 def create_item(
     item: schemas.ItemCreate, 
     db: Session = Depends(get_db),
-    current_user: AuthUserModel = Depends(require_auth)
+    # 👇 KHÔI PHỤC DÒNG NÀY: Bắt buộc đăng nhập mới được tạo
+    current_user: AuthUserModel = Depends(require_auth) 
 ):
-    """Tạo hàng hóa mới (yêu cầu quyền items:write)"""
-    # Check permission
-    if current_user.role not in ['admin', 'manager']:
-        raise HTTPException(status_code=403, detail="Không có quyền tạo hàng hóa")
+    """Tạo hàng hóa mới (yêu cầu đăng nhập)"""
     
-    # Check if SKU already exists
+    # Kiểm tra quyền (nếu muốn logic phân quyền)
+    # if current_user.role not in ['admin', 'manager']:
+    #     raise HTTPException(status_code=403, detail="Không có quyền")
+
+    # Kiểm tra SKU trùng
     existing = db.query(ItemModel).filter(ItemModel.sku == item.sku).first()
     if existing:
         raise HTTPException(status_code=400, detail="SKU đã tồn tại")
@@ -373,19 +378,16 @@ def update_item(
     item_id: int, 
     item: schemas.ItemUpdate, 
     db: Session = Depends(get_db),
+    # 👇 KHÔI PHỤC DÒNG NÀY
     current_user: AuthUserModel = Depends(require_auth)
 ):
-    """Cập nhật thông tin hàng hóa (yêu cầu quyền items:write)"""
-    # Check permission
-    if current_user.role not in ['admin', 'manager']:
-        raise HTTPException(status_code=403, detail="Không có quyền cập nhật hàng hóa")
+    """Cập nhật hàng hóa (yêu cầu đăng nhập)"""
     
     db_item = db.query(ItemModel).filter(ItemModel.id == item_id).first()
     if not db_item:
         raise HTTPException(status_code=404, detail="Không tìm thấy hàng hoá")
     
     update_data = item.model_dump(exclude_unset=True)
-    # Check SKU uniqueness if SKU is being updated
     if 'sku' in update_data and update_data['sku'] != db_item.sku:
         existing = db.query(ItemModel).filter(ItemModel.sku == update_data['sku']).first()
         if existing:
@@ -394,14 +396,21 @@ def update_item(
     for key, value in update_data.items():
         setattr(db_item, key, value)
     
+    db_item.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(db_item)
     return item_model_to_schema(db_item)
 
 
 @app.delete("/items/{item_id}", status_code=204)
-def delete_item(item_id: int, db: Session = Depends(get_db)):
-    """Xóa hàng hóa"""
+def delete_item(
+    item_id: int, 
+    db: Session = Depends(get_db),
+    # 👇 KHÔI PHỤC DÒNG NÀY (Trong file cũ bạn gửi thiếu dòng này ở hàm delete)
+    current_user: AuthUserModel = Depends(require_auth)
+):
+    """Xóa hàng hóa (yêu cầu đăng nhập)"""
+    
     db_item = db.query(ItemModel).filter(ItemModel.id == item_id).first()
     if not db_item:
         raise HTTPException(status_code=404, detail="Không tìm thấy hàng hoá")
