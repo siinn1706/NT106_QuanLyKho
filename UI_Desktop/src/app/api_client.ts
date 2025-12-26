@@ -1,8 +1,10 @@
 /** api_client.ts
- *  - Chỉ chịu trách nhiệm gọi API BE (Python + FastAPI).
- *  - KHÔNG chứa logic nghiệp vụ (tính toán tồn kho, xuất/nhập), chỉ truyền/nhận dữ liệu.
- *  - Nếu BE đã có contract (URL, body, response), phải TUÂN THỦ 100%.
+ * - Chỉ chịu trách nhiệm gọi API BE (Python + FastAPI).
+ * - KHÔNG chứa logic nghiệp vụ (tính toán tồn kho, xuất/nhập), chỉ truyền/nhận dữ liệu.
+ * - Nếu BE đã có contract (URL, body, response), phải TUÂN THỦ 100%.
  */
+
+import { useAuthStore } from '../state/auth_store'; // Đã thêm: Import store
 
 export const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
@@ -12,7 +14,18 @@ async function getAuthHeaders(): Promise<HeadersInit> {
     'Content-Type': 'application/json',
   };
   
-  // Try to get Firebase token if available
+  // CÁCH 1: Lấy token từ Auth Store (Ưu tiên số 1 - Sửa cho app của bạn)
+  try {
+    const token = useAuthStore.getState().token;
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+      return headers; // Đã có token, trả về luôn
+    }
+  } catch (e) {
+    console.warn("Lỗi đọc token từ store:", e);
+  }
+
+  // CÁCH 2: Fallback sang Firebase SDK (Giữ lại để tương thích cũ nếu cần)
   try {
     // @ts-ignore - Firebase might not be initialized yet
     const { getAuth, getIdToken } = await import('firebase/auth');
@@ -45,25 +58,25 @@ async function apiFetch(url: string, options: RequestInit = {}): Promise<Respons
 
 // Types cho dữ liệu (sẽ match với response từ BE)
 export interface Item {
-  id: number;  // Changed from string to number to match backend
+  id: number;  
   name: string;
   sku: string;
   quantity: number;
   unit: string;
   price: number;
   category: string;
-  supplier_id?: number;  // Changed from string to number
-  expiry_date?: string;    // Hạn sử dụng (ISO date string: "2024-12-31")
-  min_stock?: number;      // Mức tồn kho tối thiểu để cảnh báo
-  description?: string;    // Mô tả sản phẩm
-  created_at?: string;     // Ngày tạo
-  updated_at?: string;     // Ngày cập nhật
+  supplier_id?: number;  
+  expiry_date?: string;    
+  min_stock?: number;      
+  description?: string;    
+  created_at?: string;     
+  updated_at?: string;     
 }
 
 export interface StockTransaction {
-  id: number;  // Changed from string to number
+  id: number;  
   type: 'in' | 'out';
-  item_id: number;  // Changed from string to number
+  item_id: number;  
   quantity: number;
   timestamp: string;
   note?: string;
@@ -72,14 +85,14 @@ export interface StockTransaction {
 export interface Supplier {
   id: string;
   name: string;
-  tax_id: string;        // Mã số thuế
+  tax_id: string;        
   address: string;
   phone: string;
   email: string;
-  bank_account: string;  // Số tài khoản
-  bank_name: string;     // Tên ngân hàng
+  bank_account: string;  
+  bank_name: string;     
   notes: string;
-  outstanding_debt: number;  // Công nợ còn lại
+  outstanding_debt: number;  
 }
 
 // === API Hàng hoá ===
@@ -87,20 +100,6 @@ export async function apiGetItems(): Promise<Item[]> {
   const res = await apiFetch(`${BASE_URL}/items`);
   if (!res.ok) throw new Error("Không thể tải danh sách hàng hoá từ BE");
   return res.json();
-  /* Expected JSON structure from BE (GET /items):
-  [
-    {
-      "id": "ITEM001",
-      "name": "Laptop Dell XPS 15",
-      "sku": "SKU001",
-      "quantity": 50,
-      "unit": "cái",
-      "price": 25000000,
-      "category": "Điện tử",
-      "supplier_id": "SUP001"
-    }
-  ]
-  */
 }
 
 export async function apiCreateItem(item: Omit<Item, 'id'>): Promise<Item> {
@@ -110,18 +109,6 @@ export async function apiCreateItem(item: Omit<Item, 'id'>): Promise<Item> {
   });
   if (!res.ok) throw new Error("Không thể thêm hàng hoá");
   return res.json();
-  /* Request body (POST /items):
-  {
-    "name": "Laptop Dell XPS 15",
-    "sku": "SKU001",
-    "quantity": 50,
-    "unit": "cái",
-    "price": 25000000,
-    "category": "Điện tử",
-    "supplier_id": "SUP001"
-  }
-  Response: Same as Item with generated id
-  */
 }
 
 export async function apiUpdateItem(id: string, item: Partial<Item>): Promise<Item> {
@@ -131,14 +118,6 @@ export async function apiUpdateItem(id: string, item: Partial<Item>): Promise<It
   });
   if (!res.ok) throw new Error("Không thể cập nhật hàng hoá");
   return res.json();
-  /* Request body (PUT /items/{id}):
-  {
-    "quantity": 60,
-    "price": 26000000
-  }
-  Note: Can send partial fields to update
-  Response: Updated Item
-  */
 }
 
 export async function apiDeleteItem(id: string): Promise<void> {
@@ -153,19 +132,6 @@ export async function apiGetStockTransactions(): Promise<StockTransaction[]> {
   const res = await apiFetch(`${BASE_URL}/stock/transactions`);
   if (!res.ok) throw new Error("Không thể tải lịch sử nhập/xuất");
   return res.json();
-  /* Expected JSON structure from BE (GET /stock/transactions):
-  [
-    {
-      "id": "TXN001",
-      "type": "in",
-      "item_id": "ITEM001",
-      "quantity": 10,
-      "timestamp": "2024-01-15T10:30:00",
-      "note": "Nhập từ nhà cung cấp"
-    }
-  ]
-  Note: type can be "in" or "out"
-  */
 }
 
 export async function apiCreateStockTransaction(
@@ -177,15 +143,6 @@ export async function apiCreateStockTransaction(
   });
   if (!res.ok) throw new Error("Không thể tạo giao dịch nhập/xuất");
   return res.json();
-  /* Request body (POST /stock/transactions):
-  {
-    "type": "in",
-    "item_id": "ITEM001",
-    "quantity": 10,
-    "note": "Nhập từ nhà cung cấp"
-  }
-  Response: StockTransaction with generated id and timestamp
-  */
 }
 
 // === API Nhà cung cấp ===
@@ -193,16 +150,6 @@ export async function apiGetSuppliers(): Promise<Supplier[]> {
   const res = await apiFetch(`${BASE_URL}/suppliers`);
   if (!res.ok) throw new Error("Không thể tải danh sách nhà cung cấp");
   return res.json();
-  /* Expected JSON structure from BE (GET /suppliers):
-  [
-    {
-      "id": "SUP001",
-      "name": "Công ty ABC",
-      "contact": "0901234567",
-      "address": "123 Đường XYZ, TP.HCM"
-    }
-  ]
-  */
 }
 
 export async function apiCreateSupplier(supplier: Omit<Supplier, 'id' | 'outstanding_debt'>): Promise<Supplier> {
@@ -212,33 +159,8 @@ export async function apiCreateSupplier(supplier: Omit<Supplier, 'id' | 'outstan
   });
   if (!res.ok) throw new Error("Không thể thêm nhà cung cấp");
   return res.json();
-  /* Request body (POST /suppliers):
-  {
-    "name": "Công ty ABC",
-    "tax_id": "0123456789",
-    "address": "123 Đường XYZ, TP.HCM",
-    "phone": "0901234567",
-    "email": "contact@abc.com",
-    "bank_account": "1234567890",
-    "bank_name": "Vietcombank",
-    "notes": "Ghi chú..."
-  }
-  Response: Supplier with generated id
-  */
 }
 
-/**
- * API: GET /suppliers/{supplier_id}/transactions
- * Purpose: Lấy lịch sử giao dịch nhập/xuất kho của một nhà cung cấp
- * Response (JSON) [200]: {
- *   "stock_in": [...],
- *   "stock_out": [...],
- *   "total_transactions": number,
- *   "outstanding_debt": number
- * }
- * Response Errors:
- * - 404: { "detail": "Supplier not found" }
- */
 export interface SupplierTransactions {
   stock_in: StockInRecord[];
   stock_out: StockOutRecord[];
@@ -293,13 +215,11 @@ export async function apiChat(req: AIChatRequest): Promise<AIChatResponse> {
       const e = await res.json(); 
       msg = e.detail || msg;
       
-      // Kiểm tra nếu là lỗi quota (429)
       if (res.status === 429) {
         retryAfter = res.headers.get('Retry-After') 
           ? parseInt(res.headers.get('Retry-After') || '0', 10) 
           : null;
         
-        // Format message thân thiện hơn
         const minutes = retryAfter ? Math.ceil(retryAfter / 60) : null;
         if (minutes && minutes > 0) {
           msg = `⚠️ Đã vượt quá giới hạn sử dụng API Gemini.\n\nVui lòng thử lại sau ${minutes} phút.\n\nBạn có thể:\n• Chờ đợi và thử lại sau\n• Nâng cấp gói API Gemini để tăng quota\n• Liên hệ admin để được hỗ trợ`;
@@ -315,20 +235,7 @@ export async function apiChat(req: AIChatRequest): Promise<AIChatResponse> {
     throw error;
   }
   return res.json();
-  /* Request body (POST /ai/chat):
-  {
-    "prompt": "Hướng dẫn nhập kho",
-    "system_instruction": "Bạn là trợ lý quản lý kho hàng"
-  }
-  Response:
-  {
-    "reply": "Để nhập kho, bạn cần...",
-    "model": "gemini-1.5-flash"
-  }
-  */
 }
-
-// Thêm vào cuối file api_client.ts
 
 // === API Authentication ===
 export interface LoginRequest {
@@ -363,22 +270,6 @@ export async function apiLogin(credentials: LoginRequest): Promise<AuthResponse>
     throw new Error(error.message || "Đăng nhập thất bại");
   }
   return res.json();
-  /* Request body (POST /auth/login):
-  {
-    "email": "user@example.com",
-    "password": "password123"
-  }
-  Response:
-  {
-    "user": {
-      "id": "USER001",
-      "email": "user@example.com",
-      "name": "Nguyễn Văn A",
-      "role": "admin"
-    },
-    "token": "jwt_token_here"
-  }
-  */
 }
 
 export async function apiRegister(data: RegisterRequest): Promise<AuthResponse> {
@@ -392,15 +283,6 @@ export async function apiRegister(data: RegisterRequest): Promise<AuthResponse> 
     throw new Error(error.message || "Đăng ký thất bại");
   }
   return res.json();
-  /* Request body (POST /auth/register):
-  {
-    "email": "newuser@example.com",
-    "password": "password123",
-    "name": "Nguyễn Văn B"
-  }
-  Response: Same as login (user + token)
-  Note: After registration, should trigger OTP verification
-  */
 }
 
 export async function apiLogout(): Promise<void> {
@@ -427,13 +309,6 @@ export async function apiVerifyOtp(data: VerifyOtpRequest): Promise<AuthResponse
     throw new Error(error.message || "Xác thực OTP thất bại");
   }
   return res.json();
-  /* Request body (POST /auth/verify-otp):
-  {
-    "email": "user@example.com",
-    "otp": "123456"
-  }
-  Response: Same as login (user + token)
-  */
 }
 
 export interface ResendOtpRequest {
@@ -451,15 +326,6 @@ export async function apiResendOtp(data: ResendOtpRequest): Promise<{ message: s
     throw new Error(error.message || "Không thể gửi lại OTP");
   }
   return res.json();
-  /* Request body (POST /auth/resend-otp):
-  {
-    "email": "user@example.com"
-  }
-  Response:
-  {
-    "message": "OTP đã được gửi lại"
-  }
-  */
 }
 
 
@@ -475,7 +341,7 @@ export interface StockInItem {
 
 export interface StockInRecord {
   id: string;
-  warehouse_code: string;  // Mã kho (K1, K2,...)
+  warehouse_code: string;  
   supplier: string;
   date: string;
   note: string;
@@ -488,7 +354,7 @@ export interface StockInRecord {
 }
 
 export interface StockInBatchCreate {
-  warehouse_code: string;  // Mã kho (K1, K2,...)
+  warehouse_code: string;  
   supplier: string;
   date: string;
   note?: string;
@@ -550,7 +416,7 @@ export interface StockOutItem {
 
 export interface StockOutRecord {
   id: string;
-  warehouse_code: string;  // Mã kho (K1, K2,...)
+  warehouse_code: string;  
   recipient: string;
   purpose: string;
   date: string;
@@ -564,7 +430,7 @@ export interface StockOutRecord {
 }
 
 export interface StockOutBatchCreate {
-  warehouse_code: string;  // Mã kho (K1, K2,...)
+  warehouse_code: string;  
   recipient: string;
   purpose: string;
   date: string;

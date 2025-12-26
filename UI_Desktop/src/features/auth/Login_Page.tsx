@@ -1,8 +1,8 @@
 /** Login_Page.tsx - Màn hình đăng nhập
- *  - UI: Email + Password + Login button
- *  - Validate form trước khi gọi API
- *  - Hiển thị lỗi nếu đăng nhập thất bại
- *  - Có link chuyển sang Register
+ * - UI: Email + Password + Login button
+ * - Validate form trước khi gọi API
+ * - Hiển thị lỗi nếu đăng nhập thất bại
+ * - Có link chuyển sang Register
  */
 
 import { useState, FormEvent } from 'react';
@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../state/auth_store';
 import { apiLogin } from '../../app/api_client';
 import Icon from '../../components/ui/Icon';
+import { showToast } from '../../utils/toast'; // Đã thêm: hiển thị toast khi login thành công
 
 export default function Login_Page() {
   const navigate = useNavigate();
@@ -51,9 +52,12 @@ export default function Login_Page() {
       // Gọi API login
       const response = await apiLogin({ email, password });
       
-      // Lưu user vào store
-      login(response.user);
+      // Đã sửa: Lưu user và token vào store
+      login(response.user, response.token || "");
       
+      // Hiển thị thông báo
+      showToast.success(`Chào mừng trở lại, ${response.user.name || 'User'}!`);
+
       // Chuyển sang dashboard
       navigate('/dashboard');
     } catch (err: any) {
