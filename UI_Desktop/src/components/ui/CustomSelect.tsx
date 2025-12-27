@@ -56,7 +56,7 @@ export default function CustomSelect({
 
   return (
     <div ref={containerRef} className={`relative ${className}`}>
-      {/* Trigger */}
+      {/* Trigger - Liquid Glass */}
       <button
         type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
@@ -64,7 +64,7 @@ export default function CustomSelect({
         className={`
           w-full inline-flex items-center justify-between gap-3
           ${size === 'sm' ? 'h-9 px-3 text-sm' : 'h-11 px-4 text-sm'}
-          bg-[var(--surface-2)] border border-[var(--border)] rounded-[var(--radius-md)]
+          liquid-glass-input rounded-[var(--radius-md)]
           transition-all duration-[180ms] ease-out cursor-pointer
           hover:border-[var(--text-3)]
           focus:outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15
@@ -83,9 +83,9 @@ export default function CustomSelect({
         </svg>
       </button>
 
-      {/* Dropdown */}
+      {/* Dropdown - Liquid Glass */}
       {isOpen && (
-        <div className="absolute left-0 top-full z-[9999] mt-1 min-w-full bg-[var(--surface-1)] border border-[var(--border)] rounded-[var(--radius-lg)] overflow-hidden animate-slideUp">
+        <div className="absolute left-0 top-full z-[9999] mt-1 min-w-full liquid-glass-dropdown rounded-[var(--radius-lg)] overflow-hidden animate-glass-in">
           <div className="py-1 max-h-[220px] overflow-y-auto">
             {options.map((opt) => (
               <button

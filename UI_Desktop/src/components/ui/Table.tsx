@@ -3,9 +3,10 @@
  * 
  * Design rules:
  * - KHÔNG shadow
- * - Border-based separation
+ * - Border-based separation với glass effect option
  * - Radius cho container (--radius-lg)
  * - Row hover với surface transition
+ * - Backdrop blur for glass variant
  */
 
 import React from 'react';
@@ -14,15 +15,19 @@ import React from 'react';
 export interface TableProps {
   children: React.ReactNode;
   className?: string;
+  variant?: 'default' | 'glass';
 }
 
-export function Table({ children, className = '' }: TableProps) {
+export function Table({ children, className = '', variant = 'default' }: TableProps) {
+  const containerStyles = variant === 'glass'
+    ? 'bg-[var(--surface-1)]/60 backdrop-blur-xl border border-[var(--border)]/50'
+    : 'bg-[var(--surface-1)] border border-[var(--border)]';
+
   return (
     <div 
       className={`
-        w-full overflow-hidden
-        bg-[var(--surface-1)] border border-[var(--border)] 
-        rounded-[var(--radius-lg)]
+        w-full overflow-hidden rounded-[var(--radius-lg)]
+        ${containerStyles}
         ${className}
       `.trim().replace(/\s+/g, ' ')}
     >
@@ -45,7 +50,7 @@ export function TableHeader({ children, className = '' }: TableHeaderProps) {
   return (
     <thead 
       className={`
-        bg-[var(--surface-2)] border-b border-[var(--border)]
+        bg-[var(--surface-2)]/70 backdrop-blur-sm border-b border-[var(--border)]/50
         ${className}
       `.trim().replace(/\s+/g, ' ')}
     >
@@ -64,7 +69,7 @@ export function TableBody({ children, className = '' }: TableBodyProps) {
   return (
     <tbody 
       className={`
-        divide-y divide-[var(--border)]
+        divide-y divide-[var(--border)]/50
         ${className}
       `.trim().replace(/\s+/g, ' ')}
     >
@@ -90,7 +95,7 @@ export function TableRow({
   return (
     <tr 
       className={`
-        ${hoverable ? 'hover:bg-[var(--surface-2)] transition-colors duration-100' : ''}
+        ${hoverable ? 'hover:bg-[var(--surface-2)]/70 backdrop-blur-sm transition-all duration-150' : ''}
         ${onClick ? 'cursor-pointer' : ''}
         ${className}
       `.trim().replace(/\s+/g, ' ')}

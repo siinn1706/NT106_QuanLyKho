@@ -2,9 +2,10 @@
  * Badge.tsx - Badge / StatusPill components
  * 
  * Design rules:
- * - Background colors với opacity thấp
+ * - Background colors với opacity thấp và glass effect
  * - Text colors saturated hơn
  * - Radius nhỏ hơn cha (--radius-sm)
+ * - Subtle backdrop blur for glass variant
  */
 
 import React from 'react';
@@ -16,6 +17,7 @@ export interface BadgeProps {
   variant?: BadgeVariant;
   size?: 'sm' | 'md';
   dot?: boolean;
+  glass?: boolean;
   className?: string;
 }
 
@@ -26,6 +28,15 @@ const variantStyles: Record<BadgeVariant, string> = {
   danger: 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300',
   info: 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300',
   purple: 'bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-300',
+};
+
+const glassVariantStyles: Record<BadgeVariant, string> = {
+  default: 'bg-[var(--surface-2)]/60 backdrop-blur-sm text-[var(--text-2)] border border-[var(--border)]/30',
+  success: 'bg-emerald-500/15 backdrop-blur-sm text-emerald-600 dark:text-emerald-400 border border-emerald-500/30',
+  warning: 'bg-amber-500/15 backdrop-blur-sm text-amber-600 dark:text-amber-400 border border-amber-500/30',
+  danger: 'bg-red-500/15 backdrop-blur-sm text-red-600 dark:text-red-400 border border-red-500/30',
+  info: 'bg-blue-500/15 backdrop-blur-sm text-blue-600 dark:text-blue-400 border border-blue-500/30',
+  purple: 'bg-purple-500/15 backdrop-blur-sm text-purple-600 dark:text-purple-400 border border-purple-500/30',
 };
 
 const dotColors: Record<BadgeVariant, string> = {
@@ -47,6 +58,7 @@ export default function Badge({
   variant = 'default',
   size = 'md',
   dot = false,
+  glass = false,
   className = '',
 }: BadgeProps) {
   return (
@@ -54,7 +66,7 @@ export default function Badge({
       className={`
         inline-flex items-center gap-1.5 font-medium
         rounded-[var(--radius-xs)]
-        ${variantStyles[variant]}
+        ${glass ? glassVariantStyles[variant] : variantStyles[variant]}
         ${sizeStyles[size]}
         ${className}
       `.trim().replace(/\s+/g, ' ')}

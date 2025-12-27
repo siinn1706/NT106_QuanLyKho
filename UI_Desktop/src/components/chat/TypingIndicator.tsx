@@ -1,22 +1,22 @@
-import { useUIStore } from "../../state/ui_store";
+import { useThemeStore } from "../../theme/themeStore";
 
 export default function TypingIndicator() {
-  const isDarkMode = useUIStore((state) => state.isDarkMode);
+  const isDarkMode = useThemeStore((state) => state.isDarkMode);
 
   return (
     <div className="flex items-start pl-4 py-2">
-      <div className="flex items-center gap-1">
-        <span className={`text-sm font-bold ${isDarkMode ? "text-zinc-400" : "text-zinc-600"}`}>
+      <div className="inline-flex items-center gap-1 px-3 py-2 rounded-2xl border border-white/20 bg-white/20 backdrop-blur-md shadow-sm">
+        <span className="text-sm font-medium text-white/90">
           Đang nhập
         </span>
-        <div className="flex gap-1 ml-1">
-          <span className="font-bold animate-bounce" style={{ animationDelay: "0ms" }}>
+        <div className="flex gap-0.5 ml-0.5">
+          <span className="text-white/90 font-bold animate-bounce" style={{ animationDelay: "0ms" }}>
             .
           </span>
-          <span className="font-bold animate-bounce" style={{ animationDelay: "150ms" }}>
+          <span className="text-white/90 font-bold animate-bounce" style={{ animationDelay: "150ms" }}>
             .
           </span>
-          <span className="font-bold animate-bounce" style={{ animationDelay: "300ms" }}>
+          <span className="text-white/90 font-bold animate-bounce" style={{ animationDelay: "300ms" }}>
             .
           </span>
         </div>

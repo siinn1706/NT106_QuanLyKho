@@ -1,10 +1,17 @@
 /** Chat Store - Zustand
  *  - Quản lý lịch sử chat theo conversationId
  *  - Persist vào localStorage để giữ lịch sử khi reload
+ *  - Hỗ trợ reactions và reply
  */
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+
+export type ReplyInfo = {
+  id: string;
+  text: string;
+  sender: string;
+};
 
 export type Message = {
   id: string;
@@ -12,6 +19,8 @@ export type Message = {
   sender: "user" | "agent" | "bot";
   text: string;
   createdAt: string;
+  replyTo?: ReplyInfo | null; // Tin nhắn đang trả lời
+  reactions?: string[]; // Emoji reactions: ["👍", "❤️", ...]
 };
 
 interface ChatStore {
@@ -21,6 +30,9 @@ interface ChatStore {
   // Thêm message vào conversation
   addMessage: (message: Message) => void;
   
+  // Cập nhật reactions của một message
+  updateMessageReactions: (messageId: string, reactions: string[]) => void;
+  
   // Lấy messages của một conversation
   getMessages: (conversationId: string) => Message[];
   
@@ -29,6 +41,9 @@ interface ChatStore {
   
   // Xóa tất cả conversations
   clearAll: () => void;
+  
+  // Load messages từ server
+  loadFromServer: (conversationId: string, messages: Message[]) => void;
 }
 
 const MOCK_INITIAL_MESSAGES: Record<string, Message[]> = {
@@ -38,7 +53,8 @@ const MOCK_INITIAL_MESSAGES: Record<string, Message[]> = {
       conversationId: "bot", 
       sender: "bot", 
       text: "Xin chào! Tôi là trợ lý N3T. Tôi có thể giúp gì cho bạn về quản lý kho?", 
-      createdAt: new Date().toISOString() 
+      createdAt: new Date().toISOString(),
+      reactions: [],
     },
   ],
 };
@@ -62,9 +78,30 @@ export const useChatStore = create<ChatStore>()(
           return {
             conversations: {
               ...state.conversations,
-              [conversationId]: [...existingMessages, message],
+              [conversationId]: [...existingMessages, { ...message, reactions: message.reactions || [] }],
             },
           };
+        });
+      },
+      
+      updateMessageReactions: (messageId, reactions) => {
+        set((state) => {
+          const newConversations = { ...state.conversations };
+          
+          // Tìm message trong tất cả conversations
+          for (const convId of Object.keys(newConversations)) {
+            const messages = newConversations[convId];
+            const msgIndex = messages.findIndex(m => m.id === messageId);
+            
+            if (msgIndex !== -1) {
+              newConversations[convId] = messages.map((m, i) => 
+                i === msgIndex ? { ...m, reactions } : m
+              );
+              break;
+            }
+          }
+          
+          return { conversations: newConversations };
         });
       },
       
@@ -88,6 +125,29 @@ export const useChatStore = create<ChatStore>()(
       
       clearAll: () => {
         set({ conversations: MOCK_INITIAL_MESSAGES });
+      },
+      
+      // Load messages từ server (merge với local, server wins)
+      loadFromServer: (conversationId, serverMessages) => {
+        set((state) => {
+          const localMessages = state.conversations[conversationId] || [];
+          
+          // Merge: server messages là primary source
+          const serverIds = new Set(serverMessages.map(m => m.id));
+          const uniqueLocalMsgs = localMessages.filter(m => !serverIds.has(m.id));
+          
+          // Gộp và sort theo thời gian
+          const merged = [...serverMessages, ...uniqueLocalMsgs].sort(
+            (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          );
+          
+          return {
+            conversations: {
+              ...state.conversations,
+              [conversationId]: merged,
+            },
+          };
+        });
       },
     }),
     {

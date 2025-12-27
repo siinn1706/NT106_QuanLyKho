@@ -1,6 +1,7 @@
 import { ReactNode, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useUIStore } from '../state/ui_store';
+import { useThemeStore } from '../theme/themeStore';
 import { useAuthStore } from '../state/auth_store';
 import { useCompanyStore } from '../state/company_store';
 import ChatWidget from './chat/ChatWidget';
@@ -25,7 +26,8 @@ interface MenuItem {
 }
 
 export default function Layout({ children }: LayoutProps) {
-  const { isDarkMode, toggleDarkMode, isSidebarCollapsed, toggleSidebar } = useUIStore();
+  const { isSidebarCollapsed, toggleSidebar } = useUIStore();
+  const { isDarkMode, toggleDarkMode } = useThemeStore();
   const { user, logout } = useAuthStore();
   const { warehouses, activeWarehouseId } = useCompanyStore();
   const activeWarehouse = warehouses.find(wh => wh.id === activeWarehouseId);
@@ -130,12 +132,13 @@ export default function Layout({ children }: LayoutProps) {
 
   return (
     <div className="flex h-screen bg-[var(--bg)] text-[var(--text-1)]">
+      {/* Sidebar with glass effect */}
       <aside
         className={`${
           isSidebarCollapsed ? 'w-20' : 'w-64'
-        } bg-[var(--surface-1)] border-r border-[var(--border)] transition-all duration-200 ease-out flex flex-col overflow-hidden`}
+        } bg-[var(--surface-1)]/80 backdrop-blur-xl border-r border-[#1a1a1a] transition-all duration-200 ease-out flex flex-col overflow-hidden`}
       >
-        <div className={`h-16 flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-between'} px-4 border-b border-[var(--border)]`}>
+        <div className={`h-16 flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-between'} px-4 border-b border-[#1a1a1a]`}>
           {!isSidebarCollapsed && (
             <div className="flex items-center gap-2">
               <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
@@ -146,7 +149,7 @@ export default function Layout({ children }: LayoutProps) {
           )}
           <button
             onClick={toggleSidebar}
-            className="w-10 h-10 flex items-center justify-center hover:bg-[var(--surface-2)] rounded-[var(--radius-md)] transition-colors duration-150 flex-shrink-0"
+            className="liquid-glass-icon-btn w-10 h-10 flex items-center justify-center flex-shrink-0"
             title={isSidebarCollapsed ? 'Mở rộng' : 'Thu gọn'}
           >
             <Icon name={isSidebarCollapsed ? 'bars' : 'chevron-left'} size="md" />
@@ -218,15 +221,15 @@ export default function Layout({ children }: LayoutProps) {
             );
           })}
         </nav>
-        <div className={`mt-auto border-t border-[var(--border)] transition-opacity duration-200 ${
+        <div className={`mt-auto border-t border-[#1a1a1a] transition-opacity duration-200 ${
           isSidebarCollapsed ? 'opacity-0 h-0 overflow-hidden' : 'opacity-100'
         }`}>
           <div className="relative">
               <button
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
-                className="w-full p-4 flex items-center gap-3 hover:bg-[var(--surface-2)] transition-colors duration-150"
+                className="w-full p-4 flex items-center gap-3 hover:bg-[var(--surface-2)]/70 transition-all duration-150"
               >
-                <div className="w-10 h-10 bg-gradient-to-br from-[var(--primary)] to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                <div className="w-10 h-10 bg-gradient-to-br from-[var(--primary)] to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm ring-2 ring-white/20">
                   {user?.name?.charAt(0).toUpperCase() || 'U'}
                 </div>
                 <div className="flex-1 text-left">
@@ -237,14 +240,14 @@ export default function Layout({ children }: LayoutProps) {
               </button>
 
               {userMenuOpen && (
-                <div className="absolute bottom-full left-0 right-0 mb-2 mx-2 bg-[var(--surface-1)] rounded-[var(--radius-lg)] border border-[var(--border)] overflow-hidden">
+                <div className="absolute bottom-full left-0 right-0 mb-2 mx-2 liquid-glass-dropdown animate-glass-in">
                   <button
                     onClick={() => {
                       setUserMenuOpen(false);
                       setSettingsTab('company');
                       setSettingsOpen(true);
                     }}
-                    className="w-full px-4 py-3 flex items-center gap-3 hover:bg-[var(--surface-2)] transition-colors duration-150 text-left"
+                    className="w-full px-4 py-3 flex items-center gap-3 hover:bg-[var(--surface-2)]/70 transition-all duration-150 text-left"
                   >
                     <Icon name="building" size="md" />
                     <span className="text-sm">Công ty</span>
@@ -255,7 +258,7 @@ export default function Layout({ children }: LayoutProps) {
                       setSettingsTab('warehouse');
                       setSettingsOpen(true);
                     }}
-                    className="w-full px-4 py-3 flex items-center gap-3 hover:bg-[var(--surface-2)] transition-colors duration-150 text-left border-t border-[var(--border)]"
+                    className="w-full px-4 py-3 flex items-center gap-3 hover:bg-[var(--surface-2)]/70 transition-all duration-150 text-left border-t border-[#1a1a1a]"
                   >
                     <Icon name="warehouse" size="md" />
                     <span className="text-sm">Kho hàng</span>
@@ -266,7 +269,7 @@ export default function Layout({ children }: LayoutProps) {
                       setSettingsTab('general');
                       setSettingsOpen(true);
                     }}
-                    className="w-full px-4 py-3 flex items-center gap-3 hover:bg-[var(--surface-2)] transition-colors duration-150 text-left border-t border-[var(--border)]"
+                    className="w-full px-4 py-3 flex items-center gap-3 hover:bg-[var(--surface-2)]/70 transition-all duration-150 text-left border-t border-[#1a1a1a]"
                   >
                     <Icon name="settings" size="md" />
                     <span className="text-sm">Cài đặt</span>
@@ -276,7 +279,7 @@ export default function Layout({ children }: LayoutProps) {
                       setUserMenuOpen(false);
                       handleLogout();
                     }}
-                    className="w-full px-4 py-3 flex items-center gap-3 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors duration-150 text-left text-[var(--danger)] border-t border-[var(--border)]"
+                    className="w-full px-4 py-3 flex items-center gap-3 hover:bg-red-500/10 transition-all duration-150 text-left text-[var(--danger)] border-t border-[#1a1a1a]"
                   >
                     <Icon name="logout" size="md" />
                     <span className="text-sm font-medium">Đăng xuất</span>
@@ -288,7 +291,8 @@ export default function Layout({ children }: LayoutProps) {
       </aside>
       
       <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-16 bg-[var(--surface-1)] border-b border-[var(--border)] flex items-center justify-between px-6">
+        {/* Header with subtle glass effect */}
+        <header className="h-16 bg-[var(--surface-1)]/80 backdrop-blur-xl border-b border-[#1a1a1a] flex items-center justify-between px-6 relative z-50">
           <div className="flex items-center gap-3">
             <h1 className="text-xl font-semibold leading-none">{pageInfo.title}</h1>
             {pageInfo.subtitle && (
@@ -300,14 +304,14 @@ export default function Layout({ children }: LayoutProps) {
               </>
             )}
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             {activeWarehouse && (
               <button
                 onClick={() => {
                   setSettingsTab('warehouse');
                   setSettingsOpen(true);
                 }}
-                className="flex items-center gap-2 px-3 py-1.5 bg-[var(--primary-light)] text-[var(--primary)] rounded-[var(--radius-md)] text-sm font-medium hover:bg-[var(--primary)]/20 transition-colors cursor-pointer"
+                className="liquid-glass-badge flex items-center gap-2 px-3 py-1.5 text-sm font-medium cursor-pointer"
                 title="Nhấn để chuyển kho"
               >
                 <Icon name="warehouse" size="sm" />
@@ -318,7 +322,7 @@ export default function Layout({ children }: LayoutProps) {
             <NotificationsPanel />
             <button
               onClick={toggleDarkMode}
-              className="p-2 hover:bg-[var(--surface-2)] rounded-[var(--radius-md)] transition-colors duration-150"
+              className="liquid-glass-icon-btn p-2"
               title={isDarkMode ? 'Chế độ sáng' : 'Chế độ tối'}
             >
               <Icon name={isDarkMode ? 'sun' : 'moon'} size="lg" />
@@ -328,7 +332,7 @@ export default function Layout({ children }: LayoutProps) {
                 setSettingsTab('general');
                 setSettingsOpen(true);
               }}
-              className="p-2 hover:bg-[var(--surface-2)] rounded-[var(--radius-md)] transition-colors duration-150"
+              className="liquid-glass-icon-btn p-2"
               title="Cài đặt"
             >
               <Icon name="settings" size="lg" />

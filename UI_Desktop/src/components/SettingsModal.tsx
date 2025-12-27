@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUIStore } from '../state/ui_store';
+import { useThemeStore } from '../theme/themeStore';
 import { useAuthStore } from '../state/auth_store';
 import { useCompanyStore, Warehouse, type WarehouseManager } from '../state/company_store';
 import { apiLogout, apiUploadCompanyLogo } from '../app/api_client';
@@ -9,8 +10,9 @@ import CustomSelect from './ui/CustomSelect';
 import PasskeyModal from './ui/PasskeyModal';
 import Icon from './ui/Icon';
 import { showToast } from '../utils/toast';
+import AppearanceSettings from './theme/AppearanceSettings';
 
-type TabKey = 'general' | 'company' | 'warehouse' | 'account' | 'notifications' | 'about';
+type TabKey = 'general' | 'appearance' | 'company' | 'warehouse' | 'account' | 'notifications' | 'about';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -19,7 +21,7 @@ interface SettingsModalProps {
 }
 
 export default function SettingsModal({ isOpen, onClose, initialTab = 'general' }: SettingsModalProps) {
-  const { isDarkMode, toggleDarkMode } = useUIStore();
+  const { isDarkMode, toggleDarkMode } = useThemeStore();
   const { user, logout } = useAuthStore();
   const { 
     companyInfo, updateCompanyInfo, setCompanyLogo,
@@ -314,70 +316,80 @@ export default function SettingsModal({ isOpen, onClose, initialTab = 'general' 
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="w-[700px] h-[600px] rounded-[32px] flex overflow-hidden border bg-[var(--surface-1)] border-[var(--border)] text-[var(--text-1)]">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center liquid-glass-overlay">
+      <div className="w-[700px] h-[600px] rounded-[32px] flex overflow-hidden liquid-glass-card text-[var(--text-1)] animate-glass-in">
         {/* Sidebar */}
-        <div className="w-48 border-r bg-[var(--surface-2)] border-[var(--border)]">
+        <div className="w-48 border-r border-[var(--border)]/50 bg-[var(--surface-2)]/60 backdrop-blur-xl">
           <div className="h-16 px-6 flex items-center border-b border-[var(--border)]">
             <h2 className="font-bold text-lg">Cài đặt</h2>
           </div>
           <nav className="p-2">
             <button
               onClick={() => setActiveTab('general')}
-              className={`w-full text-left px-4 py-3 rounded-xl mb-1 transition-colors duration-150 ${
+              className={`w-full text-left px-4 py-3 rounded-xl mb-1 transition-all duration-180 ${
                 activeTab === 'general'
-                  ? 'bg-[var(--surface-3)] text-[var(--primary)]'
-                  : 'hover:bg-[var(--surface-3)]/50'
+                  ? 'liquid-glass-tab-item active text-[var(--primary)] font-medium'
+                  : 'liquid-glass-hover text-[var(--text-2)]'
               }`}
             >
               Chung
             </button>
             <button
+              onClick={() => setActiveTab('appearance')}
+              className={`w-full text-left px-4 py-3 rounded-xl mb-1 transition-all duration-180 ${
+                activeTab === 'appearance'
+                  ? 'liquid-glass-tab-item active text-[var(--primary)] font-medium'
+                  : 'liquid-glass-hover text-[var(--text-2)]'
+              }`}
+            >
+              Giao diện
+            </button>
+            <button
               onClick={() => setActiveTab('company')}
-              className={`w-full text-left px-4 py-3 rounded-xl mb-1 transition-colors duration-150 ${
+              className={`w-full text-left px-4 py-3 rounded-xl mb-1 transition-all duration-180 ${
                 activeTab === 'company'
-                  ? 'bg-[var(--surface-3)] text-[var(--primary)]'
-                  : 'hover:bg-[var(--surface-3)]/50'
+                  ? 'liquid-glass-tab-item active text-[var(--primary)] font-medium'
+                  : 'liquid-glass-hover text-[var(--text-2)]'
               }`}
             >
               Công ty
             </button>
             <button
               onClick={() => setActiveTab('warehouse')}
-              className={`w-full text-left px-4 py-3 rounded-xl mb-1 transition-colors duration-150 ${
+              className={`w-full text-left px-4 py-3 rounded-xl mb-1 transition-all duration-180 ${
                 activeTab === 'warehouse'
-                  ? 'bg-[var(--surface-3)] text-[var(--primary)]'
-                  : 'hover:bg-[var(--surface-3)]/50'
+                  ? 'liquid-glass-tab-item active text-[var(--primary)] font-medium'
+                  : 'liquid-glass-hover text-[var(--text-2)]'
               }`}
             >
               Kho hàng
             </button>
             <button
               onClick={() => setActiveTab('account')}
-              className={`w-full text-left px-4 py-3 rounded-xl mb-1 transition-colors duration-150 ${
+              className={`w-full text-left px-4 py-3 rounded-xl mb-1 transition-all duration-180 ${
                 activeTab === 'account'
-                  ? 'bg-[var(--surface-3)] text-[var(--primary)]'
-                  : 'hover:bg-[var(--surface-3)]/50'
+                  ? 'liquid-glass-tab-item active text-[var(--primary)] font-medium'
+                  : 'liquid-glass-hover text-[var(--text-2)]'
               }`}
             >
               Tài khoản
             </button>
             <button
               onClick={() => setActiveTab('notifications')}
-              className={`w-full text-left px-4 py-3 rounded-xl mb-1 transition-colors duration-150 ${
+              className={`w-full text-left px-4 py-3 rounded-xl mb-1 transition-all duration-180 ${
                 activeTab === 'notifications'
-                  ? 'bg-[var(--surface-3)] text-[var(--primary)]'
-                  : 'hover:bg-[var(--surface-3)]/50'
+                  ? 'liquid-glass-tab-item active text-[var(--primary)] font-medium'
+                  : 'liquid-glass-hover text-[var(--text-2)]'
               }`}
             >
               Thông báo
             </button>
             <button
               onClick={() => setActiveTab('about')}
-              className={`w-full text-left px-4 py-3 rounded-xl mb-1 transition-colors duration-150 ${
+              className={`w-full text-left px-4 py-3 rounded-xl mb-1 transition-all duration-180 ${
                 activeTab === 'about'
-                  ? 'bg-[var(--surface-3)] text-[var(--primary)]'
-                  : 'hover:bg-[var(--surface-3)]/50'
+                  ? 'liquid-glass-tab-item active text-[var(--primary)] font-medium'
+                  : 'liquid-glass-hover text-[var(--text-2)]'
               }`}
             >
               Thông tin
@@ -386,11 +398,12 @@ export default function SettingsModal({ isOpen, onClose, initialTab = 'general' 
         </div>
 
         {/* Content */}
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col bg-[var(--surface-1)]/50">
           {/* Header */}
-          <div className="h-16 flex items-center justify-between px-6 border-b border-[var(--border)]">
+          <div className="h-16 flex items-center justify-between px-6 border-b border-[var(--border)]/50">
             <h3 className="font-semibold text-lg">
               {activeTab === 'general' && 'Cài đặt chung'}
+              {activeTab === 'appearance' && 'Giao diện'}
               {activeTab === 'company' && 'Thông tin công ty'}
               {activeTab === 'warehouse' && 'Quản lý kho hàng'}
               {activeTab === 'account' && 'Tài khoản'}
@@ -399,7 +412,7 @@ export default function SettingsModal({ isOpen, onClose, initialTab = 'general' 
             </h3>
             <button
               onClick={onClose}
-              className="p-2 rounded-full transition-colors duration-150 hover:bg-[var(--surface-2)]"
+              className="p-2 rounded-full liquid-glass-icon-btn"
             >
               <Icon name="close" size="md" />
             </button>
@@ -519,6 +532,11 @@ export default function SettingsModal({ isOpen, onClose, initialTab = 'general' 
                   </button>
                 </div>
               </div>
+            )}
+
+            {/* ===== APPEARANCE TAB ===== */}
+            {activeTab === 'appearance' && (
+              <AppearanceSettings />
             )}
 
             {/* ===== COMPANY TAB ===== */}

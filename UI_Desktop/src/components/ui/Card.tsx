@@ -5,6 +5,7 @@
  * - KHÔNG shadow (dùng border-based depth)
  * - Surface layering: bg > surface-1 > surface-2
  * - Radius: cha (--radius-lg) > con (--radius-md)
+ * - Glass variant with backdrop blur
  */
 
 import React from 'react';
@@ -15,6 +16,7 @@ export interface CardProps {
   padding?: 'none' | 'sm' | 'md' | 'lg';
   bordered?: boolean;
   hoverable?: boolean;
+  variant?: 'default' | 'glass';
 }
 
 const paddingStyles: Record<string, string> = {
@@ -30,13 +32,20 @@ export default function Card({
   padding = 'md',
   bordered = true,
   hoverable = false,
+  variant = 'default',
 }: CardProps) {
+  const baseStyles = variant === 'glass'
+    ? `bg-[var(--surface-1)]/60 backdrop-blur-xl backdrop-saturate-150 rounded-[var(--radius-lg)]
+       ${bordered ? 'border border-[var(--border)]/50' : ''}
+       ${hoverable ? 'transition-all duration-200 hover:border-[var(--border-hover)] hover:bg-[var(--surface-1)]/80 cursor-pointer' : ''}`
+    : `bg-[var(--surface-1)] rounded-[var(--radius-lg)]
+       ${bordered ? 'border border-[var(--border)]' : ''}
+       ${hoverable ? 'transition-all duration-150 hover:border-[var(--border-hover)] cursor-pointer' : ''}`;
+
   return (
     <div
       className={`
-        bg-[var(--surface-1)] rounded-[var(--radius-lg)]
-        ${bordered ? 'border border-[var(--border)]' : ''}
-        ${hoverable ? 'transition-all duration-150 hover:border-[var(--border-hover)] cursor-pointer' : ''}
+        ${baseStyles}
         ${paddingStyles[padding]}
         ${className}
       `.trim().replace(/\s+/g, ' ')}

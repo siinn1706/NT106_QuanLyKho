@@ -72,11 +72,11 @@
 
 /* ===== COLOR TOKENS - DARK THEME ===== */
 .dark {
-  /* Background layers - PURE BLACK tones */
-  --bg: #0A0A0A;
-  --surface-1: #141414;
-  --surface-2: #1F1F1F;
-  --surface-3: #2A2A2A;
+  /* Background layers - Distinct gray tones for clear hierarchy */
+  --bg: #121214;
+  --surface-1: #1C1C1F;
+  --surface-2: #26262A;
+  --surface-3: #323238;
   
   /* Text hierarchy */
   --text-1: #FAFAFA;
@@ -84,9 +84,9 @@
   --text-3: #6B6B6B;
   --text-inverse: #0A0A0A;
   
-  /* Border */
-  --border: #262626;
-  --border-hover: #3D3D3D;
+  /* Border - very subtle gray, allows Tailwind opacity modifiers */
+  --border: #1a1a1a;
+  --border-hover: #2a2a2a;
   --border-focus: #00BCD4;
   
   /* Status colors - slightly brighter for dark mode */

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useUIStore } from '../../state/ui_store';
+import { useThemeStore } from '../../theme/themeStore';
 import Icon from '../ui/Icon';
 
 type ConversationSummary = {
@@ -31,14 +31,14 @@ export default function ChatSidebar({ onSelect, activeId, onToggle }:{
   onToggle?: () => void;
 }) {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
-  const isDarkMode = useUIStore((state) => state.isDarkMode);
+  const isDarkMode = useThemeStore((state) => state.isDarkMode);
 
   React.useEffect(() => {
     setConversations([BOT_CONVERSATION, ...MOCK_USERS]);
   }, []);
 
   return (
-    <aside className={`w-80 flex flex-col border-r animate-fadeIn ${
+    <aside className={`w-80 shrink-0 flex flex-col border-r overflow-hidden ${
       isDarkMode 
         ? "bg-zinc-900 text-white border-zinc-800" 
         : "bg-zinc-50 text-zinc-900 border-zinc-300"

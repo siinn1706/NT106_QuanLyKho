@@ -1,7 +1,7 @@
 import { useState } from "react";
 import ChatSidebar from "./ChatSidebar";
 import ChatRoom from "./ChatRoom";
-import { useUIStore } from "../../state/ui_store";
+import { useThemeStore } from "../../theme/themeStore";
 import Icon from "../ui/Icon";
 
 type MinimizedChat = {
@@ -16,7 +16,7 @@ export default function ChatWidget() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeId, setActiveId] = useState("bot");
   const [minimizedChats, setMinimizedChats] = useState<MinimizedChat[]>([]);
-  const isDarkMode = useUIStore((state) => state.isDarkMode);
+  const isDarkMode = useThemeStore((state) => state.isDarkMode);
 
   // Mapping tên conversation
   const conversationNames: Record<string, string> = {
@@ -105,11 +105,11 @@ export default function ChatWidget() {
         <div
           role="dialog"
           aria-modal="true"
-          className={`fixed bottom-4 right-4 rounded-[32px] flex z-50 overflow-hidden transition-all duration-500 ease-in-out shadow-ios-lg animate-fadeIn ${
-          isDarkMode 
-            ? "liquid-glass-dark" 
-            : "liquid-glass"
-        }`}
+          className={`fixed bottom-4 right-4 rounded-[32px] flex z-50 overflow-hidden transition-all duration-500 ease-in-out shadow-ios-lg animate-fadeIn border ${
+            isDarkMode 
+              ? "bg-zinc-900 border-zinc-700" 
+              : "bg-white border-zinc-300"
+          }`}
           style={{
             width: sidebarCollapsed ? "min(500px, calc(100vw - 48px))" : "min(780px, calc(100vw - 48px))",
             height: "min(500px, calc(100vh - 140px))",
@@ -122,10 +122,10 @@ export default function ChatWidget() {
               onToggle={() => setSidebarCollapsed(true)}
             />
           )}
-          <div className="flex-1 flex flex-col relative">
+          <div className="flex-1 min-w-0 flex flex-col relative overflow-hidden">
             <ChatRoom conversationId={activeId} sidebarCollapsed={sidebarCollapsed} onExpandSidebar={() => setSidebarCollapsed(false)} />
           </div>
-          <div className="absolute top-3 right-3 flex gap-2">
+          <div className="absolute top-3 right-3 flex gap-2 z-50">
             <button
               onClick={handleMinimize}
               className={`rounded-full w-9 h-9 flex items-center justify-center transition-all duration-200 hover:scale-105 shadow-ios liquid-glass-hover ${

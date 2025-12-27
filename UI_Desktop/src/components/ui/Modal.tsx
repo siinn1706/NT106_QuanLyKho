@@ -2,10 +2,9 @@
  * Modal.tsx - Modal / Dialog component
  * 
  * Design rules:
- * - Background overlay với opacity
- * - KHÔNG blur background quá (chỉ blur nhẹ nếu cần)
- * - KHÔNG shadow quá đậm
- * - Radius cha (--radius-2xl)
+ * - Liquid Glass overlay với blur
+ * - Glass card for modal content
+ * - Smooth animations
  */
 
 import React, { useEffect, useRef } from 'react';
@@ -84,23 +83,23 @@ export default function Modal({
       aria-modal="true"
       aria-labelledby={title ? 'modal-title' : undefined}
     >
-      {/* Overlay - che kín hoàn toàn background */}
+      {/* Overlay - Liquid Glass */}
       <div 
-        className="fixed inset-0 bg-black/70 transition-opacity duration-200"
+        className="fixed inset-0 liquid-glass-overlay transition-opacity duration-200"
         onClick={closeOnOverlay ? onClose : undefined}
         aria-hidden="true"
       />
       
-      {/* Modal Content */}
+      {/* Modal Content - Liquid Glass Card */}
       <div
         ref={modalRef}
         tabIndex={-1}
         className={`
           relative z-10 w-full ${sizeStyles[size]} my-4
-          bg-[var(--surface-1)] border border-[var(--border)]
+          liquid-glass-card
           rounded-[var(--radius-2xl)]
           transform transition-all duration-200 ease-out
-          animate-in fade-in zoom-in-95
+          animate-glass-in
           ${className}
         `.trim().replace(/\s+/g, ' ')}
       >
@@ -126,11 +125,7 @@ export default function Modal({
               <button
                 type="button"
                 onClick={onClose}
-                className="
-                  flex-shrink-0 ml-4 p-1.5 rounded-[var(--radius-md)]
-                  text-[var(--text-3)] hover:text-[var(--text-1)]
-                  hover:bg-[var(--surface-2)] transition-colors duration-150
-                "
+                className="flex-shrink-0 ml-4 p-1.5 liquid-glass-icon-btn rounded-[var(--radius-md)]"
                 aria-label="Đóng"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
