@@ -1,4 +1,4 @@
-/** Pagination.tsx - Pagination component */
+/** Pagination.tsx - Pagination component with liquid glass design */
 
 import Icon from './Icon';
 
@@ -53,10 +53,15 @@ export default function Pagination({ currentPage, totalPages, onPageChange, clas
         Trang {currentPage} / {totalPages}
       </div>
       <div className="flex items-center gap-1">
+        {/* Prev button with glass effect */}
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className="h-9 w-9 flex items-center justify-center rounded-lg border bg-[var(--surface-2)] border-[var(--border)] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--surface-3)] transition-colors"
+          className="h-9 w-9 flex items-center justify-center rounded-lg backdrop-blur-sm
+            bg-[var(--surface-2)]/60 border border-[var(--border)]/50 
+            disabled:opacity-50 disabled:cursor-not-allowed 
+            hover:bg-[var(--surface-2)]/90 hover:border-[var(--border)] 
+            transition-all duration-200"
           title="Trang trước"
         >
           <Icon name="chevron-left" size="sm" />
@@ -69,10 +74,10 @@ export default function Pagination({ currentPage, totalPages, onPageChange, clas
             <button
               key={page}
               onClick={() => onPageChange(page as number)}
-              className={`h-9 w-9 flex items-center justify-center rounded-lg border transition-colors ${
+              className={`h-9 w-9 flex items-center justify-center rounded-lg border backdrop-blur-sm transition-all duration-200 ${
                 currentPage === page
-                  ? 'bg-[var(--primary)] text-white border-[var(--primary)]'
-                  : 'bg-[var(--surface-2)] border-[var(--border)] hover:bg-[var(--surface-3)] text-[var(--text-1)]'
+                  ? 'bg-gradient-to-b from-[var(--primary)] to-[var(--primary-dark)] text-white border-[var(--primary)]/50'
+                  : 'bg-[var(--surface-2)]/60 border-[var(--border)]/50 hover:bg-[var(--surface-2)]/90 hover:border-[var(--border)] text-[var(--text-1)]'
               }`}
             >
               {page}
@@ -80,10 +85,15 @@ export default function Pagination({ currentPage, totalPages, onPageChange, clas
           )
         ))}
         
+        {/* Next button with glass effect */}
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
-          className="h-9 w-9 flex items-center justify-center rounded-lg border bg-[var(--surface-2)] border-[var(--border)] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--surface-3)] transition-colors"
+          className="h-9 w-9 flex items-center justify-center rounded-lg backdrop-blur-sm
+            bg-[var(--surface-2)]/60 border border-[var(--border)]/50 
+            disabled:opacity-50 disabled:cursor-not-allowed 
+            hover:bg-[var(--surface-2)]/90 hover:border-[var(--border)] 
+            transition-all duration-200"
           title="Trang sau"
         >
           <Icon name="chevron-right" size="sm" />

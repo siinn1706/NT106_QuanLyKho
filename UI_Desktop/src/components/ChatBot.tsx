@@ -90,31 +90,31 @@ export default function ChatBot() {
 
   return (
     <>
-      {/* Chat Window */}
+      {/* Chat Window - Liquid Glass Design */}
       {isChatOpen && (
-        <div className="fixed bottom-4 right-4 w-96 h-[600px] bg-[var(--surface-1)] border border-[var(--border)] rounded-2xl flex flex-col overflow-hidden z-50">
-          {/* Chat Header */}
-          <div className="bg-primary text-white p-4 flex items-center justify-between">
+        <div className="fixed bottom-4 right-4 w-96 h-[600px] liquid-glass-card flex flex-col overflow-hidden z-50 animate-glass-in">
+          {/* Chat Header - Glass effect with gradient */}
+          <div className="bg-gradient-to-r from-[var(--primary)] to-[var(--primary-dark)] text-white p-4 flex items-center justify-between backdrop-blur-sm">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+              <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border border-white/30">
                 <Icon name="comment-dots" className="text-white" />
               </div>
               <div>
                 <h3 className="font-semibold">N3T Assistant</h3>
-                <p className="text-xs opacity-90">Trợ lý quản lý kho</p>
+                <p className="text-xs text-white/80">Trợ lý quản lý kho</p>
               </div>
             </div>
             <button
               onClick={toggleChat}
-              className="p-1 hover:bg-white/10 rounded transition-colors"
+              className="p-2 hover:bg-white/20 rounded-lg transition-all duration-200 backdrop-blur-sm border border-white/10 hover:border-white/30"
             >
               <Icon name="close" className="text-white" />
             </button>
           </div>
 
-          {/* Welcome Message + Category Selection */}
+          {/* Welcome Message + Category Selection - Glass buttons */}
           {messages.length === 1 && (
-            <div className="p-4 border-b border-[var(--border)]">
+            <div className="p-4 border-b border-[var(--border)]/50 bg-[var(--surface-1)]/50 backdrop-blur-sm">
               <p className="text-sm text-[var(--text-2)] mb-3">
                 Chào mừng bạn! Hãy chọn danh mục bạn cần hỗ trợ:
               </p>
@@ -123,10 +123,10 @@ export default function ChatBot() {
                   <button
                     key={cat.id}
                     onClick={() => handleCategorySelect(cat.id)}
-                    className="p-3 bg-[var(--surface-2)] hover:bg-[var(--surface-3)] rounded-xl transition-colors text-left"
+                    className="p-3 liquid-glass-btn-secondary text-left group"
                   >
                     <span className="text-2xl mb-1 block">
-                      <Icon name={categoryIcons[cat.id]} size="lg" className="text-primary" />
+                      <Icon name={categoryIcons[cat.id]} size="lg" className="text-[var(--primary)] group-hover:scale-110 transition-transform" />
                     </span>
                     <span className="text-sm font-medium">{cat.label}</span>
                   </button>
@@ -135,18 +135,18 @@ export default function ChatBot() {
             </div>
           )}
 
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto scrollbar-thin p-4 space-y-3">
+          {/* Messages - Glass bubbles */}
+          <div className="flex-1 overflow-y-auto scrollbar-thin p-4 space-y-3 bg-[var(--surface-1)]/30 backdrop-blur-[2px]">
             {messages.map((msg) => (
               <div
                 key={msg.id}
                 className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[80%] px-4 py-2 rounded-2xl ${
+                  className={`max-w-[80%] px-4 py-2 rounded-2xl backdrop-blur-sm transition-all duration-200 ${
                     msg.sender === 'user'
-                      ? 'bg-primary text-white rounded-br-none'
-                      : 'bg-[var(--surface-2)] rounded-bl-none'
+                      ? 'bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] text-white rounded-br-none border border-[var(--primary)]/50'
+                      : 'bg-[var(--surface-2)]/80 rounded-bl-none border border-[var(--border)]/50'
                   }`}
                 >
                   <p className="text-sm whitespace-pre-line">{msg.text}</p>
@@ -161,8 +161,8 @@ export default function ChatBot() {
             ))}
           </div>
 
-          {/* Input Area */}
-          <div className="p-4 border-t border-[var(--border)]">
+          {/* Input Area - Glass input */}
+          <div className="p-4 border-t border-[var(--border)]/50 bg-[var(--surface-1)]/70 backdrop-blur-md">
             <div className="flex gap-2">
               <input
                 type="text"
@@ -170,11 +170,11 @@ export default function ChatBot() {
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                 placeholder="Nhập câu hỏi của bạn..."
-                className="flex-1 px-4 py-2 bg-[var(--surface-2)] border border-[var(--border)] rounded-xl text-[var(--text-1)] placeholder:text-[var(--text-3)] focus:outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20 transition-all"
+                className="flex-1 liquid-glass-input"
               />
               <button
                 onClick={handleSendMessage}
-                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                className="liquid-glass-btn px-4 py-2"
               >
                 Gửi
               </button>
@@ -183,14 +183,14 @@ export default function ChatBot() {
         </div>
       )}
 
-      {/* Chat Button - Only show when chat is closed */}
+      {/* Chat Button - Liquid Glass Floating Button */}
       {!isChatOpen && (
         <button
           onClick={toggleChat}
-          className="fixed bottom-6 right-6 w-14 h-14 bg-primary text-white rounded-full shadow-lg hover:shadow-xl hover:scale-110 transition-all flex items-center justify-center text-2xl z-50"
+          className="fixed bottom-6 right-6 w-14 h-14 liquid-glass-btn rounded-full flex items-center justify-center text-xl z-50 hover:scale-110 transition-all duration-300"
           title="Mở trợ lý N3T"
         >
-          💬
+          <Icon name="comment-dots" className="text-white" />
         </button>
       )}
     </>

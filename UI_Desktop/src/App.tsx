@@ -4,15 +4,20 @@ import { useEffect } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useUIStore } from './state/ui_store';
+import { useThemeStore } from './theme/themeStore';
 import { useCompanyStore } from './state/company_store';
+import { useThemeSync } from './hooks/useThemeSync';
 import AppRoutes from './app/routes';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 import './styles/index.css';
 
 export default function App() {
-  const { isDarkMode } = useUIStore();
+  const { isDarkMode } = useThemeStore();
   const { initialize } = useCompanyStore();
+
+  // Sync theme preferences với server khi đăng nhập
+  useThemeSync();
 
   // Apply dark mode
   useEffect(() => {

@@ -83,7 +83,7 @@ export default function GlobalSearch() {
   };
 
   return (
-    <div ref={searchRef} className="relative">
+    <div ref={searchRef} className="relative z-[100]">
       {/* Search Input */}
       <div className="relative">
         <input
@@ -96,10 +96,11 @@ export default function GlobalSearch() {
           }}
           onFocus={() => setIsOpen(true)}
           placeholder="Tìm kiếm hàng hoá, báo cáo... (Ctrl+K)"
-          className="w-80 pl-10 pr-4 py-2 bg-[var(--surface-2)] border border-[var(--border)] rounded-[var(--radius-md)] focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] transition-all duration-150"
+          className="w-80 py-2 pr-4 bg-[var(--surface-1)] border border-[var(--border)] rounded-[var(--radius-md)] text-[var(--text-1)] placeholder:text-[var(--text-3)] focus:outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20 transition-all duration-180"
+          style={{ paddingLeft: '2.5rem' }}
         />
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-3)]">
-          <Icon name="search" size="md" />
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-3)] pointer-events-none">
+          <Icon name="search" size="sm" />
         </span>
         {query && (
           <button
@@ -114,9 +115,9 @@ export default function GlobalSearch() {
         )}
       </div>
 
-      {/* Search Results Dropdown */}
+      {/* Search Results Dropdown - Liquid Glass */}
       {isOpen && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-[var(--surface-1)] border border-[var(--border)] rounded-[var(--radius-lg)] shadow-lg max-h-[500px] overflow-y-auto z-50">
+        <div className="absolute top-full left-0 right-0 mt-2 liquid-glass-dropdown max-h-[500px] overflow-y-auto z-[999] animate-glass-in">
           {isSearching ? (
             <div className="p-8 text-center text-[var(--text-3)]">
               <Icon name="spinner" size="lg" spin className="mx-auto mb-2" />

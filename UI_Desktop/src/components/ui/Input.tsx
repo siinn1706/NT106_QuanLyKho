@@ -2,11 +2,12 @@
  * Input.tsx - Input, Select, Textarea components
  * 
  * Design rules (SF Pro Display only):
- * - KHÔNG shadow
- * - Border-based focus states
+ * - KHÔNG shadow (trừ focus glow subtle)
+ * - Border-based focus states với glass effect
  * - Height: 44px (touch-friendly)
  * - Radius: --radius-md (12px)
  * - Font: 14px body text
+ * - Backdrop blur for glass effect
  */
 
 import React from 'react';
@@ -18,6 +19,7 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
   hint?: string;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
+  variant?: 'default' | 'glass';
 }
 
 export function Input({
@@ -27,10 +29,31 @@ export function Input({
   leftIcon,
   rightIcon,
   className = '',
+  variant = 'default',
   id,
   ...props
 }: InputProps) {
   const inputId = id || `input-${Math.random().toString(36).substr(2, 9)}`;
+  
+  const baseStyles = variant === 'glass' 
+    ? `
+      w-full h-11 px-4 text-[14px] text-[var(--text-1)]
+      bg-[var(--surface-1)]/60 backdrop-blur-md border border-[var(--border)]/60
+      rounded-[var(--radius-md)] transition-all duration-200 ease-out
+      placeholder:text-[var(--text-3)]
+      hover:border-[var(--border-hover)] hover:bg-[var(--surface-1)]/80
+      focus:outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20 focus:bg-[var(--surface-1)]/90
+      disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-[var(--surface-2)]/60
+    `
+    : `
+      w-full h-11 px-4 text-[14px] text-[var(--text-1)]
+      bg-[var(--surface-1)] border border-[var(--border)]
+      rounded-[var(--radius-md)] transition-all duration-[180ms] ease-out
+      placeholder:text-[var(--text-3)]
+      hover:border-[var(--border-hover)]
+      focus:outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15
+      disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-[var(--surface-2)]
+    `;
   
   return (
     <div className="w-full">
@@ -51,13 +74,7 @@ export function Input({
         <input
           id={inputId}
           className={`
-            w-full h-11 px-4 text-[14px] text-[var(--text-1)]
-            bg-[var(--surface-1)] border border-[var(--border)]
-            rounded-[var(--radius-md)] transition-all duration-[180ms] ease-out
-            placeholder:text-[var(--text-3)]
-            hover:border-[var(--border-hover)]
-            focus:outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15
-            disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-[var(--surface-2)]
+            ${baseStyles}
             ${leftIcon ? 'pl-11' : ''}
             ${rightIcon ? 'pr-11' : ''}
             ${error ? 'border-[var(--danger)] focus:border-[var(--danger)] focus:ring-[var(--danger)]/15' : ''}

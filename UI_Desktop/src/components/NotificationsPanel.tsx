@@ -45,12 +45,12 @@ export default function NotificationsPanel() {
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 hover:bg-[var(--surface-2)] rounded-[var(--radius-md)] transition-colors duration-150"
+        className="relative p-2 liquid-glass-icon-btn rounded-[var(--radius-md)]"
         title="Thông báo"
       >
         <Icon name="bell" size="lg" />
         {unreadCount > 0 && (
-          <span className="absolute top-0 right-0 w-5 h-5 bg-[var(--danger)] text-white text-xs font-bold rounded-full flex items-center justify-center">
+          <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-[var(--danger)] text-white text-xs font-bold rounded-full flex items-center justify-center shadow-sm">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
@@ -58,16 +58,23 @@ export default function NotificationsPanel() {
 
       {isOpen && (
         <>
-          {/* Backdrop */}
+          {/* Backdrop - click để đóng */}
           <div
             className="fixed inset-0 z-40"
             onClick={() => setIsOpen(false)}
           />
           
-          {/* Panel */}
-          <div className="absolute top-full right-0 mt-2 w-96 bg-[var(--surface-1)] border border-[var(--border)] rounded-[var(--radius-lg)] shadow-lg z-50 max-h-[600px] flex flex-col">
+          {/* Panel - Liquid Glass với blur mạnh */}
+          <div 
+            className="absolute top-full right-0 mt-2 w-96 rounded-[var(--radius-lg)] z-50 max-h-[600px] flex flex-col animate-glass-in shadow-2xl border border-white/10"
+            style={{
+              background: 'rgba(24, 24, 28, 0.85)',
+              backdropFilter: 'blur(40px) saturate(150%)',
+              WebkitBackdropFilter: 'blur(40px) saturate(150%)',
+            }}
+          >
             {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-[var(--border)]">
+            <div className="flex items-center justify-between p-4 border-b border-[var(--border)]/50">
               <h3 className="font-semibold text-[var(--text-1)]">Thông báo</h3>
               {unreadCount > 0 && (
                 <button

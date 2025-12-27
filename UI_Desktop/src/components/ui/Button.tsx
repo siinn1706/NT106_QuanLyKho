@@ -2,9 +2,9 @@
  * Button.tsx - Button component với variants
  * 
  * Design rules:
- * - KHÔNG shadow (border-based depth)
+ * - Liquid Glass design - subtle translucency and depth
  * - Radius theo scale (--radius-md cho button)
- * - Transitions 150-200ms
+ * - Transitions 150-200ms with micro-interactions
  */
 
 import React from 'react';
@@ -20,28 +20,29 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 
 const variantStyles: Record<string, string> = {
   primary: `
-    bg-[var(--primary)] text-white border border-[var(--primary)]
-    hover:bg-[var(--primary-hover)] hover:border-[var(--primary-hover)]
-    active:bg-[var(--primary-active)] active:border-[var(--primary-active)]
-    disabled:opacity-50 disabled:cursor-not-allowed
+    liquid-glass-btn text-white
+    hover:translate-y-[-1px]
+    active:translate-y-0 active:scale-[0.98]
+    disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0
   `,
   secondary: `
-    bg-[var(--surface-1)] text-[var(--text-1)] border border-[var(--border)]
-    hover:bg-[var(--surface-2)] hover:border-[var(--border-hover)]
-    active:bg-[var(--surface-3)]
-    disabled:opacity-50 disabled:cursor-not-allowed
+    liquid-glass-btn-secondary text-[var(--text-1)]
+    hover:translate-y-[-1px]
+    active:translate-y-0 active:scale-[0.98]
+    disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0
   `,
   ghost: `
     bg-transparent text-[var(--text-2)] border border-transparent
-    hover:bg-[var(--surface-2)] hover:text-[var(--text-1)]
-    active:bg-[var(--surface-3)]
+    hover:bg-[var(--surface-2)]/60 hover:text-[var(--text-1)] hover:backdrop-blur-sm
+    active:bg-[var(--surface-3)]/60 active:scale-[0.98]
     disabled:opacity-50 disabled:cursor-not-allowed
   `,
   destructive: `
-    bg-[var(--danger)] text-white border border-[var(--danger)]
-    hover:bg-[#dc2626] hover:border-[#dc2626]
-    active:bg-[#b91c1c] active:border-[#b91c1c]
-    disabled:opacity-50 disabled:cursor-not-allowed
+    bg-[var(--danger)] text-white border border-[var(--danger)]/80
+    shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]
+    hover:bg-[#dc2626] hover:translate-y-[-1px] hover:shadow-[0_4px_12px_rgba(220,38,38,0.25),inset_0_1px_0_rgba(255,255,255,0.2)]
+    active:translate-y-0 active:scale-[0.98]
+    disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0
   `,
 };
 

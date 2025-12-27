@@ -473,14 +473,14 @@ export default function DatePicker({
 
   return (
     <div ref={containerRef} className={`relative ${className}`}>
-      {/* Trigger button */}
+      {/* Trigger button - Liquid Glass style */}
       <button
         type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
         className={`
           w-full h-11 px-4 pr-10 text-left text-[14px]
-          bg-[var(--surface-1)] border border-[var(--border)] rounded-[var(--radius-md)]
+          liquid-glass-input rounded-[var(--radius-md)]
           transition-all duration-[180ms] ease-out cursor-pointer
           hover:border-[var(--text-3)]
           focus:outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/15
@@ -500,9 +500,9 @@ export default function DatePicker({
         </svg>
       </button>
 
-      {/* Dropdown */}
+      {/* Dropdown - Liquid Glass style */}
       {isOpen && (
-        <div className={`absolute top-full z-[9999] mt-2 w-[300px] bg-[var(--surface-1)] border border-[var(--border)] rounded-[var(--radius-xl)] overflow-hidden animate-gentle ${
+        <div className={`absolute top-full z-[9999] mt-2 w-[300px] liquid-glass-dropdown rounded-[var(--radius-xl)] overflow-hidden animate-glass-in ${
           dropdownPosition === 'right' ? 'right-0' : 'left-0'
         }`}>
           
@@ -602,21 +602,21 @@ export default function DatePicker({
               </div>
 
               {/* Footer */}
-              <div className="flex items-center justify-between px-3 py-2 border-t border-[var(--border)] bg-[var(--surface-2)]">
+              <div className="flex items-center justify-between px-3 py-2 border-t border-[var(--border)]/50 bg-[var(--surface-2)]/50">
                 <button
                   type="button"
                   onClick={() => {
                     onChange('');
                     setIsOpen(false);
                   }}
-                  className="px-3 py-1.5 text-sm text-[var(--text-2)] hover:text-[var(--text-1)] transition-colors"
+                  className="px-3 py-1.5 text-sm liquid-glass-btn-secondary rounded-lg"
                 >
                   Xóa
                 </button>
                 <button
                   type="button"
                   onClick={handleToday}
-                  className="px-3 py-1.5 text-sm font-medium text-[var(--primary)] hover:bg-[var(--primary-light)] rounded-lg transition-colors"
+                  className="px-3 py-1.5 text-sm font-medium liquid-glass-btn text-white rounded-lg"
                 >
                   Hôm nay
                 </button>
@@ -637,18 +637,18 @@ export default function DatePicker({
                 onSelect={handleYearSelect}
               />
               
-              <div className="flex items-center justify-between px-3 py-3 border-t border-[var(--border)] bg-[var(--surface-2)]">
+              <div className="flex items-center justify-between px-3 py-3 border-t border-[var(--border)]/50 bg-[var(--surface-2)]/50">
                 <button
                   type="button"
                   onClick={() => setPickerMode('calendar')}
-                  className="px-4 py-2 text-sm text-[var(--text-2)] hover:text-[var(--text-1)] transition-colors"
+                  className="px-4 py-2 text-sm liquid-glass-btn-secondary rounded-lg"
                 >
                   Hủy
                 </button>
                 <button
                   type="button"
                   onClick={handleYearConfirm}
-                  className="px-4 py-2 text-sm font-medium bg-[var(--primary)] text-white rounded-lg hover:bg-[var(--primary-hover)] transition-colors"
+                  className="px-4 py-2 text-sm font-medium liquid-glass-btn text-white rounded-lg"
                 >
                   Tiếp tục
                 </button>
@@ -671,7 +671,7 @@ export default function DatePicker({
                 onSelect={handleMonthSelect}
               />
               
-              <div className="flex items-center justify-between px-3 py-3 border-t border-[var(--border)] bg-[var(--surface-2)]">
+              <div className="flex items-center justify-between px-3 py-3 border-t border-[var(--border)]/50 bg-[var(--surface-2)]/50">
                 <button
                   type="button"
                   onClick={() => {
@@ -682,14 +682,14 @@ export default function DatePicker({
                       setPickerMode('calendar');
                     }
                   }}
-                  className="px-4 py-2 text-sm text-[var(--text-2)] hover:text-[var(--text-1)] transition-colors"
+                  className="px-4 py-2 text-sm liquid-glass-btn-secondary rounded-lg"
                 >
                   {pendingYearChange ? 'Quay lại' : 'Hủy'}
                 </button>
                 <button
                   type="button"
                   onClick={handleMonthConfirm}
-                  className="px-4 py-2 text-sm font-medium bg-[var(--primary)] text-white rounded-lg hover:bg-[var(--primary-hover)] transition-colors"
+                  className="px-4 py-2 text-sm font-medium liquid-glass-btn text-white rounded-lg"
                 >
                   Xác nhận
                 </button>
