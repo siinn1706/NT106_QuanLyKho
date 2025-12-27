@@ -1200,3 +1200,313 @@ def get_low_stock_items(db: Session = Depends(get_db)):
                 "status": status
             })
     return sorted(result, key=lambda x: (x["status"] == "danger", x["stock"]))
+
+
+# -------------------------------------------------
+# CHAT MESSAGES (Lưu tin nhắn với reactions, reply)
+# -------------------------------------------------
+
+from .database import ChatMessageModel, UserPreferencesModel
+
+@app.get("/chat/messages/{conversation_id}", response_model=List[schemas.ChatMessage])
+def get_chat_messages(
+    conversation_id: str,
+    db: Session = Depends(get_db),
+    current_user: AuthUserModel = Depends(require_auth)
+):
+    """
+    API: GET /chat/messages/{conversation_id}
+    Purpose: Lấy tất cả tin nhắn của một conversation
+    Request: None
+    Response (JSON) [200]: [
+        {
+            "id": "uuid",
+            "conversation_id": "bot",
+            "sender": "user",
+            "text": "Hello",
+            "reply_to": {"id": "msg_id", "text": "...", "sender": "bot"} | null,
+            "reactions": ["👍", "❤️"],
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z"
+        }
+    ]
+    """
+    messages = db.query(ChatMessageModel).filter(
+        ChatMessageModel.conversation_id == conversation_id
+    ).order_by(ChatMessageModel.created_at.asc()).all()
+    
+    return [
+        schemas.ChatMessage(
+            id=m.id,
+            conversation_id=m.conversation_id,
+            sender=m.sender,
+            text=m.text,
+            reply_to=schemas.ReplyInfo(**m.reply_to) if m.reply_to else None,
+            reactions=m.reactions or [],
+            created_at=m.created_at,
+            updated_at=m.updated_at
+        )
+        for m in messages
+    ]
+
+
+@app.post("/chat/messages", response_model=schemas.ChatMessage, status_code=201)
+def create_chat_message(
+    message: schemas.ChatMessageCreate,
+    db: Session = Depends(get_db),
+    current_user: AuthUserModel = Depends(require_auth)
+):
+    """
+    API: POST /chat/messages
+    Purpose: Tạo tin nhắn mới
+    Request (JSON): {
+        "id": "uuid",
+        "conversation_id": "bot",
+        "sender": "user",
+        "text": "Hello",
+        "reply_to": {"id": "msg_id", "text": "...", "sender": "bot"} | null,
+        "reactions": []
+    }
+    Response (JSON) [201]: ChatMessage object
+    """
+    # Kiểm tra message đã tồn tại chưa (tránh duplicate)
+    existing = db.query(ChatMessageModel).filter(ChatMessageModel.id == message.id).first()
+    if existing:
+        return schemas.ChatMessage(
+            id=existing.id,
+            conversation_id=existing.conversation_id,
+            sender=existing.sender,
+            text=existing.text,
+            reply_to=schemas.ReplyInfo(**existing.reply_to) if existing.reply_to else None,
+            reactions=existing.reactions or [],
+            created_at=existing.created_at,
+            updated_at=existing.updated_at
+        )
+    
+    db_message = ChatMessageModel(
+        id=message.id,
+        conversation_id=message.conversation_id,
+        sender=message.sender,
+        text=message.text,
+        reply_to=message.reply_to.model_dump() if message.reply_to else None,
+        reactions=message.reactions or [],
+    )
+    db.add(db_message)
+    db.commit()
+    db.refresh(db_message)
+    
+    return schemas.ChatMessage(
+        id=db_message.id,
+        conversation_id=db_message.conversation_id,
+        sender=db_message.sender,
+        text=db_message.text,
+        reply_to=schemas.ReplyInfo(**db_message.reply_to) if db_message.reply_to else None,
+        reactions=db_message.reactions or [],
+        created_at=db_message.created_at,
+        updated_at=db_message.updated_at
+    )
+
+
+@app.put("/chat/messages/{message_id}/reactions", response_model=schemas.ChatMessage)
+def update_message_reactions(
+    message_id: str,
+    update_data: schemas.ChatMessageUpdate,
+    db: Session = Depends(get_db),
+    current_user: AuthUserModel = Depends(require_auth)
+):
+    """
+    API: PUT /chat/messages/{message_id}/reactions
+    Purpose: Cập nhật reactions của tin nhắn
+    Request (JSON): { "reactions": ["👍", "❤️"] }
+    Response (JSON) [200]: ChatMessage object
+    """
+    db_message = db.query(ChatMessageModel).filter(ChatMessageModel.id == message_id).first()
+    if not db_message:
+        raise HTTPException(status_code=404, detail="Không tìm thấy tin nhắn")
+    
+    if update_data.reactions is not None:
+        db_message.reactions = update_data.reactions
+    
+    db_message.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(db_message)
+    
+    return schemas.ChatMessage(
+        id=db_message.id,
+        conversation_id=db_message.conversation_id,
+        sender=db_message.sender,
+        text=db_message.text,
+        reply_to=schemas.ReplyInfo(**db_message.reply_to) if db_message.reply_to else None,
+        reactions=db_message.reactions or [],
+        created_at=db_message.created_at,
+        updated_at=db_message.updated_at
+    )
+
+
+@app.delete("/chat/messages/{conversation_id}", status_code=204)
+def clear_chat_messages(
+    conversation_id: str,
+    db: Session = Depends(get_db),
+    current_user: AuthUserModel = Depends(require_auth)
+):
+    """
+    API: DELETE /chat/messages/{conversation_id}
+    Purpose: Xóa tất cả tin nhắn của một conversation
+    """
+    db.query(ChatMessageModel).filter(
+        ChatMessageModel.conversation_id == conversation_id
+    ).delete()
+    db.commit()
+    return None
+
+
+# -------------------------------------------------
+# USER PREFERENCES (Theme settings)
+# -------------------------------------------------
+
+@app.get("/user/preferences", response_model=schemas.UserPreferences)
+def get_user_preferences(
+    db: Session = Depends(get_db),
+    current_user: AuthUserModel = Depends(require_auth)
+):
+    """
+    API: GET /user/preferences
+    Purpose: Lấy theme preferences của user hiện tại
+    Response (JSON) [200]: {
+        "id": 1,
+        "user_id": "firebase_uid",
+        "accent_id": "blue",
+        "light_mode_theme": {
+            "gradient_id": "default",
+            "pattern_id": null,
+            "pattern_opacity": 0.1,
+            "pattern_size_px": 300,
+            "pattern_tint": null
+        },
+        "dark_mode_theme": {
+            "gradient_id": "polar-lights",
+            "pattern_id": "hearts",
+            "pattern_opacity": 0.08,
+            "pattern_size_px": 250,
+            "pattern_tint": "#ffffff"
+        },
+        "created_at": "2024-01-01T00:00:00Z",
+        "updated_at": "2024-01-01T00:00:00Z"
+    }
+    """
+    prefs = db.query(UserPreferencesModel).filter(
+        UserPreferencesModel.user_id == current_user.id
+    ).first()
+    
+    if not prefs:
+        # Tạo preferences mặc định nếu chưa có
+        prefs = UserPreferencesModel(
+            user_id=current_user.id,
+            accent_id="blue",
+            light_mode_gradient_id="default",
+            light_mode_pattern_id=None,
+            light_mode_pattern_opacity=0.1,
+            light_mode_pattern_size_px=300,
+            light_mode_pattern_tint=None,
+            dark_mode_gradient_id="default",
+            dark_mode_pattern_id=None,
+            dark_mode_pattern_opacity=0.1,
+            dark_mode_pattern_size_px=300,
+            dark_mode_pattern_tint=None,
+        )
+        db.add(prefs)
+        db.commit()
+        db.refresh(prefs)
+    
+    return schemas.UserPreferences(
+        id=prefs.id,
+        user_id=prefs.user_id,
+        accent_id=prefs.accent_id,
+        light_mode_theme=schemas.ChatThemeConfig(
+            gradient_id=prefs.light_mode_gradient_id,
+            pattern_id=prefs.light_mode_pattern_id,
+            pattern_opacity=prefs.light_mode_pattern_opacity,
+            pattern_size_px=prefs.light_mode_pattern_size_px,
+            pattern_tint=prefs.light_mode_pattern_tint,
+        ),
+        dark_mode_theme=schemas.ChatThemeConfig(
+            gradient_id=prefs.dark_mode_gradient_id,
+            pattern_id=prefs.dark_mode_pattern_id,
+            pattern_opacity=prefs.dark_mode_pattern_opacity,
+            pattern_size_px=prefs.dark_mode_pattern_size_px,
+            pattern_tint=prefs.dark_mode_pattern_tint,
+        ),
+        created_at=prefs.created_at,
+        updated_at=prefs.updated_at,
+    )
+
+
+@app.put("/user/preferences", response_model=schemas.UserPreferences)
+def update_user_preferences(
+    update_data: schemas.UserPreferencesUpdate,
+    db: Session = Depends(get_db),
+    current_user: AuthUserModel = Depends(require_auth)
+):
+    """
+    API: PUT /user/preferences
+    Purpose: Cập nhật theme preferences
+    Request (JSON): {
+        "accent_id": "blue",
+        "light_mode_theme": { ... },
+        "dark_mode_theme": { ... }
+    }
+    Notes: Chỉ cần gửi các field cần cập nhật
+    """
+    prefs = db.query(UserPreferencesModel).filter(
+        UserPreferencesModel.user_id == current_user.id
+    ).first()
+    
+    if not prefs:
+        # Tạo mới nếu chưa có
+        prefs = UserPreferencesModel(user_id=current_user.id)
+        db.add(prefs)
+    
+    if update_data.accent_id is not None:
+        prefs.accent_id = update_data.accent_id
+    
+    if update_data.light_mode_theme is not None:
+        lt = update_data.light_mode_theme
+        prefs.light_mode_gradient_id = lt.gradient_id
+        prefs.light_mode_pattern_id = lt.pattern_id
+        prefs.light_mode_pattern_opacity = lt.pattern_opacity
+        prefs.light_mode_pattern_size_px = lt.pattern_size_px
+        prefs.light_mode_pattern_tint = lt.pattern_tint
+    
+    if update_data.dark_mode_theme is not None:
+        dt = update_data.dark_mode_theme
+        prefs.dark_mode_gradient_id = dt.gradient_id
+        prefs.dark_mode_pattern_id = dt.pattern_id
+        prefs.dark_mode_pattern_opacity = dt.pattern_opacity
+        prefs.dark_mode_pattern_size_px = dt.pattern_size_px
+        prefs.dark_mode_pattern_tint = dt.pattern_tint
+    
+    prefs.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(prefs)
+    
+    return schemas.UserPreferences(
+        id=prefs.id,
+        user_id=prefs.user_id,
+        accent_id=prefs.accent_id,
+        light_mode_theme=schemas.ChatThemeConfig(
+            gradient_id=prefs.light_mode_gradient_id,
+            pattern_id=prefs.light_mode_pattern_id,
+            pattern_opacity=prefs.light_mode_pattern_opacity,
+            pattern_size_px=prefs.light_mode_pattern_size_px,
+            pattern_tint=prefs.light_mode_pattern_tint,
+        ),
+        dark_mode_theme=schemas.ChatThemeConfig(
+            gradient_id=prefs.dark_mode_gradient_id,
+            pattern_id=prefs.dark_mode_pattern_id,
+            pattern_opacity=prefs.dark_mode_pattern_opacity,
+            pattern_size_px=prefs.dark_mode_pattern_size_px,
+            pattern_tint=prefs.dark_mode_pattern_tint,
+        ),
+        created_at=prefs.created_at,
+        updated_at=prefs.updated_at,
+    )

@@ -162,6 +162,60 @@ class UserModel(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
+
+# =============================================================
+# CHAT & USER PREFERENCES MODELS
+# =============================================================
+
+class ChatMessageModel(Base):
+    """Lưu tin nhắn chat với reactions và reply info"""
+    __tablename__ = "chat_messages"
+    
+    id = Column(String, primary_key=True)  # UUID từ frontend
+    conversation_id = Column(String, nullable=False, index=True)  # bot, user_id, etc.
+    sender = Column(String, nullable=False)  # "user", "agent", "bot"
+    text = Column(Text, nullable=False)
+    
+    # Reply info (JSON: {"id": "msg_id", "text": "...", "sender": "..."} hoặc null)
+    reply_to = Column(JSON, nullable=True)
+    
+    # Reactions (JSON array: ["👍", "❤️", ...])
+    reactions = Column(JSON, default=list)
+    
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+
+class UserPreferencesModel(Base):
+    """Lưu theme preferences theo user - hỗ trợ theme riêng cho light/dark mode"""
+    __tablename__ = "user_preferences"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id"), unique=True, nullable=False, index=True)
+    
+    # Theme settings
+    accent_id = Column(String, default="blue")  # Accent color id
+    
+    # Chat theme cho Light mode
+    light_mode_gradient_id = Column(String, default="default")
+    light_mode_pattern_id = Column(String, nullable=True)
+    light_mode_pattern_opacity = Column(Float, default=0.1)
+    light_mode_pattern_size_px = Column(Integer, default=300)
+    light_mode_pattern_tint = Column(String, nullable=True)
+    
+    # Chat theme cho Dark mode
+    dark_mode_gradient_id = Column(String, default="default")
+    dark_mode_pattern_id = Column(String, nullable=True)
+    dark_mode_pattern_opacity = Column(Float, default=0.1)
+    dark_mode_pattern_size_px = Column(Integer, default=300)
+    dark_mode_pattern_tint = Column(String, nullable=True)
+    
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    
+    # Relationship
+    user = relationship("UserModel", backref="preferences")
+
 def get_db():
     db = SessionLocal()
     try:
