@@ -50,23 +50,24 @@ export default function Login_Page() {
     }
   };
 
-  const inputClass = "w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-primary/30 transition-all hover:scale-[1.02] shadow-ios";
+  const inputClass = "w-full px-4 py-3 bg-white/5 backdrop-blur-md border border-white/15 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:border-[#007AFF]/60 focus:ring-2 focus:ring-[#007AFF]/20 transition-all duration-200 hover:border-white/25";
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-md animate-glass-in">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 mb-4 bg-white/5 rounded-2xl p-2 border border-white/10">
+          <div className="inline-flex items-center justify-center w-20 h-20 mb-4 bg-white/5 backdrop-blur-xl rounded-2xl p-2 border border-white/15">
             <img src="/src/resources/logo.png" alt="N3T Logo" className="w-full h-full object-contain" />
           </div>
           <h1 className="text-3xl font-bold text-white mb-2">Đăng nhập</h1>
           <p className="text-zinc-400">Chào mừng trở lại! Vui lòng đăng nhập để tiếp tục</p>
         </div>
 
-        <div className="bg-zinc-900/60 backdrop-blur-xl rounded-[32px] border border-white/10 p-8 shadow-2xl">
+        {/* Login Card with enhanced liquid glass effect */}
+        <div className="bg-zinc-900/50 backdrop-blur-2xl backdrop-saturate-150 rounded-[28px] border border-white/10 p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
             {error && (
-              <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-lg text-sm flex items-center gap-2">
+              <div className="bg-red-500/10 backdrop-blur-sm border border-red-500/30 text-red-400 px-4 py-3 rounded-xl text-sm flex items-center gap-2">
                 <Icon name="warning" size="sm" />
                 {error}
               </div>
@@ -131,7 +132,7 @@ export default function Login_Page() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-[#007AFF] hover:bg-[#0062cc] text-white font-semibold py-3.5 rounded-xl transition-all duration-200 shadow-lg hover:shadow-primary/25 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+              className="w-full liquid-glass-btn py-3.5 text-base font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -157,7 +158,7 @@ export default function Login_Page() {
           </div>
         </div>
 
-        <p className="text-center text-zinc-600 text-xs mt-8">
+        <p className="text-center text-zinc-500 text-xs mt-8">
           © 2025 N3T - Quản lý Kho. All rights reserved.
         </p>
       </div>

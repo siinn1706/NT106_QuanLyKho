@@ -3,13 +3,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiGetStockTransactions, StockTransaction } from '../../app/api_client';
-import { useUIStore } from '../../state/ui_store';
+import { useThemeStore } from '../../theme/themeStore';
 
 export default function Stock_InOut_Page() {
   const [transactions, setTransactions] = useState<StockTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const isDarkMode = useUIStore((state) => state.isDarkMode);
+  const isDarkMode = useThemeStore((state) => state.isDarkMode);
 
   useEffect(() => {
     apiGetStockTransactions()

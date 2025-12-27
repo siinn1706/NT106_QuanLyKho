@@ -65,18 +65,18 @@ export default function Dashboard_Page() {
 
   return (
     <div className="space-y-6">
-      {/* Stats Cards - KHÔNG shadow, border-based depth */}
+      {/* Stats Cards - Liquid Glass Design */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Card 1: Uptime */}
         <div 
           onClick={() => navigate('/reports')}
-          className="bg-[var(--surface-1)] rounded-[var(--radius-2xl)] border border-[var(--border)] p-6 transition-colors duration-150 hover:border-[var(--border-hover)] cursor-pointer"
+          className="bg-[var(--surface-1)] rounded-[var(--radius-2xl)] border border-[var(--border)] p-6 transition-all duration-200 hover:border-[var(--border-hover)] cursor-pointer group"
         >
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-medium text-[var(--text-3)]">
               Hiệu suất hệ thống
             </h3>
-            <span className="w-10 h-10 flex items-center justify-center rounded-[var(--radius-md)] bg-[var(--success-light)]">
+            <span className="w-10 h-10 flex items-center justify-center rounded-[var(--radius-md)] bg-[var(--success)]/15 group-hover:scale-105 transition-transform">
               <Icon name="chart-line" size="lg" className="text-[var(--success)]" />
             </span>
           </div>
@@ -89,13 +89,13 @@ export default function Dashboard_Page() {
         {/* Card 2: Issues */}
         <div 
           onClick={() => navigate('/items/alerts')}
-          className="bg-[var(--surface-1)] rounded-[var(--radius-2xl)] border border-[var(--border)] p-6 transition-colors duration-150 hover:border-[var(--border-hover)] cursor-pointer"
+          className="bg-[var(--surface-1)] rounded-[var(--radius-2xl)] border border-[var(--border)] p-6 transition-all duration-200 hover:border-[var(--border-hover)] cursor-pointer group"
         >
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-medium text-[var(--text-3)]">
               Cảnh báo hàng tồn kho
             </h3>
-            <span className="w-10 h-10 flex items-center justify-center rounded-[var(--radius-md)] bg-[var(--danger-light)]">
+            <span className="w-10 h-10 flex items-center justify-center rounded-[var(--radius-md)] bg-[var(--danger)]/15 group-hover:scale-105 transition-transform">
               <Icon name="warning" size="lg" className="text-[var(--danger)]" />
             </span>
           </div>
@@ -108,13 +108,13 @@ export default function Dashboard_Page() {
         {/* Card 3: Usage */}
         <div 
           onClick={() => navigate('/items/tracking')}
-          className="bg-[var(--surface-1)] rounded-[var(--radius-2xl)] border border-[var(--border)] p-6 transition-colors duration-150 hover:border-[var(--border-hover)] cursor-pointer"
+          className="bg-[var(--surface-1)] rounded-[var(--radius-2xl)] border border-[var(--border)] p-6 transition-all duration-200 hover:border-[var(--border-hover)] cursor-pointer group"
         >
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-medium text-[var(--text-3)]">
               Tỷ lệ sử dụng kho
             </h3>
-            <span className="w-10 h-10 flex items-center justify-center rounded-[var(--radius-md)] bg-[var(--primary-light)]">
+            <span className="w-10 h-10 flex items-center justify-center rounded-[var(--radius-md)] bg-[var(--primary)]/15 group-hover:scale-105 transition-transform">
               <Icon name="archive" size="lg" className="text-[var(--primary)]" />
             </span>
           </div>
@@ -122,7 +122,7 @@ export default function Dashboard_Page() {
             <p className="text-4xl font-bold">{safeStats.warehouse_usage || 0}%</p>
             <div className="flex-1 mb-2">
               <div className="h-3 bg-[var(--surface-2)] rounded-full overflow-hidden">
-                <div className="h-full bg-[var(--success)] rounded-full transition-all duration-300" style={{ width: `${safeStats.warehouse_usage || 0}%` }}></div>
+                <div className="h-full bg-[var(--success)] rounded-full transition-all duration-500" style={{ width: `${safeStats.warehouse_usage || 0}%` }}></div>
               </div>
             </div>
           </div>
@@ -132,8 +132,8 @@ export default function Dashboard_Page() {
         </div>
       </div>
 
-      {/* Equipment and Inventory Status Table - KHÔNG shadow */}
-      <div className="bg-[var(--surface-1)] rounded-[var(--radius-2xl)] border border-[var(--border)]">
+      {/* Equipment and Inventory Status Table */}
+      <div className="bg-[var(--surface-1)] rounded-[var(--radius-2xl)] border border-[var(--border)] overflow-hidden">
         <div className="p-6 border-b border-[var(--border)] flex items-center justify-between">
           <h2 className="text-xl font-semibold">Trạng thái Hàng hoá và Tồn kho</h2>
           <div className="flex gap-2 relative z-10">
@@ -162,10 +162,9 @@ export default function Dashboard_Page() {
           </div>
         </div>
 
-        {/* Table - KHÔNG shadow, border-based */}
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-[var(--surface-2)]">
+            <thead className="bg-[var(--surface-2)] border-b border-[var(--border)]">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-[var(--text-3)] uppercase tracking-wider">
                   STT
@@ -193,7 +192,7 @@ export default function Dashboard_Page() {
                 </tr>
               ) : (
                 safeStats.recent_transactions.map((txn, index) => (
-                  <tr key={txn.id} className="hover:bg-[var(--surface-2)] transition-colors duration-100">
+                  <tr key={txn.id} className="hover:bg-[var(--surface-2)] transition-all duration-150">
                     <td className="px-6 py-4 whitespace-nowrap text-sm">{index + 1}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       {txn.type === 'in' ? 'Nhập kho' : 'Xuất kho'} - Item {txn.item_id}
@@ -217,10 +216,10 @@ export default function Dashboard_Page() {
         </div>
       </div>
 
-      {/* Equipment Status Cards - KHÔNG shadow */}
+      {/* Equipment Status Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Card: Laboratory Equipment Status */}
-        <div className="bg-[var(--surface-1)] rounded-[var(--radius-2xl)] border border-[var(--border)] p-6 transition-all duration-150 hover:border-[var(--border-hover)]">
+        <div className="bg-[var(--surface-1)] rounded-[var(--radius-2xl)] border border-[var(--border)] p-6 transition-all duration-200 hover:border-[var(--border-hover)]">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold">Trạng thái Kho Nguyên liệu</h3>
             <div className="w-3 h-3 bg-[var(--success)] rounded-full"></div>
@@ -249,7 +248,7 @@ export default function Dashboard_Page() {
         </div>
 
         {/* Card: Radiology Equipment Maintenance */}
-        <div className="bg-[var(--surface-1)] rounded-[var(--radius-2xl)] border border-[var(--border)] p-6 transition-all duration-150 hover:border-[var(--border-hover)]">
+        <div className="bg-[var(--surface-1)] rounded-[var(--radius-2xl)] border border-[var(--border)] p-6 transition-all duration-200 hover:border-[var(--border-hover)]">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold">Trạng thái Kho Thành phẩm</h3>
             <div className="w-3 h-3 bg-[var(--text-3)] rounded-full"></div>
