@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { apiGetItems, Item } from '../../app/api_client';
-import { useUIStore } from '../../state/ui_store';
+import { useThemeStore } from '../../theme/themeStore';
 import DatePicker from '../../components/ui/DatePicker';
 import Icon from '../../components/ui/Icon';
 
@@ -16,7 +16,7 @@ export default function Items_Tracking_Page() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   
-  const isDarkMode = useUIStore((state) => state.isDarkMode);
+  const isDarkMode = useThemeStore((state) => state.isDarkMode);
 
   useEffect(() => {
     apiGetItems()

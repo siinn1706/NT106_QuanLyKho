@@ -688,3 +688,138 @@ export async function apiGetWarehouseInventory(warehouseId: number): Promise<War
   if (!res.ok) throw new Error("Không thể tải thống kê hàng hóa trong kho");
   return res.json();
 }
+
+
+// =============================================================
+// CHAT MESSAGES API
+// =============================================================
+
+export interface ReplyInfo {
+  id: string;
+  text: string;
+  sender: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  conversation_id: string;
+  sender: "user" | "agent" | "bot";
+  text: string;
+  reply_to?: ReplyInfo | null;
+  reactions: string[];
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface ChatMessageCreate {
+  id: string;
+  conversation_id: string;
+  sender: "user" | "agent" | "bot";
+  text: string;
+  reply_to?: ReplyInfo | null;
+  reactions?: string[];
+}
+
+/**
+ * API: GET /chat/messages/{conversation_id}
+ * Purpose: Lấy tất cả tin nhắn của một conversation
+ */
+export async function apiGetChatMessages(conversationId: string): Promise<ChatMessage[]> {
+  const res = await apiFetch(`${BASE_URL}/chat/messages/${conversationId}`);
+  if (!res.ok) throw new Error("Không thể tải tin nhắn");
+  return res.json();
+}
+
+/**
+ * API: POST /chat/messages
+ * Purpose: Tạo tin nhắn mới
+ */
+export async function apiCreateChatMessage(message: ChatMessageCreate): Promise<ChatMessage> {
+  const res = await apiFetch(`${BASE_URL}/chat/messages`, {
+    method: 'POST',
+    body: JSON.stringify(message),
+  });
+  if (!res.ok) throw new Error("Không thể lưu tin nhắn");
+  return res.json();
+}
+
+/**
+ * API: PUT /chat/messages/{message_id}/reactions
+ * Purpose: Cập nhật reactions của tin nhắn
+ */
+export async function apiUpdateMessageReactions(
+  messageId: string, 
+  reactions: string[]
+): Promise<ChatMessage> {
+  const res = await apiFetch(`${BASE_URL}/chat/messages/${messageId}/reactions`, {
+    method: 'PUT',
+    body: JSON.stringify({ reactions }),
+  });
+  if (!res.ok) throw new Error("Không thể cập nhật reactions");
+  return res.json();
+}
+
+/**
+ * API: DELETE /chat/messages/{conversation_id}
+ * Purpose: Xóa tất cả tin nhắn của một conversation
+ */
+export async function apiClearChatMessages(conversationId: string): Promise<void> {
+  const res = await apiFetch(`${BASE_URL}/chat/messages/${conversationId}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) throw new Error("Không thể xóa tin nhắn");
+}
+
+
+// =============================================================
+// USER PREFERENCES API (Theme settings)
+// =============================================================
+
+export interface ChatThemeConfig {
+  gradient_id: string;
+  pattern_id: string | null;
+  pattern_opacity: number;
+  pattern_size_px: number;
+  pattern_tint: string | null;
+}
+
+export interface UserPreferences {
+  id: number;
+  user_id: string;
+  accent_id: string;
+  light_mode_theme: ChatThemeConfig;
+  dark_mode_theme: ChatThemeConfig;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface UserPreferencesUpdate {
+  accent_id?: string;
+  light_mode_theme?: ChatThemeConfig;
+  dark_mode_theme?: ChatThemeConfig;
+}
+
+/**
+ * API: GET /user/preferences
+ * Purpose: Lấy theme preferences của user hiện tại
+ */
+export async function apiGetUserPreferences(): Promise<UserPreferences> {
+  const res = await apiFetch(`${BASE_URL}/user/preferences`);
+  if (!res.ok) throw new Error("Không thể tải user preferences");
+  return res.json();
+}
+
+/**
+ * API: PUT /user/preferences
+ * Purpose: Cập nhật theme preferences
+ */
+export async function apiUpdateUserPreferences(
+  data: UserPreferencesUpdate
+): Promise<UserPreferences> {
+  const res = await apiFetch(`${BASE_URL}/user/preferences`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Không thể cập nhật preferences");
+  return res.json();
+}

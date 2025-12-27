@@ -1,13 +1,13 @@
 /** Reports_Page.tsx - Báo cáo tổng hợp */
 
 import { useState, useEffect } from "react";
-import { useUIStore } from "../../state/ui_store";
+import { useThemeStore } from "../../theme/themeStore";
 import { BASE_URL } from "../../app/api_client";
 import Icon from "../../components/ui/Icon";
 
 export default function Reports_Page() {
   const [selectedReport, setSelectedReport] = useState<string>("inventory");
-  const isDarkMode = useUIStore((state) => state.isDarkMode);
+  const isDarkMode = useThemeStore((state) => state.isDarkMode);
 
   const [inventoryData, setInventoryData] = useState<Array<{category: string, value: number, color: string}>>([]);
   const [monthlyTrend, setMonthlyTrend] = useState<Array<{month: string, import: number, export: number}>>([]);
