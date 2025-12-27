@@ -273,6 +273,75 @@ class AIChatResponse(BaseModel):
     model: str
 
 
+# ---------- CHAT MESSAGE ----------
+
+class ReplyInfo(BaseModel):
+    """Thông tin tin nhắn đang reply"""
+    id: str
+    text: str
+    sender: str
+
+
+class ChatMessageBase(BaseModel):
+    id: str
+    conversation_id: str
+    sender: str  # "user", "agent", "bot"
+    text: str
+    reply_to: ReplyInfo | None = None
+    reactions: List[str] = []  # ["👍", "❤️", ...]
+
+
+class ChatMessageCreate(ChatMessageBase):
+    pass
+
+
+class ChatMessageUpdate(BaseModel):
+    reactions: List[str] | None = None  # Cập nhật reactions
+
+
+class ChatMessage(ChatMessageBase, ORMModel):
+    created_at: datetime
+    updated_at: datetime | None = None
+
+
+# ---------- USER PREFERENCES (Theme) ----------
+
+class ChatThemeConfig(BaseModel):
+    """Config theme cho một chế độ (light hoặc dark)"""
+    gradient_id: str = "default"
+    pattern_id: str | None = None
+    pattern_opacity: float = 0.1
+    pattern_size_px: int = 300
+    pattern_tint: str | None = None
+
+
+class UserPreferencesBase(BaseModel):
+    accent_id: str = "blue"
+    
+    # Chat theme cho Light mode
+    light_mode_theme: ChatThemeConfig = ChatThemeConfig()
+    
+    # Chat theme cho Dark mode
+    dark_mode_theme: ChatThemeConfig = ChatThemeConfig()
+
+
+class UserPreferencesCreate(UserPreferencesBase):
+    pass
+
+
+class UserPreferencesUpdate(BaseModel):
+    accent_id: str | None = None
+    light_mode_theme: ChatThemeConfig | None = None
+    dark_mode_theme: ChatThemeConfig | None = None
+
+
+class UserPreferences(UserPreferencesBase, ORMModel):
+    id: int
+    user_id: str
+    created_at: datetime
+    updated_at: datetime | None = None
+
+
 # ---------- STOCK IN/OUT BATCH ----------
 
 class StockInItemCreate(BaseModel):
