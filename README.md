@@ -38,7 +38,7 @@
 | 1 | **Hoàng Xuân Minh Trí** | 24521829 | Fullstack / Leader |
 | 2 | **Trương Minh Thái** | 24521599 | Frontend Dev |
 | 3 | **Nguyễn Võ Minh Trí** | 24521840 | Backend Dev |
-| 4 | **Nguyễn Văn Nam** | 24521120 | Database / AI |
+| 4 | **Nguyễn Văn Nam** | 24521120 | Frontend / Database / AI |
 
 ---
 
