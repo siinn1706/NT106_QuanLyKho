@@ -117,7 +117,7 @@ export default function GlobalSearch() {
 
       {/* Search Results Dropdown - Liquid Glass */}
       {isOpen && (
-        <div className="absolute top-full left-0 right-0 mt-2 liquid-glass-dropdown max-h-[500px] overflow-y-auto z-[999] animate-glass-in">
+        <div className="absolute top-full left-0 right-0 mt-2 liquid-glass-dropdown max-h-[500px] overflow-y-auto z-[9999] animate-glass-in">
           {isSearching ? (
             <div className="p-8 text-center text-[var(--text-3)]">
               <Icon name="spinner" size="lg" spin className="mx-auto mb-2" />

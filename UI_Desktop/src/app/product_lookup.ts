@@ -345,6 +345,58 @@ export function searchProductsMock(keyword: string, limit: number = 10): Product
 }
 
 /**
+ * Tìm kiếm sản phẩm CHỈ theo mã SKU
+ */
+export function searchProductsBySkuMock(keyword: string, limit: number = 10): ProductLookupResult[] {
+  if (!keyword || keyword.trim() === '') return [];
+  
+  const normalizedKeyword = keyword.trim().toLowerCase();
+  
+  return MOCK_PRODUCTS
+    .filter(p => p.sku.toLowerCase().includes(normalizedKeyword))
+    .slice(0, limit)
+    .map(p => ({
+      id: p.id,
+      name: p.name,
+      sku: p.sku,
+      unit: p.unit,
+      quantity: p.quantity,
+      price: p.price,
+      category: p.category,
+      supplier_id: p.supplier_id,
+      expiry_date: p.expiry_date,
+      min_stock: p.min_stock,
+      description: p.description,
+    }));
+}
+
+/**
+ * Tìm kiếm sản phẩm CHỈ theo tên hàng
+ */
+export function searchProductsByNameMock(keyword: string, limit: number = 10): ProductLookupResult[] {
+  if (!keyword || keyword.trim() === '') return [];
+  
+  const normalizedKeyword = keyword.trim().toLowerCase();
+  
+  return MOCK_PRODUCTS
+    .filter(p => p.name.toLowerCase().includes(normalizedKeyword))
+    .slice(0, limit)
+    .map(p => ({
+      id: p.id,
+      name: p.name,
+      sku: p.sku,
+      unit: p.unit,
+      quantity: p.quantity,
+      price: p.price,
+      category: p.category,
+      supplier_id: p.supplier_id,
+      expiry_date: p.expiry_date,
+      min_stock: p.min_stock,
+      description: p.description,
+    }));
+}
+
+/**
  * Lấy tất cả mock products (cho dropdown/autocomplete)
  */
 export function getAllProductsMock(): ProductLookupResult[] {

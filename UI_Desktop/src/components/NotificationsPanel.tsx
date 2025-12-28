@@ -1,17 +1,32 @@
 /** NotificationsPanel.tsx - Notifications panel component */
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '../hooks/useNotifications';
 import Icon from './ui/Icon';
 
 export default function NotificationsPanel() {
   const [isOpen, setIsOpen] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   const navigate = useNavigate();
 
   const unreadNotifications = notifications.filter(n => !n.read);
   const readNotifications = notifications.filter(n => n.read);
+
+  // Close on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (panelRef.current && !panelRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isOpen]);
 
   const handleNotificationClick = (notification: typeof notifications[0]) => {
     markAsRead(notification.id);
@@ -42,7 +57,7 @@ export default function NotificationsPanel() {
   };
 
   return (
-    <div className="relative">
+    <div className="relative" ref={panelRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-2 liquid-glass-icon-btn rounded-[var(--radius-md)]"
@@ -58,21 +73,11 @@ export default function NotificationsPanel() {
 
       {isOpen && (
         <>
-          {/* Backdrop - click để đóng */}
-          <div
-            className="fixed inset-0 z-40"
-            onClick={() => setIsOpen(false)}
-          />
-          
-          {/* Panel - Liquid Glass với blur mạnh */}
-          <div 
-            className="absolute top-full right-0 mt-2 w-96 rounded-[var(--radius-lg)] z-50 max-h-[600px] flex flex-col animate-glass-in shadow-2xl border border-white/10"
-            style={{
-              background: 'rgba(24, 24, 28, 0.85)',
-              backdropFilter: 'blur(40px) saturate(150%)',
-              WebkitBackdropFilter: 'blur(40px) saturate(150%)',
-            }}
-          >
+          {/* Invisible backdrop for blur effect - pointer-events-none để không chặn click */}
+          <div className="fixed inset-0 z-40 pointer-events-none" />
+
+          {/* Panel với blur */}
+          <div className="absolute top-full right-0 mt-2 w-96 z-[9999] max-h-[600px] liquid-glass-dropdown animate-glass-in flex flex-col">
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-[var(--border)]/50">
               <h3 className="font-semibold text-[var(--text-1)]">Thông báo</h3>

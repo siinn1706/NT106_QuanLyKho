@@ -11,7 +11,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { 
   ProductLookupResult, 
-  searchProductsMock, 
+  searchProductsMock,
+  searchProductsBySkuMock,
+  searchProductsByNameMock,
   lookupProductByCodeMock,
   getAllProductsMock 
 } from '../../app/product_lookup';
@@ -27,6 +29,7 @@ interface ProductCodeInputProps {
   disabled?: boolean;
   showSuggestions?: boolean; // Hiển thị dropdown gợi ý khi gõ
   autoFocus?: boolean;
+  searchMode?: 'sku' | 'name' | 'both'; // Chế độ tìm kiếm: chỉ SKU, chỉ tên, hoặc cả hai
 }
 
 export default function ProductCodeInput({
@@ -34,11 +37,12 @@ export default function ProductCodeInput({
   onChange,
   onProductFound,
   onProductNotFound,
-  placeholder = 'Nhập mã SKU hoặc barcode',
+  placeholder = 'Nhập mã SKU, tên hàng hoá...',
   className = '',
   disabled = false,
   showSuggestions = true,
   autoFocus = false,
+  searchMode = 'both',
 }: ProductCodeInputProps) {
   const [suggestions, setSuggestions] = useState<ProductLookupResult[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -55,11 +59,20 @@ export default function ProductCodeInput({
       return;
     }
 
-    const results = searchProductsMock(value, 8);
+    // Chọn hàm tìm kiếm phù hợp theo searchMode
+    let results: ProductLookupResult[];
+    if (searchMode === 'sku') {
+      results = searchProductsBySkuMock(value, 8);
+    } else if (searchMode === 'name') {
+      results = searchProductsByNameMock(value, 8);
+    } else {
+      results = searchProductsMock(value, 8);
+    }
+
     setSuggestions(results);
     setShowDropdown(results.length > 0);
     setHighlightIndex(-1);
-  }, [value, showSuggestions]);
+  }, [value, showSuggestions, searchMode]);
 
   // Đóng dropdown khi click ra ngoài
   useEffect(() => {
@@ -164,7 +177,7 @@ export default function ProductCodeInput({
       {showDropdown && suggestions.length > 0 && (
         <div
           ref={dropdownRef}
-          className="absolute z-50 top-full left-0 right-0 mt-1 bg-[var(--surface-1)] border border-[var(--border)] rounded-[var(--radius-lg)] overflow-hidden max-h-[280px] overflow-y-auto"
+          className="absolute z-[9999] top-full left-0 mt-1 bg-[var(--surface-1)] border border-[var(--border)] rounded-[var(--radius-lg)] overflow-hidden max-h-[280px] overflow-y-auto min-w-[200px] w-max max-w-[350px]"
         >
           {suggestions.map((product, index) => (
             <button
@@ -179,7 +192,7 @@ export default function ProductCodeInput({
             >
               <div className="flex items-center justify-between gap-3">
                 <div className="flex-1 min-w-0">
-                  <p className="text-[14px] font-medium text-[var(--text-1)] truncate">
+                  <p className="text-[14px] font-medium text-[var(--text-1)] whitespace-normal break-words">
                     {product.name}
                   </p>
                   <p className="text-[12px] text-[var(--text-3)]">

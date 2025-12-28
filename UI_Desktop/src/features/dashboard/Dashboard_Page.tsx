@@ -133,8 +133,8 @@ export default function Dashboard_Page() {
       </div>
 
       {/* Equipment and Inventory Status Table */}
-      <div className="bg-[var(--surface-1)] rounded-[var(--radius-2xl)] border border-[var(--border)] overflow-hidden">
-        <div className="p-6 border-b border-[var(--border)] flex items-center justify-between">
+      <div className="bg-[var(--surface-1)] rounded-[var(--radius-2xl)] border border-[var(--border)]">
+        <div className="p-6 border-b border-[var(--border)] flex items-center justify-between overflow-visible">
           <h2 className="text-xl font-semibold">Trạng thái Hàng hoá và Tồn kho</h2>
           <div className="flex gap-2 relative z-10">
             <CustomSelect
@@ -162,7 +162,7 @@ export default function Dashboard_Page() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto overflow-y-visible">
           <table className="w-full">
             <thead className="bg-[var(--surface-2)] border-b border-[var(--border)]">
               <tr>
