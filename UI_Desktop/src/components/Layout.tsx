@@ -8,7 +8,7 @@ import ChatWidget from './chat/ChatWidget';
 import SettingsModal from './SettingsModal';
 import GlobalSearch from './GlobalSearch';
 import NotificationsPanel from './NotificationsPanel';
-import { apiLogout } from '../app/api_client';
+import { apiLogout, BASE_URL } from '../app/api_client';
 import Icon from './ui/Icon';
 import { useKeyboardShortcuts, commonShortcuts } from '../hooks/useKeyboardShortcuts';
 
@@ -229,11 +229,26 @@ export default function Layout({ children }: LayoutProps) {
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
                 className="w-full p-4 flex items-center gap-3 hover:bg-[var(--surface-2)]/70 transition-all duration-150"
               >
-                <div className="w-10 h-10 bg-gradient-to-br from-[var(--primary)] to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm ring-2 ring-white/20">
-                  {user?.name?.charAt(0).toUpperCase() || 'U'}
+                <div className="w-10 h-10 bg-gradient-to-br from-[var(--primary)] to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm ring-2 ring-white/20 overflow-hidden">
+                  {user?.avatar_url ? (
+                    <img 
+                      src={user.avatar_url.startsWith('http') ? user.avatar_url : `${BASE_URL}${user.avatar_url}`} 
+                      alt="Avatar" 
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        const parent = e.currentTarget.parentElement;
+                        if (parent) {
+                          parent.innerHTML = `<span class="text-sm font-bold">${user?.display_name?.charAt(0).toUpperCase() || user?.username?.charAt(0).toUpperCase() || 'U'}</span>`;
+                        }
+                      }}
+                    />
+                  ) : (
+                    <span>{user?.display_name?.charAt(0).toUpperCase() || user?.username?.charAt(0).toUpperCase() || 'U'}</span>
+                  )}
                 </div>
                 <div className="flex-1 text-left">
-                  <p className="font-medium text-sm truncate whitespace-nowrap">{user?.name || 'Admin User'}</p>
+                  <p className="font-medium text-sm truncate whitespace-nowrap">{user?.display_name || user?.username || 'Admin User'}</p>
                   <p className="text-xs text-[var(--text-3)] truncate whitespace-nowrap">{user?.email || 'user@example.com'}</p>
                 </div>
                 <Icon name={userMenuOpen ? 'chevron-up' : 'chevron-down'} size="sm" className="flex-shrink-0" />

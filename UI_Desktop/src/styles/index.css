@@ -62,6 +62,17 @@
     background-color: var(--bg);
     color: var(--text-1);
   }
+
+  /* Ẩn icon password mặc định của browser (Edge, Chrome) */
+  input[type="password"]::-ms-reveal,
+  input[type="password"]::-ms-clear {
+    display: none;
+  }
+
+  input[type="password"]::-webkit-credentials-auto-fill-button,
+  input[type="password"]::-webkit-caps-lock-indicator {
+    display: none;
+  }
 }
 
 @layer components {

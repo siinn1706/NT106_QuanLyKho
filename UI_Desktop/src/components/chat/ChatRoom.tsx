@@ -316,23 +316,26 @@ export default function ChatRoom({ conversationId, sidebarCollapsed, onExpandSid
         {/* Reply preview */}
         {replyingTo && (
           <div className={`flex items-center gap-2 px-4 py-2 border-b ${
-            isDarkMode ? "border-white/5" : "border-black/5"
+            isDarkMode ? "border-white/10 bg-zinc-800/50" : "border-black/10 bg-blue-50"
           }`}>
-            <div className={`flex-1 pl-3 border-l-2 border-blue-500 ${
+            <div className={`flex-1 pl-3 border-l-4 border-blue-500 min-w-0 ${
               isDarkMode ? "text-zinc-300" : "text-gray-700"
             }`}>
-              <span className={`text-xs font-medium ${
+              <span className={`text-xs font-semibold block mb-0.5 ${
                 isDarkMode ? "text-blue-400" : "text-blue-600"
               }`}>Đang trả lời {replyingTo.sender}</span>
-              <p className="text-sm truncate opacity-70">{replyingTo.text}</p>
+              <p className="text-sm line-clamp-2 opacity-80">{replyingTo.text}</p>
             </div>
             <button
               onClick={() => setReplyingTo(null)}
-              className={`p-1.5 rounded-full transition-all ${
-                isDarkMode ? "hover:bg-zinc-700 text-zinc-400" : "hover:bg-gray-200 text-gray-500"
+              className={`p-2 rounded-lg transition-all hover:scale-110 flex-shrink-0 ${
+                isDarkMode 
+                  ? "hover:bg-red-500/20 text-red-400 hover:text-red-300" 
+                  : "hover:bg-red-100 text-red-500 hover:text-red-600"
               }`}
+              title="Hủy trả lời"
             >
-              <Icon name="close" size="sm" />
+              <Icon name="close" size="md" />
             </button>
           </div>
         )}

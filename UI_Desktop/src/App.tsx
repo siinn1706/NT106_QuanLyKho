@@ -7,6 +7,7 @@ import { useUIStore } from './state/ui_store';
 import { useThemeStore } from './theme/themeStore';
 import { useCompanyStore } from './state/company_store';
 import { useThemeSync } from './hooks/useThemeSync';
+import { useAuthSync } from './hooks/useAuthSync';
 import AppRoutes from './app/routes';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
@@ -18,6 +19,9 @@ export default function App() {
 
   // Sync theme preferences với server khi đăng nhập
   useThemeSync();
+  
+  // Sync user data với server khi app khởi động
+  useAuthSync();
 
   // Apply dark mode
   useEffect(() => {

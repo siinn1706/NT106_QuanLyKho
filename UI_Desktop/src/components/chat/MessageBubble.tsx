@@ -101,7 +101,7 @@ export default function MessageBubble({
         {/* Bong bóng tin nhắn - dùng accent color cho tin của mình */}
         <div className="relative">
           <div 
-            className={`px-4 py-3 rounded-2xl text-sm max-w-[280px] transition-all ${
+            className={`px-4 py-3 rounded-2xl text-sm max-w-[280px] transition-all break-words ${
               mine 
                 ? "text-white shadow-sm" 
                 : isDarkMode
@@ -110,7 +110,7 @@ export default function MessageBubble({
             }`}
             style={mine ? { backgroundColor: 'var(--primary)' } : undefined}
           >
-            <div className="markdown-content">
+            <div className="markdown-content whitespace-pre-wrap">
               <ReactMarkdown
                 components={{
                   p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,

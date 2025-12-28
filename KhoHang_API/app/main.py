@@ -16,14 +16,20 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from . import schemas
-from .config import FIREBASE_API_KEY
+from .config import GEMINI_API_KEY  # Removed FIREBASE imports
 from .gemini_client import generate_reply, is_configured as gemini_ready, MODEL_NAME, QuotaExceededError
 from .export_service import VoucherExportRequest, export_to_excel, export_to_pdf
 from .database import (
     get_db, SupplierModel, ItemModel, StockTransactionModel, WarehouseModel,
     CompanyInfoModel, StockInRecordModel, StockOutRecordModel, UserModel, get_datadir
 )
-from .auth_middleware import require_auth, UserModel as AuthUserModel
+from .auth_middleware import get_current_user, get_current_user_optional
+
+# Type alias for authenticated user payload returned by auth_middleware
+AuthUserModel = Dict[str, Any]
+
+# Backwards-compatible dependency name (was require_auth with Firebase)
+require_auth = get_current_user
 from .db_helpers import (
     supplier_model_to_schema, supplier_schema_to_dict,
     item_model_to_schema, item_schema_to_dict,
@@ -33,6 +39,11 @@ from .db_helpers import (
     stock_in_record_model_to_schema,
     stock_out_record_model_to_schema,
 )
+
+# Import new auth routes
+from .auth_routes import router as auth_router
+from .user_routes import router as user_router
+from .chatbot_routes import router as chatbot_router
 
 DATA_DIR = get_datadir()
 UPLOADS_DIR = DATA_DIR / "uploads"
@@ -52,160 +63,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Include routers
+app.include_router(auth_router)
+app.include_router(user_router)
+app.include_router(chatbot_router)
+
 # -------------------------------------------------
 # ROOT
 # -------------------------------------------------
 @app.get("/")
 def root():
-    return {"message": "N3T KhoHang API is running"}
+    return {"message": "N3T KhoHang API is running with JWT Auth"}
 
 # -------------------------------------------------
-# AUTH (Firebase + Local DB Sync)
+# OLD AUTH ROUTES (DEPRECATED - KEPT FOR REFERENCE)
+# Use /auth/* and /users/* routes instead
 # -------------------------------------------------
 
-@app.post("/auth/register", response_model=schemas.AuthResponse)
-def register_user(payload: schemas.AuthRegisterRequest, db: Session = Depends(get_db)):
-    """Đăng ký tài khoản mới qua Firebase Auth và lưu vào DB local"""
-    url = f"https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={FIREBASE_API_KEY}"
-    data: Dict[str, Any] = {
-        "email": payload.email,
-        "password": payload.password,
-        "returnSecureToken": True,
-    }
-    if payload.full_name:
-        data["displayName"] = payload.full_name
-
-    r = requests.post(url, json=data)
-    if not r.ok:
-        err = r.json()
-        msg = err.get("error", {}).get("message", "FIREBASE_SIGNUP_FAILED")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
-
-    fb = r.json()
-    user_id = fb.get("localId", "")
-    email = fb["email"]
-    display_name = fb.get("displayName")
-
-    # Lưu user vào database local
-    new_user = UserModel(
-        id=user_id,
-        email=email,
-        name=display_name,
-        role="staff"
-    )
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-
-    user = schemas.User(id=user_id, email=email, name=display_name)
-    return schemas.AuthResponse(
-        user=user,
-        token=fb["idToken"],
-        refresh_token=fb.get("refreshToken"),
-    )
-
-
-@app.post("/auth/login", response_model=schemas.AuthResponse)
-def login_user(payload: schemas.AuthLoginRequest, db: Session = Depends(get_db)):
-    """Đăng nhập bằng email/password qua Firebase Auth và đồng bộ DB local"""
-    url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={FIREBASE_API_KEY}"
-    data: Dict[str, Any] = {
-        "email": payload.email,
-        "password": payload.password,
-        "returnSecureToken": True,
-    }
-
-    r = requests.post(url, json=data)
-    if not r.ok:
-        err = r.json()
-        msg = err.get("error", {}).get("message", "FIREBASE_LOGIN_FAILED")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
-
-    fb = r.json()
-    user_id = fb.get("localId", "")
-    email = fb["email"]
-    display_name = fb.get("displayName")
-
-    # Đồng bộ user vào database local
-    db_user = db.query(UserModel).filter(UserModel.id == user_id).first()
-    
-    if not db_user:
-        new_user = UserModel(
-            id=user_id,
-            email=email,
-            name=display_name,
-            role="staff"
-        )
-        db.add(new_user)
-        db.commit()
-    else:
-        # Cập nhật tên nếu có thay đổi từ Firebase
-        if display_name and db_user.name != display_name:
-            db_user.name = display_name
-            db.commit()
-
-    user = schemas.User(id=user_id, email=email, name=display_name)
-    return schemas.AuthResponse(
-        user=user,
-        token=fb["idToken"],
-        refresh_token=fb.get("refreshToken"),
-    )
-
-@app.post("/auth/change-password")
-def change_password(payload: schemas.AuthChangePasswordRequest):
-    """Đổi mật khẩu"""
-    login_url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={FIREBASE_API_KEY}"
-    login_data = {
-        "email": payload.email,
-        "password": payload.old_password,
-        "returnSecureToken": True,
-    }
-    
-    r_login = requests.post(login_url, json=login_data)
-    if not r_login.ok:
-        raise HTTPException(status_code=400, detail="Mật khẩu cũ không chính xác")
-    
-    id_token = r_login.json().get("idToken")
-
-    update_url = f"https://identitytoolkit.googleapis.com/v1/accounts:update?key={FIREBASE_API_KEY}"
-    update_data = {
-        "idToken": id_token,
-        "password": payload.new_password,
-        "returnSecureToken": False,
-    }
-    
-    r_update = requests.post(update_url, json=update_data)
-    if not r_update.ok:
-        err = r_update.json()
-        msg = err.get("error", {}).get("message", "CHANGE_PASSWORD_FAILED")
-        raise HTTPException(status_code=400, detail=msg)
-
-    return {"message": "Đổi mật khẩu thành công"}
-
-
-@app.post("/auth/logout", status_code=200)
-def logout_user():
-    return {"message": "logged out"}
-
-
-@app.post("/auth/forgot-password", status_code=200)
-def forgot_password(payload: schemas.AuthForgotPasswordRequest):
-    """Gửi email đặt lại mật khẩu"""
-    url = f"https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key={FIREBASE_API_KEY}"
-    data = {
-        "requestType": "PASSWORD_RESET",
-        "email": payload.email,
-    }
-
-    r = requests.post(url, json=data)
-    if not r.ok:
-        err = r.json()
-        msg = err.get("error", {}).get("message", "FIREBASE_ERROR")
-        if msg == "EMAIL_NOT_FOUND":
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Email không tồn tại")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
-    
-    return {"message": "Email đặt lại mật khẩu đã được gửi."}
+# @app.post("/auth/register") - DEPRECATED, use /auth/register/request-otp
+# @app.post("/auth/login") - DEPRECATED, use /auth/login  
+# @app.post("/auth/change-password") - DEPRECATED, use /auth/password/*
+# @app.post("/auth/logout") - DEPRECATED
+# @app.post("/auth/forgot-password") - DEPRECATED, use /auth/password/request-otp
 
 
 # -------------------------------------------------
