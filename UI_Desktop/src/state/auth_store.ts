@@ -5,11 +5,7 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  username?: string;
-  fullName?: string;
-  avatar?: string;
   role?: string;
-  is_verified?: boolean;
 }
 
 interface AuthState {
