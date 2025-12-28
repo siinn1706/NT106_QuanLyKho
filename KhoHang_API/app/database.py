@@ -157,38 +157,10 @@ class UserModel(Base):
     __tablename__ = "users"
     id = Column(String, primary_key=True)
     email = Column(String, unique=True, nullable=False, index=True)
-    name = Column(String, nullable=True)  # Tên đầy đủ
-    username = Column(String, nullable=True)  # Tên hiển thị
-    avatar = Column(Text, nullable=True)  # URL hoặc base64
+    name = Column(String, nullable=True)
     role = Column(String, default="staff")
-    is_active = Column(Boolean, default=True)  # Account có active không
-    is_verified = Column(Boolean, default=False)  # Email đã verify chưa
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-
-
-class OTPModel(Base):
-    """Lưu OTP codes cho registration và reset password"""
-    __tablename__ = "otp_codes"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    email = Column(String, nullable=False, index=True)
-    otp_code = Column(String(6), nullable=False)  # 6 digits
-    otp_type = Column(String, nullable=False)  # 'register' hoặc 'reset_password'
-    expires_at = Column(DateTime, nullable=False, index=True)  # Thời gian hết hạn
-    is_used = Column(Boolean, default=False)  # Đã sử dụng chưa
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-
-
-class TokenBlacklistModel(Base):
-    """Lưu các token đã bị vô hiệu hóa (logout, change password...)"""
-    __tablename__ = "token_blacklist"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    token = Column(Text, nullable=False, unique=True, index=True)  # Firebase token hoặc JWT
-    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
-    blacklisted_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
-    expires_at = Column(DateTime, nullable=False)  # Token expiry time
 
 
 # =============================================================

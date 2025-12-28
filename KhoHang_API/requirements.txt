@@ -6,7 +6,6 @@ requests
 email-validator
 google-generativeai
 python-multipart
-firebase-admin
 # Image processing
 Pillow
 # Export dependencies
