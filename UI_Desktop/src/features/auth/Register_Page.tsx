@@ -121,9 +121,26 @@ export default function Register_Page() {
     setOtpError('');
 
     try {
-      const response = await apiVerifyOtp({ email, otp: otpCode });
-      login(response.user, response.token || ""); 
-      navigate('/dashboard');
+      const response = await apiVerifyOtp({ 
+        email, 
+        otp: otpCode,
+        username: email.split('@')[0],
+        fullName: name,
+        avatar: null
+      });
+      
+      if (response.token) {
+        login(response.user, response.token, false);
+        navigate('/dashboard');
+      } else {
+        setShowOtpModal(false);
+        navigate('/login', { 
+          state: { 
+            message: 'Xác thực thành công! Vui lòng đăng nhập.',
+            email: email 
+          } 
+        });
+      }
     } catch (err: any) {
       setOtpError(err.message || 'Mã OTP không hợp lệ hoặc đã hết hạn');
     } finally {

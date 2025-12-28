@@ -21,9 +21,12 @@ from .gemini_client import generate_reply, is_configured as gemini_ready, MODEL_
 from .export_service import VoucherExportRequest, export_to_excel, export_to_pdf
 from .database import (
     get_db, SupplierModel, ItemModel, StockTransactionModel, WarehouseModel,
-    CompanyInfoModel, StockInRecordModel, StockOutRecordModel, UserModel, get_datadir
+    CompanyInfoModel, StockInRecordModel, StockOutRecordModel, UserModel, 
+    OTPModel, TokenBlacklistModel, get_datadir
 )
 from .auth_middleware import require_auth, UserModel as AuthUserModel
+from .email_service import create_otp, verify_otp as verify_otp_code
+from .firestore_service import create_user_profile, update_user_profile, check_username_exists, initialize_firestore
 from .db_helpers import (
     supplier_model_to_schema, supplier_schema_to_dict,
     item_model_to_schema, item_schema_to_dict,
@@ -41,6 +44,8 @@ LOGO_DIR = UPLOADS_DIR / "logos"
 LOGO_DIR.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(title="N3T KhoHang API", version="0.1.0")
+
+initialize_firestore()
 
 app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
 
@@ -63,9 +68,21 @@ def root():
 # AUTH (Firebase + Local DB Sync)
 # -------------------------------------------------
 
-@app.post("/auth/register", response_model=schemas.AuthResponse)
+@app.post("/auth/register")
 def register_user(payload: schemas.AuthRegisterRequest, db: Session = Depends(get_db)):
-    """Đăng ký tài khoản mới qua Firebase Auth và lưu vào DB local"""
+    """
+    Đăng ký tài khoản mới qua Firebase Auth và lưu vào DB local.
+    Account sẽ ở trạng thái chưa verified, cần verify OTP để kích hoạt.
+    """
+    # Kiểm tra email đã tồn tại chưa
+    existing_user = db.query(UserModel).filter(UserModel.email == payload.email).first()
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="Email đã được đăng ký"
+        )
+    
+    # Đăng ký với Firebase
     url = f"https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={FIREBASE_API_KEY}"
     data: Dict[str, Any] = {
         "email": payload.email,
@@ -86,23 +103,123 @@ def register_user(payload: schemas.AuthRegisterRequest, db: Session = Depends(ge
     email = fb["email"]
     display_name = fb.get("displayName")
 
-    # Lưu user vào database local
+    # Lưu user vào database local (chưa verified)
     new_user = UserModel(
         id=user_id,
         email=email,
         name=display_name,
-        role="staff"
+        username=display_name,  # Mặc định username = name
+        role="staff",
+        is_verified=False,  # Chưa verify
+        is_active=False  # Chưa kích hoạt
     )
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
 
-    user = schemas.User(id=user_id, email=email, name=display_name)
-    return schemas.AuthResponse(
-        user=user,
-        token=fb["idToken"],
-        refresh_token=fb.get("refreshToken"),
+    # Tạo và gửi OTP
+    create_otp(db, email, "register")
+
+    return {
+        "message": "Đăng ký thành công. Vui lòng kiểm tra email để nhận mã OTP.",
+        "email": email
+    }
+
+
+@app.post("/auth/verify-otp", response_model=schemas.AuthResponse)
+def verify_otp(payload: schemas.VerifyOtpRequest, db: Session = Depends(get_db)):
+    """
+    Verify OTP và kích hoạt account.
+    Lưu user profile lên Firestore với transaction.
+    """
+    is_valid = verify_otp_code(db, payload.email, payload.otp, "register")
+    
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Mã OTP không hợp lệ hoặc đã hết hạn"
+        )
+    
+    user = db.query(UserModel).filter(UserModel.email == payload.email).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Không tìm thấy tài khoản"
+        )
+    
+    if check_username_exists(payload.username):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Username '{payload.username}' đã tồn tại"
+        )
+    
+    try:
+        create_user_profile(
+            uid=user.id,
+            email=user.email,
+            username=payload.username,
+            full_name=payload.fullName,
+            photo_url=payload.avatar
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Không thể lưu thông tin user"
+        )
+    
+    user.username = payload.username
+    user.name = payload.fullName
+    user.avatar = payload.avatar
+    user.is_verified = True
+    user.is_active = True
+    db.commit()
+    db.refresh(user)
+    
+    user_schema = schemas.User(
+        id=user.id,
+        email=user.email,
+        name=user.name,
+        username=user.username,
+        fullName=user.name,
+        avatar=user.avatar,
+        role=user.role,
+        is_verified=user.is_verified
     )
+    
+    return schemas.AuthResponse(
+        user=user_schema,
+        token="",
+        refresh_token=None
+    )
+
+
+@app.post("/auth/resend-otp")
+def resend_otp(payload: schemas.ResendOtpRequest, db: Session = Depends(get_db)):
+    """Gửi lại mã OTP"""
+    # Kiểm tra user tồn tại
+    user = db.query(UserModel).filter(UserModel.email == payload.email).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Email không tồn tại"
+        )
+    
+    # Nếu đã verified rồi thì không cần OTP nữa
+    if user.is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Tài khoản đã được xác thực"
+        )
+    
+    # Tạo OTP mới
+    create_otp(db, payload.email, "register")
+    
+    return {"message": "Mã OTP mới đã được gửi đến email của bạn"}
 
 
 @app.post("/auth/login", response_model=schemas.AuthResponse)
@@ -130,21 +247,48 @@ def login_user(payload: schemas.AuthLoginRequest, db: Session = Depends(get_db))
     db_user = db.query(UserModel).filter(UserModel.id == user_id).first()
     
     if not db_user:
+        # User mới, tạo account nhưng chưa verified
         new_user = UserModel(
             id=user_id,
             email=email,
             name=display_name,
-            role="staff"
+            username=display_name,
+            role="staff",
+            is_verified=False,
+            is_active=False
         )
         db.add(new_user)
         db.commit()
+        db_user = new_user
     else:
         # Cập nhật tên nếu có thay đổi từ Firebase
         if display_name and db_user.name != display_name:
             db_user.name = display_name
             db.commit()
+    
+    # Kiểm tra account có được verify chưa
+    if not db_user.is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Tài khoản chưa được xác thực. Vui lòng kiểm tra email để nhận mã OTP."
+        )
+    
+    if not db_user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Tài khoản đã bị vô hiệu hóa"
+        )
 
-    user = schemas.User(id=user_id, email=email, name=display_name)
+    user = schemas.User(
+        id=db_user.id,
+        email=db_user.email,
+        name=db_user.name,
+        username=db_user.username,
+        fullName=db_user.name,
+        avatar=db_user.avatar,
+        role=db_user.role,
+        is_verified=db_user.is_verified
+    )
     return schemas.AuthResponse(
         user=user,
         token=fb["idToken"],
@@ -184,13 +328,85 @@ def change_password(payload: schemas.AuthChangePasswordRequest):
 
 
 @app.post("/auth/logout", status_code=200)
-def logout_user():
-    return {"message": "logged out"}
+def logout_user(
+    current_user: AuthUserModel = Depends(require_auth),
+    db: Session = Depends(get_db)
+):
+    """
+    Logout user và blacklist token hiện tại
+    """
+    # Lấy token từ Authorization header sẽ được xử lý trong middleware
+    # Tạm thời trả về success (sẽ implement token blacklist sau)
+    return {"message": "Đăng xuất thành công"}
 
 
-@app.post("/auth/forgot-password", status_code=200)
+@app.post("/auth/request-reset-password")
+def request_reset_password(payload: schemas.RequestResetPasswordRequest, db: Session = Depends(get_db)):
+    """
+    Yêu cầu reset password - gửi OTP qua email
+    """
+    # Kiểm tra email tồn tại
+    user = db.query(UserModel).filter(UserModel.email == payload.email).first()
+    if not user:
+        # Không nên tiết lộ email không tồn tại để bảo mật
+        # Nhưng vẫn trả về success
+        return {"message": "Nếu email tồn tại, mã OTP đã được gửi"}
+    
+    # Tạo và gửi OTP
+    create_otp(db, payload.email, "reset_password")
+    
+    return {"message": "Mã OTP đã được gửi đến email của bạn"}
+
+
+@app.post("/auth/verify-reset-otp")
+def verify_reset_otp(payload: schemas.VerifyResetOtpRequest, db: Session = Depends(get_db)):
+    """
+    Verify OTP và reset password
+    """
+    # Verify OTP
+    is_valid = verify_otp_code(db, payload.email, payload.otp, "reset_password")
+    
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Mã OTP không hợp lệ hoặc đã hết hạn"
+        )
+    
+    # Tìm user
+    user = db.query(UserModel).filter(UserModel.email == payload.email).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Không tìm thấy tài khoản"
+        )
+    
+    # Reset password qua Firebase
+    # Cần idToken để update password, nhưng user không có token
+    # Sử dụng Firebase Admin SDK hoặc reset password link
+    # Tạm thời dùng Firebase REST API với email verification
+    
+    # Gửi password reset email từ Firebase
+    url = f"https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key={FIREBASE_API_KEY}"
+    data = {
+        "requestType": "PASSWORD_RESET",
+        "email": payload.email,
+    }
+    
+    r = requests.post(url, json=data)
+    if not r.ok:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Không thể reset password. Vui lòng thử lại sau."
+        )
+    
+    return {"message": "Email reset password đã được gửi. Vui lòng kiểm tra email."}
+
+
+@app.post("/auth/forgot-password", status_code=200, deprecated=True)
 def forgot_password(payload: schemas.AuthForgotPasswordRequest):
-    """Gửi email đặt lại mật khẩu"""
+    """
+    (DEPRECATED) Gửi email đặt lại mật khẩu - Dùng /auth/request-reset-password thay thế
+    """
     url = f"https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key={FIREBASE_API_KEY}"
     data = {
         "requestType": "PASSWORD_RESET",
@@ -206,6 +422,72 @@ def forgot_password(payload: schemas.AuthForgotPasswordRequest):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
     
     return {"message": "Email đặt lại mật khẩu đã được gửi."}
+
+
+# -------------------------------------------------
+# USER PROFILE
+# -------------------------------------------------
+
+@app.get("/users/me", response_model=schemas.User)
+def get_current_user_profile(
+    current_user: AuthUserModel = Depends(require_auth),
+    db: Session = Depends(get_db)
+):
+    """Lấy thông tin profile của user hiện tại"""
+    user = db.query(UserModel).filter(UserModel.id == current_user.id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Không tìm thấy thông tin user"
+        )
+    
+    return schemas.User(
+        id=user.id,
+        email=user.email,
+        name=user.name,
+        username=user.username,
+        fullName=user.name,
+        avatar=user.avatar,
+        role=user.role,
+        is_verified=user.is_verified
+    )
+
+
+@app.put("/users/me", response_model=schemas.User)
+def update_current_user_profile(
+    payload: schemas.UserUpdate,
+    current_user: AuthUserModel = Depends(require_auth),
+    db: Session = Depends(get_db)
+):
+    """Cập nhật thông tin profile của user hiện tại"""
+    user = db.query(UserModel).filter(UserModel.id == current_user.id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Không tìm thấy thông tin user"
+        )
+    
+    if payload.fullName is not None:
+        user.name = payload.fullName
+        update_user_profile(user.id, full_name=payload.fullName)
+    
+    if payload.avatar is not None:
+        user.avatar = payload.avatar
+        update_user_profile(user.id, photo_url=payload.avatar)
+    
+    db.commit()
+    db.refresh(user)
+    
+    return schemas.User(
+        id=user.id,
+        email=user.email,
+        name=user.name,
+        username=user.username,
+        fullName=user.name,
+        avatar=user.avatar,
+        role=user.role,
+        is_verified=user.is_verified
+    )
 
 
 # -------------------------------------------------

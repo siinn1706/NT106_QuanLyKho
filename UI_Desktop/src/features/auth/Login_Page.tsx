@@ -1,5 +1,5 @@
-import { useState, FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, FormEvent, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../state/auth_store';
 import { apiLogin } from '../../app/api_client';
 import Icon from '../../components/ui/Icon';
@@ -7,6 +7,7 @@ import { showToast } from '../../utils/toast';
 
 export default function Login_Page() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuthStore();
   
   const [email, setEmail] = useState('');
@@ -16,6 +17,17 @@ export default function Login_Page() {
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Hiển thị message từ register flow
+  useEffect(() => {
+    const state = location.state as { message?: string; email?: string };
+    if (state?.message) {
+      showToast.success(state.message);
+      if (state.email) {
+        setEmail(state.email);
+      }
+    }
+  }, [location]);
 
   const validateForm = (): string | null => {
     if (!email.trim()) return 'Vui lòng nhập email';
