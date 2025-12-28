@@ -6,13 +6,24 @@ import time
 import re
 from typing import Optional, Tuple
 
-try:
-    import google.generativeai as genai  # type: ignore
-except ImportError:  # graceful fallback if package missing
-    genai = None  # type: ignore
+GENAI_LIB = None
+genai_types = None
+genai_client = None
+
+# Primary: new google.genai client
+try:  # pragma: no cover - optional dependency
+    import google.genai as genai  # type: ignore
+    from google.genai import types as genai_types  # type: ignore
+    GENAI_LIB = "google.genai"
+except ImportError:
+    try:
+        import google.generativeai as genai  # type: ignore
+        GENAI_LIB = "google.generativeai"
+    except ImportError:  # graceful fallback if package missing
+        genai = None  # type: ignore
 
 # Try to import google.api_core for better exception handling
-try:
+try:  # pragma: no cover - optional dependency
     from google.api_core import exceptions as google_exceptions  # type: ignore
 except ImportError:
     google_exceptions = None  # type: ignore
@@ -28,7 +39,12 @@ def is_configured() -> bool:
 def init_client() -> None:
     if not is_configured():
         return
-    genai.configure(api_key=GEMINI_API_KEY)  # type: ignore
+    global genai_client
+    if GENAI_LIB == "google.genai":
+        genai_client = genai.Client(api_key=GEMINI_API_KEY)  # type: ignore
+    else:
+        # Legacy google.generativeai
+        genai.configure(api_key=GEMINI_API_KEY)  # type: ignore
 
 _initialized = False
 
@@ -95,10 +111,22 @@ def _generate_with_model(
     effective_instruction = (
         system_instruction if system_instruction else default_md_instruction
     )
-    model = genai.GenerativeModel(  # type: ignore
-        model_name=model_name, system_instruction=effective_instruction
-    )
-    response = model.generate_content(prompt)  # type: ignore
+    # New google.genai client
+    if GENAI_LIB == "google.genai":
+        config = None
+        if genai_types:
+            config = genai_types.GenerateContentConfig(system_instruction=effective_instruction)  # type: ignore
+        response = genai_client.models.generate_content(  # type: ignore
+            model=model_name,
+            contents=prompt,
+            config=config,
+        )
+    else:
+        # Legacy google.generativeai
+        model = genai.GenerativeModel(  # type: ignore
+            model_name=model_name, system_instruction=effective_instruction
+        )
+        response = model.generate_content(prompt)  # type: ignore
     
     if hasattr(response, "text") and response.text:
         return response.text.strip()
@@ -126,7 +154,7 @@ def generate_reply(
     """
     global _initialized
     if not is_configured():
-        raise RuntimeError("Gemini client not configured. Set GEMINI_API_KEY and install google-generativeai.")
+        raise RuntimeError("Gemini client not configured. Set GEMINI_API_KEY and install google-genai.")
     if not _initialized:
         init_client()
         _initialized = True

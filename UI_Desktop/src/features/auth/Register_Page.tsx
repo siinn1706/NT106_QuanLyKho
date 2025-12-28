@@ -1,15 +1,17 @@
 import { useState, FormEvent, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../state/auth_store';
-import { apiRegister, apiVerifyOtp, apiResendOtp } from '../../app/api_client';
+import { authService } from '../../app/auth_service';
 import Icon from '../../components/ui/Icon';
+import { showToast } from '../../utils/toast';
 
 export default function Register_Page() {
   const navigate = useNavigate();
   const { login } = useAuthStore();
   
-  const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -77,10 +79,13 @@ export default function Register_Page() {
   };
 
   const validateForm = (): string | null => {
-    if (!name.trim()) return 'Vui lòng nhập họ tên';
-    if (name.length < 2) return 'Họ tên quá ngắn';
+    if (!username.trim()) return 'Vui lòng nhập username';
+    if (username.length < 3 || username.length > 24) return 'Username phải có 3-24 ký tự';
+    if (!/^[a-z0-9._-]+$/.test(username)) return 'Username chỉ chứa chữ thường, số, dấu chấm, gạch dưới, gạch ngang';
     if (!email.trim()) return 'Vui lòng nhập email';
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Email không hợp lệ';
+    if (!displayName.trim()) return 'Vui lòng nhập tên hiển thị';
+    if (displayName.length < 2) return 'Tên hiển thị quá ngắn';
     if (!password) return 'Vui lòng nhập mật khẩu';
     if (password.length < 6) return 'Mật khẩu phải có ít nhất 6 ký tự';
     if (password !== confirmPassword) return 'Mật khẩu xác nhận không khớp';
@@ -100,7 +105,8 @@ export default function Register_Page() {
     setLoading(true);
     
     try {
-      await apiRegister({ name, email, password });
+      await authService.registerRequestOTP(username, email, displayName, password);
+      showToast.success('Mã OTP đã được gửi đến email của bạn');
       setShowOtpModal(true);
       setResendCountdown(60); 
       setLoading(false);
@@ -121,8 +127,9 @@ export default function Register_Page() {
     setOtpError('');
 
     try {
-      const response = await apiVerifyOtp({ email, otp: otpCode });
-      login(response.user, response.token || ""); 
+      const response = await authService.registerConfirm(email, otpCode);
+      login(response.user, response.access_token);
+      showToast.success('Đăng ký thành công!');
       navigate('/dashboard');
     } catch (err: any) {
       setOtpError(err.message || 'Mã OTP không hợp lệ hoặc đã hết hạn');
@@ -135,7 +142,8 @@ export default function Register_Page() {
     if (resendCountdown > 0) return;
     
     try {
-      await apiResendOtp({ email });
+      await authService.registerRequestOTP(username, email, displayName, password);
+      showToast.success('Mã OTP mới đã được gửi');
       setResendCountdown(60);
       setOtp(['', '', '', '', '', '']);
       setOtpError('');
@@ -164,12 +172,12 @@ export default function Register_Page() {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-2">Họ và tên</label>
+              <label className="block text-sm font-medium text-zinc-300 mb-2">Username</label>
               <input
                 type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Nguyễn Văn A"
+                value={username}
+                onChange={(e) => setUsername(e.target.value.toLowerCase())}
+                placeholder="username (chữ thường, số, ., _, -)"
                 className={inputClass}
                 disabled={loading}
               />
@@ -182,6 +190,18 @@ export default function Register_Page() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="email@example.com"
+                className={inputClass}
+                disabled={loading}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-zinc-300 mb-2">Tên hiển thị</label>
+              <input
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="Nguyễn Văn A"
                 className={inputClass}
                 disabled={loading}
               />

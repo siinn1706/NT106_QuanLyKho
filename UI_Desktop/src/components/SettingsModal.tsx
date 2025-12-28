@@ -8,6 +8,7 @@ import { apiLogout, apiUploadCompanyLogo } from '../app/api_client';
 import { BASE_URL } from '../app/api_client';
 import CustomSelect from './ui/CustomSelect';
 import PasskeyModal from './ui/PasskeyModal';
+import EditProfileModal from './EditProfileModal';
 import Icon from './ui/Icon';
 import { showToast } from '../utils/toast';
 import AppearanceSettings from './theme/AppearanceSettings';
@@ -66,6 +67,9 @@ export default function SettingsModal({ isOpen, onClose, initialTab = 'general' 
   const [showPasskeyModal, setShowPasskeyModal] = useState(false);
   const [passkeyAction, setPasskeyAction] = useState<'update' | 'delete' | null>(null);
   const [pendingWarehouseId, setPendingWarehouseId] = useState<string | null>(null);
+
+  // Edit profile modal
+  const [showEditProfileModal, setShowEditProfileModal] = useState(false);
 
   const APP_VERSION = '1.0.0';
   const BUILD_DATE = '13/11/2025';
@@ -1110,11 +1114,19 @@ export default function SettingsModal({ isOpen, onClose, initialTab = 'general' 
                 {/* User Info */}
                 <div className="p-6 rounded-xl border bg-[var(--surface-2)] border-[var(--border)]">
                   <div className="flex items-center gap-4 mb-6">
-                    <div className="w-20 h-20 bg-gradient-to-br from-[var(--primary)] to-blue-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
-                      {user?.name?.charAt(0).toUpperCase() || 'U'}
+                    <div className="w-20 h-20 bg-gradient-to-br from-[var(--primary)] to-blue-600 rounded-full flex items-center justify-center text-white text-2xl font-bold overflow-hidden">
+                      {user?.avatar_url ? (
+                        <img 
+                          src={user.avatar_url.startsWith('http') ? user.avatar_url : `${BASE_URL}${user.avatar_url}`} 
+                          alt="Avatar" 
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        user?.display_name?.charAt(0).toUpperCase() || user?.username?.charAt(0).toUpperCase() || 'U'
+                      )}
                     </div>
                     <div>
-                      <h3 className="text-xl font-bold">{user?.name || 'User'}</h3>
+                      <h3 className="text-xl font-bold">{user?.display_name || user?.username || 'User'}</h3>
                       <p className="text-sm text-[var(--text-2)]">{user?.email || 'user@example.com'}</p>
                       {user?.role && (
                         <span className="inline-block mt-2 px-3 py-1 rounded-full text-xs font-medium bg-[var(--primary-light)] text-[var(--primary)]">
@@ -1123,7 +1135,10 @@ export default function SettingsModal({ isOpen, onClose, initialTab = 'general' 
                       )}
                     </div>
                   </div>
-                  <button className="w-full px-4 py-2 rounded-xl border transition-colors duration-150 bg-[var(--surface-1)] border-[var(--border)] hover:bg-[var(--surface-3)]">
+                  <button 
+                    onClick={() => setShowEditProfileModal(true)}
+                    className="w-full px-4 py-2 rounded-xl border transition-colors duration-150 bg-[var(--surface-1)] border-[var(--border)] hover:bg-[var(--surface-3)]"
+                  >
                     <Icon name="user" size="sm" className="inline mr-2" />
                     Chỉnh sửa hồ sơ
                   </button>
@@ -1369,6 +1384,12 @@ export default function SettingsModal({ isOpen, onClose, initialTab = 'general' 
         onConfirm={handlePasskeyConfirm}
         title={passkeyAction === 'delete' ? "Xác nhận xóa kho" : "Xác nhận cập nhật kho"}
         message="Vui lòng nhập Passkey 6 chữ số để xác thực"
+      />
+
+      {/* Edit Profile Modal */}
+      <EditProfileModal
+        isOpen={showEditProfileModal}
+        onClose={() => setShowEditProfileModal(false)}
       />
     </div>
   );

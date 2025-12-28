@@ -1,7 +1,7 @@
 import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../state/auth_store';
-import { apiLogin } from '../../app/api_client';
+import { authService } from '../../app/auth_service';
 import Icon from '../../components/ui/Icon';
 import { showToast } from '../../utils/toast';
 
@@ -9,7 +9,7 @@ export default function Login_Page() {
   const navigate = useNavigate();
   const { login } = useAuthStore();
   
-  const [email, setEmail] = useState('');
+  const [usernameOrEmail, setUsernameOrEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
@@ -18,8 +18,7 @@ export default function Login_Page() {
   const [error, setError] = useState('');
 
   const validateForm = (): string | null => {
-    if (!email.trim()) return 'Vui lòng nhập email';
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Email không hợp lệ';
+    if (!usernameOrEmail.trim()) return 'Vui lòng nhập username hoặc email';
     if (!password) return 'Vui lòng nhập mật khẩu';
     if (password.length < 6) return 'Mật khẩu phải có ít nhất 6 ký tự';
     return null;
@@ -38,13 +37,13 @@ export default function Login_Page() {
     setLoading(true);
     
     try {
-      const response = await apiLogin({ email, password });
-      login(response.user, response.token || "", rememberMe);
+      const response = await authService.login(usernameOrEmail, password);
+      login(response.user, response.access_token, rememberMe);
       
-      showToast.success(`Chào mừng trở lại, ${response.user.name || 'User'}!`);
+      showToast.success(`Chào mừng trở lại, ${response.user.display_name || response.user.username}!`);
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err.message || 'Đăng nhập thất bại. Vui lòng thử lại.');
+      setError(err.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
     } finally {
       setLoading(false);
     }
@@ -74,13 +73,13 @@ export default function Login_Page() {
 
             <div>
               <label className="block text-sm font-medium text-zinc-300 mb-2 ml-1">
-                Email
+                Username hoặc Email
               </label>
               <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="user@example.com"
+                type="text"
+                value={usernameOrEmail}
+                onChange={(e) => setUsernameOrEmail(e.target.value)}
+                placeholder="username hoặc email@example.com"
                 className={inputClass}
                 disabled={loading}
               />

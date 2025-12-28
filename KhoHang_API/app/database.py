@@ -155,12 +155,32 @@ class StockOutRecordModel(Base):
 
 class UserModel(Base):
     __tablename__ = "users"
-    id = Column(String, primary_key=True)
+    id = Column(String, primary_key=True)  # UUID
+    username = Column(String, unique=True, nullable=False, index=True)
     email = Column(String, unique=True, nullable=False, index=True)
-    name = Column(String, nullable=True)
+    display_name = Column(String, nullable=True)
+    avatar_url = Column(String, nullable=True)
+    password_hash = Column(String, nullable=False)
+    passkey_hash = Column(String, nullable=True)
     role = Column(String, default="staff")
+    is_verified = Column(Boolean, default=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+
+class EmailOtpModel(Base):
+    """OTP verification codes"""
+    __tablename__ = "email_otps"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, nullable=False, index=True)
+    purpose = Column(String, nullable=False)  # register, reset_password, change_passkey
+    code_hash = Column(String, nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    attempts_left = Column(Integer, default=5)
+    consumed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
 
 
 # =============================================================
@@ -215,6 +235,17 @@ class UserPreferencesModel(Base):
     
     # Relationship
     user = relationship("UserModel", backref="preferences")
+
+class ChatbotConfigModel(Base):
+    """Lưu cấu hình chatbot (avatar, tên, mô tả)"""
+    __tablename__ = "chatbot_config"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    avatar_url = Column(Text, nullable=True)  # Đường dẫn đến avatar
+    bot_name = Column(String, default="N3T Assistant")
+    bot_description = Column(String, default="Trợ lý quản lý kho")
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 def get_db():
     db = SessionLocal()

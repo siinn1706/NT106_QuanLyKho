@@ -4,9 +4,10 @@
  *  - Có thể hỏi về các chức năng: Hàng hoá, Nhập/Xuất, Nhà cung cấp, v.v.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useUIStore } from '../state/ui_store';
 import Icon from './ui/Icon';
+import { BASE_URL } from '../app/api_client';
 
 interface Message {
   id: string;
@@ -15,7 +16,15 @@ interface Message {
   timestamp: Date;
 }
 
+interface ChatbotConfig {
+  avatar_url: string | null;
+  bot_name: string;
+  bot_description: string;
+}
+
 export default function ChatBot() {
+  console.log('🔵 ChatBot component mounted');
+  
   const { isChatOpen, toggleChat } = useUIStore();
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -27,6 +36,53 @@ export default function ChatBot() {
   ]);
   const [inputText, setInputText] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [chatbotConfig, setChatbotConfig] = useState<ChatbotConfig>({
+    avatar_url: '/uploads/chatbot/chatbot_avatar.png',  // Set default để test
+    bot_name: 'N3T Assistant',
+    bot_description: 'Trợ lý quản lý kho',
+  });
+
+  // Load chatbot config từ API
+  useEffect(() => {
+    console.log('🤖 ChatBot useEffect triggered');
+    console.log('🤖 BASE_URL:', BASE_URL);
+    console.log('🤖 Loading chatbot config from:', `${BASE_URL}/api/chatbot/config`);
+    
+    fetch(`${BASE_URL}/api/chatbot/config`)
+      .then(res => {
+        console.log('🤖 Response status:', res.status);
+        return res.json();
+      })
+      .then(data => {
+        console.log('🤖 Chatbot config loaded:', data);
+        setChatbotConfig(data);
+      })
+      .catch(err => console.error('❌ Error loading chatbot config:', err));
+  }, []);
+
+  // Hiển thị suggestions sau 5 giây
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowSuggestions(true);
+    }, 5000); // 5 giây
+
+    // Cleanup timer khi component unmount
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Helper để lấy avatar URL
+  const getAvatarUrl = () => {
+    if (!chatbotConfig.avatar_url) {
+      console.log('⚠️ No avatar_url in config');
+      return null;
+    }
+    const url = chatbotConfig.avatar_url.startsWith('http') 
+      ? chatbotConfig.avatar_url 
+      : `${BASE_URL}${chatbotConfig.avatar_url}`;
+    console.log('🖼️ Avatar URL:', url);
+    return url;
+  };
 
   // Các danh mục hỗ trợ nhanh - dùng icon name thay vì emoji
   const categoryIcons: Record<string, string> = {
@@ -37,14 +93,15 @@ export default function ChatBot() {
   };
 
   const categories = [
-    { id: 'items', label: 'Hàng hoá' },
-    { id: 'stock', label: 'Nhập/Xuất' },
+    { id: 'items', label: 'Tồn kho' },
+    { id: 'stock', label: 'Đơn hàng' },
     { id: 'suppliers', label: 'Nhà cung cấp' },
     { id: 'reports', label: 'Báo cáo' },
   ];
 
   const handleCategorySelect = (categoryId: string) => {
     setSelectedCategory(categoryId);
+    setShowSuggestions(false); // Ẩn suggestions khi click
     const category = categories.find(c => c.id === categoryId);
     
     // Tạo message từ user
@@ -96,12 +153,25 @@ export default function ChatBot() {
           {/* Chat Header - Glass effect with gradient */}
           <div className="bg-gradient-to-r from-[var(--primary)] to-[var(--primary-dark)] text-white p-4 flex items-center justify-between backdrop-blur-sm">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border border-white/30">
-                <Icon name="comment-dots" className="text-white" />
+              <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border border-white/30 overflow-hidden">
+                {getAvatarUrl() ? (
+                  <img 
+                    src={getAvatarUrl()!} 
+                    alt="Bot Avatar" 
+                    className="w-full h-full object-cover"
+                    onLoad={() => console.log('✅ Avatar loaded successfully')}
+                    onError={(e) => {
+                      console.error('❌ Avatar failed to load:', getAvatarUrl());
+                      const target = e.currentTarget as HTMLImageElement;
+                      target.style.display = 'none';
+                    }}
+                  />
+                ) : null}
+                {!getAvatarUrl() && <Icon name="robot" className="text-white" />}
               </div>
               <div>
-                <h3 className="font-semibold">N3T Assistant</h3>
-                <p className="text-xs text-white/80">Trợ lý quản lý kho</p>
+                <h3 className="font-semibold">{chatbotConfig.bot_name}</h3>
+                <p className="text-xs text-white/80">{chatbotConfig.bot_description}</p>
               </div>
             </div>
             <button
@@ -140,8 +210,22 @@ export default function ChatBot() {
             {messages.map((msg) => (
               <div
                 key={msg.id}
-                className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'} gap-2`}
               >
+                {/* Avatar cho bot */}
+                {msg.sender === 'bot' && (
+                  <div className="w-8 h-8 bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] rounded-full flex items-center justify-center flex-shrink-0 mt-1 overflow-hidden">
+                    {getAvatarUrl() ? (
+                      <img 
+                        src={getAvatarUrl()!} 
+                        alt="Bot Avatar" 
+                        className="w-full h-full object-cover"
+                        onError={() => console.error('❌ Message avatar load failed')}
+                      />
+                    ) : null}
+                    {!getAvatarUrl() && <Icon name="robot" size="sm" className="text-white" />}
+                  </div>
+                )}
                 <div
                   className={`max-w-[80%] px-4 py-2 rounded-2xl backdrop-blur-sm transition-all duration-200 ${
                     msg.sender === 'user'
@@ -159,6 +243,49 @@ export default function ChatBot() {
                 </div>
               </div>
             ))}
+
+            {/* Suggestion Options - Hiển thị sau 5 giây */}
+            {showSuggestions && (
+              <div className="animate-glass-in flex gap-2">
+                {/* Avatar cho suggestions */}
+                <div className="w-8 h-8 bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] rounded-full flex items-center justify-center flex-shrink-0 mt-1 overflow-hidden">
+                  {getAvatarUrl() ? (
+                    <img 
+                      src={getAvatarUrl()!} 
+                      alt="Bot Avatar" 
+                      className="w-full h-full object-cover"
+                      onError={() => console.error('❌ Suggestions avatar load failed')}
+                    />
+                  ) : null}
+                  {!getAvatarUrl() && <Icon name="robot" size="sm" className="text-white" />}
+                </div>
+                <div className="bg-[var(--surface-2)]/80 rounded-2xl rounded-bl-none border border-[var(--border)]/50 backdrop-blur-sm p-4 max-w-[85%]">
+                  <p className="text-sm text-[var(--text-2)] mb-3">
+                    Xin chào! Tôi có thể giúp gì cho bạn?
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {categories.map((cat) => (
+                      <button
+                        key={cat.id}
+                        onClick={() => handleCategorySelect(cat.id)}
+                        className="p-3 liquid-glass-btn-secondary text-center group hover:scale-105 transition-all duration-200"
+                      >
+                        <div className="flex flex-col items-center gap-2">
+                          <div className="w-12 h-12 bg-[var(--primary)]/10 rounded-lg flex items-center justify-center group-hover:bg-[var(--primary)]/20 transition-colors">
+                            <Icon 
+                              name={categoryIcons[cat.id]} 
+                              size="lg" 
+                              className="text-[var(--primary)] group-hover:scale-110 transition-transform" 
+                            />
+                          </div>
+                          <span className="text-xs font-medium text-[var(--text-1)]">{cat.label}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Input Area - Glass input */}
@@ -187,10 +314,23 @@ export default function ChatBot() {
       {!isChatOpen && (
         <button
           onClick={toggleChat}
-          className="fixed bottom-6 right-6 w-14 h-14 liquid-glass-btn rounded-full flex items-center justify-center text-xl z-50 hover:scale-110 transition-all duration-300"
-          title="Mở trợ lý N3T"
+          className="fixed bottom-6 right-6 w-14 h-14 liquid-glass-btn rounded-full flex items-center justify-center text-xl z-50 hover:scale-110 transition-all duration-300 shadow-lg overflow-hidden"
+          title={`Mở ${chatbotConfig.bot_name}`}
         >
-          <Icon name="comment-dots" className="text-white" />
+          {getAvatarUrl() ? (
+            <img 
+              src={getAvatarUrl()!} 
+              alt="Chatbot" 
+              className="w-full h-full object-cover"
+              onLoad={() => console.log('✅ Floating button avatar loaded')}
+              onError={(e) => {
+                console.error('❌ Floating button avatar failed');
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+          ) : (
+            <Icon name="robot" className="text-white text-2xl" />
+          )}
         </button>
       )}
     </>

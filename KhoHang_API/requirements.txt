@@ -4,7 +4,7 @@ pydantic
 python-dotenv
 requests
 email-validator
-google-generativeai
+google-genai
 python-multipart
 # Image processing
 Pillow
@@ -14,3 +14,6 @@ reportlab
 num2words
 # Database
 sqlalchemy
+PyJWT
+passlib[bcrypt]
+python-jose[cryptography]

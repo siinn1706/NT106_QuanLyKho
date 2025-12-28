@@ -10,6 +10,7 @@ import Login_Page from '../features/auth/Login_Page';
 import Register_Page from '../features/auth/Register_Page';
 import Forgot_Password_Page from '../features/auth/Forgot_Password_Page';
 import Change_Password_Page from '../features/auth/Change_Password_Page';
+import Change_Passkey_Page from '../features/auth/Change_Passkey_Page';
 
 // Main pages
 import Dashboard_Page from '../features/dashboard/Dashboard_Page';
@@ -34,6 +35,11 @@ export default function AppRoutes() {
       <Route path="/register" element={<Register_Page />} />
       <Route path="/forgot-password" element={<Forgot_Password_Page />} />
       <Route path="/change-password" element={<Change_Password_Page />} />
+      <Route path="/change-passkey" element={
+        <Protected_Route>
+          <Change_Passkey_Page />
+        </Protected_Route>
+      } />
 
       {/* Default: chuyển / -> /dashboard */}
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
