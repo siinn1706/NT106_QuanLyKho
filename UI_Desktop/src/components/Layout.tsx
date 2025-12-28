@@ -136,9 +136,9 @@ export default function Layout({ children }: LayoutProps) {
       <aside
         className={`${
           isSidebarCollapsed ? 'w-20' : 'w-64'
-        } bg-[var(--surface-1)]/80 backdrop-blur-xl border-r border-[#1a1a1a] transition-all duration-200 ease-out flex flex-col overflow-hidden`}
+        } bg-[var(--surface-1)]/80 backdrop-blur-xl border-r dark:border-zinc-800 border-zinc-300 transition-all duration-200 ease-out flex flex-col overflow-hidden`}
       >
-        <div className={`h-16 flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-between'} px-4 border-b border-[#1a1a1a]`}>
+        <div className={`h-16 flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-between'} px-4 border-b dark:border-zinc-800 border-zinc-300`}>
           {!isSidebarCollapsed && (
             <div className="flex items-center gap-2">
               <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
@@ -221,7 +221,7 @@ export default function Layout({ children }: LayoutProps) {
             );
           })}
         </nav>
-        <div className={`mt-auto border-t border-[#1a1a1a] transition-opacity duration-200 ${
+        <div className={`mt-auto border-t dark:border-zinc-800 border-zinc-300 transition-opacity duration-200 ${
           isSidebarCollapsed ? 'opacity-0 h-0 overflow-hidden' : 'opacity-100'
         }`}>
           <div className="relative">
@@ -258,7 +258,7 @@ export default function Layout({ children }: LayoutProps) {
                       setSettingsTab('warehouse');
                       setSettingsOpen(true);
                     }}
-                    className="w-full px-4 py-3 flex items-center gap-3 hover:bg-[var(--surface-2)]/70 transition-all duration-150 text-left border-t border-[#1a1a1a]"
+                    className="w-full px-4 py-3 flex items-center gap-3 hover:bg-[var(--surface-2)]/70 transition-all duration-150 text-left border-t dark:border-zinc-800 border-zinc-300"
                   >
                     <Icon name="warehouse" size="md" />
                     <span className="text-sm">Kho hàng</span>
@@ -269,7 +269,7 @@ export default function Layout({ children }: LayoutProps) {
                       setSettingsTab('general');
                       setSettingsOpen(true);
                     }}
-                    className="w-full px-4 py-3 flex items-center gap-3 hover:bg-[var(--surface-2)]/70 transition-all duration-150 text-left border-t border-[#1a1a1a]"
+                    className="w-full px-4 py-3 flex items-center gap-3 hover:bg-[var(--surface-2)]/70 transition-all duration-150 text-left border-t dark:border-zinc-800 border-zinc-300"
                   >
                     <Icon name="settings" size="md" />
                     <span className="text-sm">Cài đặt</span>
@@ -279,7 +279,7 @@ export default function Layout({ children }: LayoutProps) {
                       setUserMenuOpen(false);
                       handleLogout();
                     }}
-                    className="w-full px-4 py-3 flex items-center gap-3 hover:bg-red-500/10 transition-all duration-150 text-left text-[var(--danger)] border-t border-[#1a1a1a]"
+                    className="w-full px-4 py-3 flex items-center gap-3 hover:bg-red-500/10 transition-all duration-150 text-left text-[var(--danger)] border-t dark:border-zinc-800 border-zinc-300"
                   >
                     <Icon name="logout" size="md" />
                     <span className="text-sm font-medium">Đăng xuất</span>
@@ -292,7 +292,7 @@ export default function Layout({ children }: LayoutProps) {
       
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header with subtle glass effect */}
-        <header className="h-16 bg-[var(--surface-1)]/80 backdrop-blur-xl border-b border-[#1a1a1a] flex items-center justify-between px-6 relative z-50">
+        <header className="h-16 bg-[var(--surface-1)]/80 backdrop-blur-xl border-b dark:border-zinc-800 border-zinc-300 flex items-center justify-between px-6 relative z-50">
           <div className="flex items-center gap-3">
             <h1 className="text-xl font-semibold leading-none">{pageInfo.title}</h1>
             {pageInfo.subtitle && (

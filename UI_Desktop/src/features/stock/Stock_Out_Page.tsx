@@ -700,15 +700,18 @@ export default function Stock_Out_Page() {
                       onProductNotFound={() => handleProductNotFound(product.id)}
                       placeholder="Mã SKU"
                       className="h-10"
+                      searchMode="sku"
                     />
 
-                    {/* Tên hàng */}
-                    <input
-                      type="text"
+                    {/* Tên hàng - Cho phép tìm kiếm */}
+                    <ProductCodeInput
                       value={product.itemName}
-                      readOnly
-                      className={inputReadonlyClass}
+                      onChange={(val) => updateProduct(product.id, { itemName: val })}
+                      onProductFound={(p) => handleProductFound(product.id, p)}
+                      onProductNotFound={() => handleProductNotFound(product.id)}
                       placeholder="Tên hàng hoá"
+                      className="h-10"
+                      searchMode="name"
                     />
 
                     {/* Tồn kho */}

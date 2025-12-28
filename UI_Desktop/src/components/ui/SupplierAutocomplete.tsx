@@ -140,7 +140,7 @@ export default function SupplierAutocomplete({
       {showDropdown && filteredSuppliers.length > 0 && (
         <div
           ref={dropdownRef}
-          className="absolute z-50 w-full mt-1 bg-[var(--surface-1)] border border-[var(--border)] rounded-lg shadow-lg max-h-60 overflow-y-auto"
+          className="absolute z-[9999] w-full mt-1 bg-[var(--surface-1)] border border-[var(--border)] rounded-lg shadow-lg max-h-60 overflow-y-auto"
         >
           {filteredSuppliers.map((supplier, index) => (
             <button
