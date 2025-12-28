@@ -254,9 +254,14 @@ export interface AuthResponse {
     id: string;
     email: string;
     name: string;
+    username?: string;
+    fullName?: string;
+    avatar?: string;
     role?: string;
+    is_verified?: boolean;
   };
   token?: string;
+  refresh_token?: string;
 }
 
 export async function apiLogin(credentials: LoginRequest): Promise<AuthResponse> {
@@ -272,7 +277,7 @@ export async function apiLogin(credentials: LoginRequest): Promise<AuthResponse>
   return res.json();
 }
 
-export async function apiRegister(data: RegisterRequest): Promise<AuthResponse> {
+export async function apiRegister(data: RegisterRequest): Promise<{ message: string; email: string }> {
   const res = await fetch(`${BASE_URL}/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -280,7 +285,7 @@ export async function apiRegister(data: RegisterRequest): Promise<AuthResponse> 
   });
   if (!res.ok) {
     const error = await res.json();
-    throw new Error(error.message || "Đăng ký thất bại");
+    throw new Error(error.detail || "\u0110\u0103ng k\u00fd th\u1ea5t b\u1ea1i");
   }
   return res.json();
 }
@@ -296,6 +301,9 @@ export async function apiLogout(): Promise<void> {
 export interface VerifyOtpRequest {
   email: string;
   otp: string;
+  username: string;
+  fullName: string;
+  avatar?: string | null;
 }
 
 export async function apiVerifyOtp(data: VerifyOtpRequest): Promise<AuthResponse> {
@@ -323,7 +331,80 @@ export async function apiResendOtp(data: ResendOtpRequest): Promise<{ message: s
   });
   if (!res.ok) {
     const error = await res.json();
-    throw new Error(error.message || "Không thể gửi lại OTP");
+    throw new Error(error.detail || "Kh\u00f4ng th\u1ec3 g\u1eedi l\u1ea1i OTP");
+  }
+  return res.json();
+}
+
+// === API Reset Password ===
+export interface RequestResetPasswordRequest {
+  email: string;
+}
+
+export interface VerifyResetOtpRequest {
+  email: string;
+  otp: string;
+  new_password: string;
+}
+
+export async function apiRequestResetPassword(data: RequestResetPasswordRequest): Promise<{ message: string }> {
+  const res = await fetch(`${BASE_URL}/auth/request-reset-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.detail || "Kh\u00f4ng th\u1ec3 g\u1eedi OTP reset password");
+  }
+  return res.json();
+}
+
+export async function apiVerifyResetOtp(data: VerifyResetOtpRequest): Promise<{ message: string }> {
+  const res = await fetch(`${BASE_URL}/auth/verify-reset-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.detail || "Kh\u00f4ng th\u1ec3 reset password");
+  }
+  return res.json();
+}
+
+// === API User Profile ===
+export interface UserProfile {
+  id: string;
+  email: string;
+  name: string;
+  username?: string;
+  fullName?: string;
+  avatar?: string;
+  role?: string;
+  is_verified?: boolean;
+}
+
+export interface UserUpdateRequest {
+  fullName?: string;
+  avatar?: string;
+}
+
+export async function apiGetUserProfile(): Promise<UserProfile> {
+  const res = await apiFetch(`${BASE_URL}/users/me`);
+  if (!res.ok) {
+    throw new Error("Kh\u00f4ng th\u1ec3 t\u1ea3i th\u00f4ng tin user");
+  }
+  return res.json();
+}
+
+export async function apiUpdateUserProfile(data: UserUpdateRequest): Promise<UserProfile> {
+  const res = await apiFetch(`${BASE_URL}/users/me`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    throw new Error("Kh\u00f4ng th\u1ec3 c\u1eadp nh\u1eadt th\u00f4ng tin user");
   }
   return res.json();
 }

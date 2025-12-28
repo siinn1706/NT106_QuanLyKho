@@ -251,7 +251,17 @@ class User(BaseModel):
     id: str
     email: EmailStr
     name: str | None = None
+    username: str | None = None
+    fullName: str | None = None
+    avatar: str | None = None
     role: str | None = None
+    is_verified: bool = False
+
+
+class UserUpdate(BaseModel):
+    """Schema để cập nhật thông tin user"""
+    fullName: str | None = None
+    avatar: str | None = None
 
 
 class AuthResponse(BaseModel):
@@ -261,6 +271,35 @@ class AuthResponse(BaseModel):
 
 class AuthForgotPasswordRequest(BaseModel):
     email: EmailStr
+
+
+# ---------- OTP VERIFICATION ----------
+
+class VerifyOtpRequest(BaseModel):
+    """Verify OTP cho registration"""
+    email: EmailStr
+    otp: str
+    username: str
+    fullName: str
+    avatar: str | None = None
+
+
+class ResendOtpRequest(BaseModel):
+    """Gửi lại OTP"""
+    email: EmailStr
+
+
+class RequestResetPasswordRequest(BaseModel):
+    """Yêu cầu reset password - gửi OTP"""
+    email: EmailStr
+
+
+class VerifyResetOtpRequest(BaseModel):
+    """Verify OTP reset password và set password mới"""
+    email: EmailStr
+    otp: str  # 6 digits
+    new_password: str
+
 
 # ---------- AI CHAT ----------
 
