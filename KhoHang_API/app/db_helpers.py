@@ -102,9 +102,6 @@ def stock_transaction_model_to_schema(model: StockTransactionModel) -> schemas.S
         quantity=model.quantity,
         note=model.note,
         timestamp=model.timestamp,
-        warehouse_code=getattr(model, "warehouse_code", None),
-        voucher_id=getattr(model, "voucher_id", None),
-        actor_user_id=getattr(model, "actor_user_id", None),
     )
 
 
