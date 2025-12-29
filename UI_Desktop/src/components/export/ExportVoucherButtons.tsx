@@ -15,7 +15,6 @@
 import React, { useState } from 'react';
 import type { VoucherExportData } from '../../app/exportApi';
 import { exportToExcel, exportToPdf } from '../../app/exportApi';
-import { showToast } from '../../utils/toast';
 
 interface ExportVoucherButtonsProps {
   data: VoucherExportData;
@@ -38,10 +37,10 @@ export const ExportVoucherButtons: React.FC<ExportVoucherButtonsProps> = ({
     setIsExportingExcel(true);
     try {
       await exportToExcel(data);
-      // Toast đã được xử lý trong exportToExcel
+      // Alert đã được xử lý trong exportToExcel
     } catch (error) {
       console.error('Export Excel error:', error);
-      showToast.error('Có lỗi xảy ra khi xuất Excel');
+      alert('Có lỗi xảy ra khi xuất Excel');
     } finally {
       setIsExportingExcel(false);
     }
@@ -53,10 +52,10 @@ export const ExportVoucherButtons: React.FC<ExportVoucherButtonsProps> = ({
     setIsExportingPDF(true);
     try {
       await exportToPdf(data);
-      // Toast đã được xử lý trong exportToPdf
+      // Alert đã được xử lý trong exportToPdf
     } catch (error) {
       console.error('Export PDF error:', error);
-      showToast.error('Có lỗi xảy ra khi xuất PDF');
+      alert('Có lỗi xảy ra khi xuất PDF');
     } finally {
       setIsExportingPDF(false);
     }

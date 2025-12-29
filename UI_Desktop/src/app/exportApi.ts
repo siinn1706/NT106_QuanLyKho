@@ -10,7 +10,6 @@
 
 import { save } from '@tauri-apps/plugin-dialog';
 import { writeFile } from '@tauri-apps/plugin-fs';
-import { showToast } from '../utils/toast';
 
 // API Base URL (điều chỉnh theo môi trường)
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
@@ -77,7 +76,7 @@ export async function exportToExcel(data: VoucherExportData): Promise<boolean> {
   try {
     // Validate
     if (data.items.length > 30) {
-      showToast.warning('Template chỉ hỗ trợ tối đa 30 dòng hàng hóa.');
+      alert('Template chỉ hỗ trợ tối đa 30 dòng hàng hóa.');
       return false;
     }
 
@@ -125,13 +124,13 @@ export async function exportToExcel(data: VoucherExportData): Promise<boolean> {
     const uint8Array = new Uint8Array(arrayBuffer);
     await writeFile(filePath, uint8Array);
     
-    showToast.success(`Đã xuất file thành công: ${filePath}`);
+    alert(`Đã xuất file thành công: ${filePath}`);
 
     return true;
   } catch (error) {
     console.error('Export Excel error:', error);
     const errorMsg = error instanceof Error ? error.message : String(error);
-    showToast.error(`Lỗi khi xuất Excel: ${errorMsg}`);
+    alert(`Lỗi khi xuất Excel: ${errorMsg}`);
     return false;
   }
 }
@@ -146,7 +145,7 @@ export async function exportToPdf(data: VoucherExportData): Promise<boolean> {
   try {
     // Validate
     if (data.items.length > 30) {
-      showToast.warning('Template chỉ hỗ trợ tối đa 30 dòng hàng hóa.');
+      alert('Template chỉ hỗ trợ tối đa 30 dòng hàng hóa.');
       return false;
     }
 
@@ -194,13 +193,13 @@ export async function exportToPdf(data: VoucherExportData): Promise<boolean> {
     const uint8Array = new Uint8Array(arrayBuffer);
     await writeFile(filePath, uint8Array);
     
-    showToast.success(`Đã xuất file thành công: ${filePath}`);
+    alert(`Đã xuất file thành công: ${filePath}`);
 
     return true;
   } catch (error) {
     console.error('Export PDF error:', error);
     const errorMsg = error instanceof Error ? error.message : String(error);
-    showToast.error(`Lỗi khi xuất PDF: ${errorMsg}`);
+    alert(`Lỗi khi xuất PDF: ${errorMsg}`);
     return false;
   }
 }

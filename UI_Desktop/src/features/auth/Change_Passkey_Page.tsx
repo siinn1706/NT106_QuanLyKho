@@ -14,7 +14,6 @@ export default function Change_Passkey_Page() {
   const navigate = useNavigate();
   
   // Form state
-  const [currentPassword, setCurrentPassword] = useState('');
   const [newPasskey, setNewPasskey] = useState('');
   const [confirmPasskey, setConfirmPasskey] = useState('');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
@@ -69,22 +68,17 @@ export default function Change_Passkey_Page() {
   const handleRequestOtp = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
-    
-    if (!currentPassword) {
-      setError('Vui lòng nhập mật khẩu');
-      return;
-    }
-    
     setLoading(true);
     
     try {
-      await authService.passkeyRequestOTP(currentPassword);
+      await authService.passkeyRequestOTP();
       showToast.success('Mã OTP đã được gửi đến email của bạn');
       setStep(2);
       setResendCountdown(60);
     } catch (err: any) {
       if (err.message.includes('401') || err.message.includes('Authentication')) {
-        setError('Mật khẩu không đúng hoặc phiên đăng nhập hết hạn.');
+        setError('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
+        setTimeout(() => navigate('/login'), 2000);
       } else {
         setError(err.message || 'Không thể gửi OTP. Vui lòng thử lại.');
       }
@@ -141,7 +135,7 @@ export default function Change_Passkey_Page() {
     if (resendCountdown > 0) return;
     
     try {
-      await authService.passkeyRequestOTP(currentPassword);
+      await authService.passkeyRequestOTP();
       showToast.success('Mã OTP mới đã được gửi');
       setResendCountdown(60);
       setOtp(['', '', '', '', '', '']);
@@ -189,7 +183,7 @@ export default function Change_Passkey_Page() {
           )}
 
           {step === 1 ? (
-            // Step 1: Request OTP (with password verification)
+            // Step 1: Request OTP
             <form onSubmit={handleRequestOtp} className="space-y-6">
               <div className="bg-[#007AFF]/10 border border-[#007AFF]/20 rounded-xl p-4 mb-4">
                 <div className="flex items-start gap-3">
@@ -205,23 +199,9 @@ export default function Change_Passkey_Page() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-2 ml-1">
-                  Mật khẩu hiện tại *
-                </label>
-                <input
-                  type="password"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="Nhập mật khẩu để xác thực"
-                  className={inputClass}
-                  autoFocus
-                />
-              </div>
-
               <button
                 type="submit"
-                disabled={loading || !currentPassword}
+                disabled={loading}
                 className="w-full bg-[#007AFF] hover:bg-[#0062cc] text-white font-semibold py-3.5 rounded-xl transition-all duration-200 shadow-lg hover:shadow-primary/25 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? (

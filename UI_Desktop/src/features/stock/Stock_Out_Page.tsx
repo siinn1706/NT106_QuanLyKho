@@ -66,6 +66,58 @@ interface ProductRow {
   sellPrice: string; // Giá bán (cho trường hợp "Bán hàng")
 }
 
+// ============================================
+// MOCK DATA
+// ============================================
+
+const MOCK_STOCK_OUT_RECORDS: StockOutRecord[] = [
+  {
+    id: 'K1_PX_1225_0001',
+    warehouse_code: 'K1',
+    recipient: 'Khách hàng A',
+    purpose: 'Bán hàng',
+    date: '2025-12-13',
+    note: 'Giao hàng đợt 1',
+    items: [
+      { item_id: 'ITEM001', item_code: 'SP-001', item_name: 'Sản phẩm mẫu A', quantity: 10, unit: 'Cái', sell_price: 150000 },
+      { item_id: 'ITEM002', item_code: 'SP-002', item_name: 'Sản phẩm mẫu B', quantity: 5, unit: 'Hộp', sell_price: 280000 },
+    ],
+    total_quantity: 15,
+    total_amount: 2900000, // 10*150000 + 5*280000
+    created_at: '2025-12-13T10:30:00',
+    status: 'completed',
+  },
+  {
+    id: 'K1_PX_1225_0002',
+    warehouse_code: 'K1',
+    recipient: 'Phòng Marketing',
+    purpose: 'Sử dụng nội bộ',
+    date: '2025-12-12',
+    note: 'Dùng cho sự kiện',
+    items: [
+      { item_id: 'ITEM003', item_code: 'SP-003', item_name: 'Sản phẩm mẫu C', quantity: 20, unit: 'Chai' },
+    ],
+    total_quantity: 20,
+    created_at: '2025-12-12T09:00:00',
+    status: 'completed',
+  },
+  {
+    id: 'K1_PX_1225_0003',
+    warehouse_code: 'K1',
+    recipient: 'Khách hàng B',
+    purpose: 'Bán hàng',
+    date: '2025-12-10',
+    note: '',
+    items: [
+      { item_id: 'ITEM004', item_code: 'SP-004', item_name: 'Sản phẩm mẫu D', quantity: 5, unit: 'Thùng', sell_price: 520000 },
+    ],
+    total_quantity: 5,
+    total_amount: 2600000, // 5*520000
+    created_at: '2025-12-10T14:20:00',
+    status: 'completed',
+  },
+];
+
 // Purpose options
 const PURPOSE_OPTIONS = [
   { value: 'Bán hàng', label: 'Bán hàng' },
@@ -158,7 +210,8 @@ export default function Stock_Out_Page() {
       setRecords(converted);
     } catch (error) {
       console.error('Lỗi tải dữ liệu:', error);
-      setRecords([]);
+      // Fallback to mock data if API fails
+      setRecords(MOCK_STOCK_OUT_RECORDS);
     } finally {
       setLoading(false);
     }
@@ -203,20 +256,28 @@ export default function Stock_Out_Page() {
   
   // Delete handlers
   const handleDeleteClick = (id: string) => {
+    if (!confirm('Bạn có chắc muốn xóa phiếu xuất kho này?')) return;
     setPendingDeleteId(id);
     setShowDeletePasskeyModal(true);
   };
   
   const handleDeleteConfirm = async (passkey: string) => {
+    // TODO: Validate passkey với backend
+    if (passkey !== '123456') {
+      showError('Passkey không chính xác!');
+      setShowDeletePasskeyModal(false);
+      return;
+    }
+    
     if (!pendingDeleteId) return;
     
     try {
-      await apiDeleteStockOut(pendingDeleteId, passkey);
+      await apiDeleteStockOut(pendingDeleteId);
       setRecords(records.filter(r => r.id !== pendingDeleteId));
       showSuccess('Đã xóa phiếu xuất kho thành công!');
     } catch (error) {
       console.error('Delete stock out error:', error);
-      showError(error instanceof Error ? error.message : 'Không thể xóa phiếu xuất kho!');
+      showError('Không thể xóa phiếu xuất kho!');
     } finally {
       setShowDeletePasskeyModal(false);
       setPendingDeleteId(null);

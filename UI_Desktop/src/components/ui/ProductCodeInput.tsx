@@ -11,8 +11,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { 
   ProductLookupResult, 
-  searchProducts,
-  lookupProductByCode,
+  searchProductsMock,
+  searchProductsBySkuMock,
+  searchProductsByNameMock,
+  lookupProductByCodeMock,
+  getAllProductsMock 
 } from '../../app/product_lookup';
 import Icon from './Icon';
 
@@ -47,9 +50,8 @@ export default function ProductCodeInput({
   const [highlightIndex, setHighlightIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Tìm kiếm gợi ý khi nhập (debounced, async)
+  // Tìm kiếm gợi ý khi nhập
   useEffect(() => {
     if (!showSuggestions || !value || value.length < 1) {
       setSuggestions([]);
@@ -57,31 +59,19 @@ export default function ProductCodeInput({
       return;
     }
 
-    // Clear previous timeout
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
+    // Chọn hàm tìm kiếm phù hợp theo searchMode
+    let results: ProductLookupResult[];
+    if (searchMode === 'sku') {
+      results = searchProductsBySkuMock(value, 8);
+    } else if (searchMode === 'name') {
+      results = searchProductsByNameMock(value, 8);
+    } else {
+      results = searchProductsMock(value, 8);
     }
 
-    // Debounce search
-    searchTimeoutRef.current = setTimeout(async () => {
-      try {
-        // Pass searchMode to filter results appropriately
-        const results = await searchProducts(value, 8, searchMode);
-        setSuggestions(results);
-        setShowDropdown(results.length > 0);
-        setHighlightIndex(-1);
-      } catch (error) {
-        console.error('Error searching products:', error);
-        setSuggestions([]);
-        setShowDropdown(false);
-      }
-    }, 300);
-
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-    };
+    setSuggestions(results);
+    setShowDropdown(results.length > 0);
+    setHighlightIndex(-1);
   }, [value, showSuggestions, searchMode]);
 
   // Đóng dropdown khi click ra ngoài
@@ -101,36 +91,28 @@ export default function ProductCodeInput({
   }, []);
 
   // Tra cứu sản phẩm theo mã
-  const handleSearch = async () => {
+  const handleSearch = () => {
     if (!value.trim()) return;
     
     setIsSearching(true);
     setShowDropdown(false);
     
-    try {
-      const product = await lookupProductByCode(value.trim());
-      
+    // Mock lookup - sau này thay bằng API call
+    const product = lookupProductByCodeMock(value.trim());
+    
+    setTimeout(() => {
+      setIsSearching(false);
       if (product) {
         onProductFound(product);
       } else {
         onProductNotFound?.();
       }
-    } catch (error) {
-      console.error('Error looking up product:', error);
-      onProductNotFound?.();
-    } finally {
-      setIsSearching(false);
-    }
+    }, 200); // Simulate network delay
   };
 
   // Xử lý chọn từ dropdown
   const handleSelectProduct = (product: ProductLookupResult) => {
-    // Set value theo searchMode để giữ nguyên context của input
-    if (searchMode === 'name') {
-      onChange(product.name);
-    } else {
-      onChange(product.sku);
-    }
+    onChange(product.sku);
     onProductFound(product);
     setShowDropdown(false);
   };
