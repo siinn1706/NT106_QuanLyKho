@@ -1,6 +1,6 @@
 /** Warehouse_Page.tsx - Quản lý kho hàng */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { 
   apiGetWarehouses, 
   apiCreateWarehouse, 
@@ -16,6 +16,17 @@ import {
 import Icon from '../../components/ui/Icon';
 import Modal from '../../components/ui/Modal';
 import { showSuccess, showError, showWarning } from '../../utils/toast';
+import { useAuthStore } from '../../state/auth_store';
+
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+
+interface UserSearchResult {
+  id: number;
+  username: string;
+  email: string;
+  display_name: string | null;
+  avatar_url: string | null;
+}
 
 interface WarehouseForm {
   name: string;
@@ -47,10 +58,32 @@ export default function Warehouse_Page() {
   const [selectedWarehouse, setSelectedWarehouse] = useState<Warehouse | null>(null);
   const [inventoryStats, setInventoryStats] = useState<WarehouseInventoryStats | null>(null);
   const [loadingInventory, setLoadingInventory] = useState(false);
-  const [activeTab, setActiveTab] = useState<'info' | 'inventory'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'inventory' | 'managers'>('info');
+  
+  const currentUser = useAuthStore((state) => state.user);
+
+  // User search states for manager selection
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [userSearchResults, setUserSearchResults] = useState<UserSearchResult[]>([]);
+  const [activeManagerIndex, setActiveManagerIndex] = useState<number | null>(null);
+  const [isSearchingUsers, setIsSearchingUsers] = useState(false);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadWarehouses();
+  }, []);
+
+  // Click outside to close search dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setUserSearchResults([]);
+        setActiveManagerIndex(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
   
   const loadWarehouses = async () => {
@@ -102,7 +135,7 @@ export default function Warehouse_Page() {
   const handleAddManager = () => {
     setFormData(prev => ({
       ...prev,
-      managers: [...prev.managers, { name: '', position: '' }]
+      managers: [...prev.managers, { email: '', position: '' }]
     }));
   };
   
@@ -113,13 +146,59 @@ export default function Warehouse_Page() {
     }));
   };
   
-  const handleManagerChange = (index: number, field: 'name' | 'position', value: string) => {
+  const handleManagerChange = (index: number, field: 'email' | 'position', value: string) => {
     setFormData(prev => ({
       ...prev,
       managers: prev.managers.map((m, i) => 
         i === index ? { ...m, [field]: value } : m
       )
     }));
+  };
+
+  // User search for manager selection
+  const handleUserSearch = async (query: string, managerIndex: number) => {
+    setUserSearchQuery(query);
+    setActiveManagerIndex(managerIndex);
+    
+    // Update email field immediately
+    handleManagerChange(managerIndex, 'email', query);
+    
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    if (query.trim().length < 2) {
+      setUserSearchResults([]);
+      return;
+    }
+    
+    searchTimeoutRef.current = setTimeout(async () => {
+      setIsSearchingUsers(true);
+      try {
+        const token = localStorage.getItem('access_token');
+        const response = await fetch(`${BASE_URL}/users?search=${encodeURIComponent(query)}&limit=5`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setUserSearchResults(data.users || []);
+        }
+      } catch (error) {
+        console.error('Error searching users:', error);
+        setUserSearchResults([]);
+      } finally {
+        setIsSearchingUsers(false);
+      }
+    }, 300);
+  };
+  
+  const handleSelectUser = (user: UserSearchResult, managerIndex: number) => {
+    handleManagerChange(managerIndex, 'email', user.email);
+    setUserSearchResults([]);
+    setActiveManagerIndex(null);
+    setUserSearchQuery('');
   };
   
   const handleSubmit = async () => {
@@ -151,7 +230,6 @@ export default function Warehouse_Page() {
     setActiveTab('info');
     setInventoryStats(null);
     
-    // Load inventory statistics
     setLoadingInventory(true);
     try {
       const stats = await apiGetWarehouseInventory(warehouse.id);
@@ -160,6 +238,77 @@ export default function Warehouse_Page() {
       console.error('Load inventory error:', error);
     } finally {
       setLoadingInventory(false);
+    }
+  };
+  
+  const getPositionLevel = (position: string): number => {
+    if (position === 'Chủ kho') return 3;
+    if (position === 'Trưởng kho') return 2;
+    if (position === 'Nhân viên') return 1;
+    return 0;
+  };
+  
+  const getCurrentUserPosition = (): string | null => {
+    if (!currentUser || !selectedWarehouse) return null;
+    const manager = selectedWarehouse.managers.find(m => m.email === currentUser.email);
+    return manager ? manager.position : null;
+  };
+  
+  const canEditManager = (targetPosition: string): boolean => {
+    const currentPosition = getCurrentUserPosition();
+    if (!currentPosition) return false;
+    
+    const currentLevel = getPositionLevel(currentPosition);
+    const targetLevel = getPositionLevel(targetPosition);
+    
+    return currentLevel > targetLevel;
+  };
+  
+  const handleRemoveManagerFromWarehouse = async (managerEmail: string) => {
+    if (!selectedWarehouse) return;
+    
+    const manager = selectedWarehouse.managers.find(m => m.email === managerEmail);
+    if (!manager) return;
+    
+    if (!canEditManager(manager.position)) {
+      showWarning('Bạn không có quyền xóa người quản lý này');
+      return;
+    }
+    
+    if (!confirm(`Bạn có chắc muốn xóa ${managerEmail} khỏi danh sách quản lý?`)) return;
+    
+    try {
+      const updatedManagers = selectedWarehouse.managers.filter(m => m.email !== managerEmail);
+      await apiUpdateWarehouse(selectedWarehouse.id, { managers: updatedManagers });
+      showSuccess('Đã xóa người quản lý thành công');
+      loadWarehouses();
+      setSelectedWarehouse({ ...selectedWarehouse, managers: updatedManagers });
+    } catch (error: any) {
+      showError(error.message || 'Không thể xóa người quản lý');
+    }
+  };
+  
+  const handleChangeManagerPosition = async (managerEmail: string, newPosition: string) => {
+    if (!selectedWarehouse) return;
+    
+    const manager = selectedWarehouse.managers.find(m => m.email === managerEmail);
+    if (!manager) return;
+    
+    if (!canEditManager(manager.position)) {
+      showWarning('Bạn không có quyền chỉnh sửa người quản lý này');
+      return;
+    }
+    
+    try {
+      const updatedManagers = selectedWarehouse.managers.map(m =>
+        m.email === managerEmail ? { ...m, position: newPosition } : m
+      );
+      await apiUpdateWarehouse(selectedWarehouse.id, { managers: updatedManagers });
+      showSuccess('Đã cập nhật chức vụ thành công');
+      loadWarehouses();
+      setSelectedWarehouse({ ...selectedWarehouse, managers: updatedManagers });
+    } catch (error: any) {
+      showError(error.message || 'Không thể cập nhật chức vụ');
     }
   };
   
@@ -249,7 +398,7 @@ export default function Warehouse_Page() {
                       <div className="flex flex-col gap-1">
                         {wh.managers.map((m, idx) => (
                           <span key={idx} className="text-[var(--text-2)] text-[13px]">
-                            {m.name} - <span className="text-[var(--text-3)]">{m.position}</span>
+                            {m.email} - <span className="text-[var(--text-3)]">{m.position}</span>
                           </span>
                         ))}
                       </div>
@@ -374,26 +523,66 @@ export default function Warehouse_Page() {
             <div className="space-y-3">
               {formData.managers.map((manager, index) => (
                 <div key={index} className="grid grid-cols-2 gap-3 p-3 bg-[var(--surface-2)] rounded-lg">
-                  <div>
-                    <label className="block text-xs font-medium mb-1 text-[var(--text-3)]">Tên</label>
+                  <div className="relative">
+                    <label className="block text-xs font-medium mb-1 text-[var(--text-3)]">Email người quản lý</label>
                     <input
-                      type="text"
-                      value={manager.name}
-                      onChange={(e) => handleManagerChange(index, 'name', e.target.value)}
-                      placeholder="Nguyễn Văn A"
+                      type="email"
+                      value={manager.email}
+                      onChange={(e) => handleUserSearch(e.target.value, index)}
+                      onFocus={() => setActiveManagerIndex(index)}
+                      placeholder="Tìm theo email hoặc nhập email..."
                       className="w-full px-3 py-2 rounded-lg border bg-[var(--surface-1)] border-[var(--border)] focus:border-[var(--primary)] outline-none text-sm"
                     />
+                    {/* User search dropdown */}
+                    {activeManagerIndex === index && userSearchResults.length > 0 && (
+                      <div 
+                        ref={dropdownRef}
+                        className="absolute z-50 top-full left-0 right-0 mt-1 bg-[var(--surface-1)] border border-[var(--border)] rounded-lg shadow-lg max-h-48 overflow-auto"
+                      >
+                        {userSearchResults.map(user => (
+                          <button
+                            key={user.id}
+                            type="button"
+                            onClick={() => handleSelectUser(user, index)}
+                            className="w-full px-3 py-2 flex items-center gap-2 hover:bg-[var(--surface-2)] text-left transition-colors"
+                          >
+                            <div className="w-8 h-8 rounded-full bg-[var(--primary-light)] flex items-center justify-center overflow-hidden">
+                              {user.avatar_url ? (
+                                <img src={`${BASE_URL}${user.avatar_url}`} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <Icon name="user" size="sm" className="text-[var(--primary)]" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-[var(--text-1)] truncate">
+                                {user.display_name || user.username}
+                              </p>
+                              <p className="text-xs text-[var(--text-3)] truncate">{user.email}</p>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {activeManagerIndex === index && isSearchingUsers && (
+                      <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-[var(--surface-1)] border border-[var(--border)] rounded-lg shadow-lg p-3 text-center">
+                        <Icon name="spinner" spin size="sm" className="text-[var(--text-3)]" />
+                        <span className="ml-2 text-sm text-[var(--text-3)]">Đang tìm...</span>
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-end gap-2">
                     <div className="flex-1">
                       <label className="block text-xs font-medium mb-1 text-[var(--text-3)]">Chức vụ</label>
-                      <input
-                        type="text"
+                      <select
                         value={manager.position}
                         onChange={(e) => handleManagerChange(index, 'position', e.target.value)}
-                        placeholder="Trưởng kho, Phó kho, Thủ kho..."
                         className="w-full px-3 py-2 rounded-lg border bg-[var(--surface-1)] border-[var(--border)] focus:border-[var(--primary)] outline-none text-sm"
-                      />
+                      >
+                        <option value="">Chọn chức vụ</option>
+                        <option value="Chủ kho">Chủ kho</option>
+                        <option value="Trưởng kho">Trưởng kho</option>
+                        <option value="Nhân viên">Nhân viên</option>
+                      </select>
                     </div>
                     <button
                       onClick={() => handleRemoveManager(index)}
@@ -481,6 +670,22 @@ export default function Warehouse_Page() {
                   </span>
                 )}
               </button>
+              <button
+                onClick={() => setActiveTab('managers')}
+                className={`px-4 py-2 text-[14px] font-medium transition-colors border-b-2 ${
+                  activeTab === 'managers'
+                    ? 'text-[var(--primary)] border-[var(--primary)]'
+                    : 'text-[var(--text-3)] border-transparent hover:text-[var(--text-1)]'
+                }`}
+              >
+                <Icon name="users" size="sm" className="inline mr-2" />
+                Người quản lý
+                {selectedWarehouse.managers && (
+                  <span className="ml-2 px-2 py-0.5 rounded-full bg-[var(--primary-light)] text-[var(--primary)] text-[12px]">
+                    {selectedWarehouse.managers.length}
+                  </span>
+                )}
+              </button>
             </div>
 
             {/* Tab Content */}
@@ -516,7 +721,7 @@ export default function Warehouse_Page() {
                     <div className="space-y-2">
                       {selectedWarehouse.managers.map((manager, idx) => (
                         <div key={idx} className="p-4 bg-[var(--surface-2)] rounded-[var(--radius-md)]">
-                          <p className="text-[15px] font-semibold text-[var(--text-1)]">{manager.name}</p>
+                          <p className="text-[15px] font-semibold text-[var(--text-1)]">{manager.email}</p>
                           <p className="text-[13px] text-[var(--text-3)] mt-1">{manager.position}</p>
                         </div>
                       ))}
@@ -534,9 +739,8 @@ export default function Warehouse_Page() {
                   </div>
                 )}
               </div>
-            ) : (
+            ) : activeTab === 'inventory' ? (
               <div className="space-y-4">
-                {/* Inventory Summary */}
                 {loadingInventory ? (
                   <div className="flex items-center justify-center py-12">
                     <Icon name="spinner" size="lg" spin className="text-[var(--text-3)]" />
@@ -636,7 +840,120 @@ export default function Warehouse_Page() {
                   </div>
                 )}
               </div>
-            )}
+            ) : activeTab === 'managers' ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-[16px] font-semibold text-[var(--text-1)]">Danh sách người quản lý</h3>
+                    <p className="text-[13px] text-[var(--text-3)] mt-1">
+                      Quyền hạn: Chủ kho &gt; Trưởng kho &gt; Nhân viên
+                    </p>
+                  </div>
+                </div>
+
+                {selectedWarehouse.managers && selectedWarehouse.managers.length > 0 ? (
+                  <div className="space-y-3">
+                    {selectedWarehouse.managers
+                      .sort((a, b) => getPositionLevel(b.position) - getPositionLevel(a.position))
+                      .map((manager, idx) => {
+                        const isCurrentUser = currentUser?.email === manager.email;
+                        const canEdit = canEditManager(manager.position);
+                        const currentPosition = getCurrentUserPosition();
+                        const currentLevel = currentPosition ? getPositionLevel(currentPosition) : 0;
+                        
+                        return (
+                          <div
+                            key={idx}
+                            className={`p-4 rounded-[var(--radius-lg)] border ${
+                              isCurrentUser
+                                ? 'bg-[var(--primary-light)] border-[var(--primary)]/30'
+                                : 'bg-[var(--surface-2)] border-[var(--border)]'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <p className="text-[15px] font-semibold text-[var(--text-1)]">
+                                    {manager.email}
+                                  </p>
+                                  {isCurrentUser && (
+                                    <span className="px-2 py-0.5 rounded-full bg-[var(--primary)] text-white text-[11px] font-semibold">
+                                      BẠN
+                                    </span>
+                                  )}
+                                </div>
+                                
+                                <div className="flex items-center gap-2 mt-2">
+                                  {canEdit ? (
+                                    <select
+                                      value={manager.position}
+                                      onChange={(e) => handleChangeManagerPosition(manager.email, e.target.value)}
+                                      className="px-3 py-1.5 rounded-lg border bg-[var(--surface-1)] border-[var(--border)] text-[13px] font-medium focus:border-[var(--primary)] outline-none"
+                                    >
+                                      <option value="Chủ kho">Chủ kho</option>
+                                      <option value="Trưởng kho">Trưởng kho</option>
+                                      <option value="Nhân viên">Nhân viên</option>
+                                    </select>
+                                  ) : (
+                                    <span className={`px-3 py-1.5 rounded-lg text-[13px] font-medium ${
+                                      manager.position === 'Chủ kho'
+                                        ? 'bg-[var(--danger-light)] text-[var(--danger)]'
+                                        : manager.position === 'Trưởng kho'
+                                        ? 'bg-[var(--warning-light)] text-[var(--warning)]'
+                                        : 'bg-[var(--success-light)] text-[var(--success)]'
+                                    }`}>
+                                      {manager.position}
+                                    </span>
+                                  )}
+                                  
+                                  <span className="text-[12px] text-[var(--text-3)]">
+                                    Level {getPositionLevel(manager.position)}
+                                  </span>
+                                </div>
+
+                                {!canEdit && !isCurrentUser && (
+                                  <p className="text-[12px] text-[var(--text-3)] mt-2">
+                                    {currentLevel === 0 
+                                      ? 'Bạn không phải người quản lý kho này'
+                                      : currentLevel === getPositionLevel(manager.position)
+                                      ? 'Không thể chỉnh sửa người cùng cấp'
+                                      : 'Không có quyền chỉnh sửa'}
+                                  </p>
+                                )}
+                              </div>
+
+                              {canEdit && (
+                                <button
+                                  onClick={() => handleRemoveManagerFromWarehouse(manager.email)}
+                                  className="ml-4 h-9 w-9 flex items-center justify-center rounded-lg bg-[var(--danger-light)] text-[var(--danger)] border border-[var(--danger)]/20 hover:border-[var(--danger)]/40 transition-colors"
+                                  title="Xóa người quản lý"
+                                >
+                                  <Icon name="trash" size="sm" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-[var(--text-3)]">
+                    <Icon name="users" size="2x" className="mx-auto mb-3 opacity-50" />
+                    <p>Chưa có người quản lý nào</p>
+                  </div>
+                )}
+
+                <div className="p-4 bg-[var(--surface-2)] rounded-[var(--radius-lg)] border border-[var(--border)]">
+                  <h4 className="text-[14px] font-semibold text-[var(--text-1)] mb-2">Hướng dẫn phân quyền</h4>
+                  <ul className="space-y-1 text-[13px] text-[var(--text-2)]">
+                    <li>• <span className="font-semibold text-[var(--danger)]">Chủ kho (Level 3)</span>: Có thể chỉnh sửa và xóa Trưởng kho, Nhân viên</li>
+                    <li>• <span className="font-semibold text-[var(--warning)]">Trưởng kho (Level 2)</span>: Có thể chỉnh sửa và xóa Nhân viên</li>
+                    <li>• <span className="font-semibold text-[var(--success)]">Nhân viên (Level 1)</span>: Không thể chỉnh sửa người khác</li>
+                    <li className="pt-2 border-t border-[var(--border)] mt-2">• Người cùng cấp không thể chỉnh sửa lẫn nhau</li>
+                  </ul>
+                </div>
+              </div>
+            ) : null}
 
             {/* Close Button */}
             <div className="flex justify-end pt-4 border-t border-[var(--border)]">

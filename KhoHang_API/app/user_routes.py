@@ -3,10 +3,11 @@
 import os
 import uuid
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 from io import BytesIO
-from fastapi import APIRouter, Depends, HTTPException, File, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, File, UploadFile, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from pydantic import BaseModel, Field
 from PIL import Image
 
@@ -31,6 +32,56 @@ WEBP_QUALITY = 85  # WebP quality (0-100)
 class UpdateProfileRequest(BaseModel):
     display_name: Optional[str] = Field(None, min_length=1, max_length=100)
     avatar_url: Optional[str] = None
+
+
+class UserSearchResult(BaseModel):
+    id: int
+    username: str
+    email: str
+    display_name: Optional[str]
+    avatar_url: Optional[str]
+
+
+# ============================================
+# SEARCH USERS ENDPOINT
+# ============================================
+
+@router.get("")
+def search_users(
+    search: str = Query(None, min_length=1, description="Search by email or display_name"),
+    limit: int = Query(10, ge=1, le=50),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Search users by email or display_name
+    GET /users?search=query&limit=10
+    """
+    if not search:
+        return {"users": []}
+    
+    search_term = f"%{search.lower()}%"
+    
+    users = db.query(UserModel).filter(
+        or_(
+            UserModel.email.ilike(search_term),
+            UserModel.display_name.ilike(search_term),
+            UserModel.username.ilike(search_term)
+        )
+    ).limit(limit).all()
+    
+    return {
+        "users": [
+            {
+                "id": u.id,
+                "username": u.username,
+                "email": u.email,
+                "display_name": u.display_name,
+                "avatar_url": u.avatar_url
+            }
+            for u in users
+        ]
+    }
 
 
 # ============================================

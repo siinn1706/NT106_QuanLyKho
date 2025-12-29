@@ -46,7 +46,7 @@ class PasswordResetConfirm(BaseModel):
     new_password: str = Field(..., min_length=6, max_length=100)
 
 class PasskeyChangeRequestOTP(BaseModel):
-    pass  # Authenticated user, no extra data needed
+    password: str = Field(..., min_length=1, description="Current password to verify identity")
 
 class PasskeyChangeConfirm(BaseModel):
     otp: str = Field(..., min_length=6, max_length=6)
@@ -253,7 +253,9 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
             "email": user.email,
             "display_name": user.display_name,
             "avatar_url": user.avatar_url,
-            "role": user.role
+            "role": user.role,
+            "is_verified": user.is_verified,
+            "has_passkey": bool(user.passkey_hash)
         }
     }
 
@@ -363,14 +365,19 @@ def password_reset_confirm(data: PasswordResetConfirm, db: Session = Depends(get
 
 @router.post("/passkey/request-otp")
 def passkey_change_request_otp(
+    data: PasskeyChangeRequestOTP,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Request OTP for passkey change"""
+    """Request OTP for passkey change - requires password verification first"""
     
     user = db.query(UserModel).filter(UserModel.id == current_user["id"]).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    
+    # Verify password first
+    if not verify_password(data.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Mật khẩu không đúng")
     
     # Check existing valid OTP
     existing_otp = get_valid_otp(db, user.email, "change_passkey")

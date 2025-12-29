@@ -1,6 +1,6 @@
 # app/schemas.py
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Any
 
 from pydantic import BaseModel, ConfigDict , EmailStr
 
@@ -47,8 +47,8 @@ class CompanyInfo(CompanyInfoBase):
 # ---------- WAREHOUSE ----------
 
 class WarehouseManager(BaseModel):
-    name: str
-    position: str  # Chức vụ: Trưởng kho, Phó kho, Thủ kho,...
+    email: EmailStr
+    position: str  # Chức vụ: Chủ kho, Trưởng kho, Nhân viên
 
 class WarehouseBase(BaseModel):
     name: str
@@ -213,6 +213,9 @@ class StockTransactionBase(BaseModel):
     item_id: int
     quantity: int
     note: Optional[str] = None
+    warehouse_code: Optional[str] = None
+    voucher_id: Optional[str] = None
+    actor_user_id: Optional[str] = None
 
 
 class StockTransactionCreate(StockTransactionBase):
@@ -222,6 +225,27 @@ class StockTransactionCreate(StockTransactionBase):
 class StockTransaction(StockTransactionBase, ORMModel):
     id: int
     timestamp: datetime
+
+
+# ---------- PAGINATION WRAPPERS (Part 1 - Items & Suppliers) ----------
+
+
+class PaginatedItems(BaseModel):
+    data: List[Item]
+    page: int
+    page_size: int
+    total: int
+
+
+class PaginatedSuppliers(BaseModel):
+    data: List[Supplier]
+    page: int
+    page_size: int
+    total: int
+
+
+# NOTE: PaginatedStockInRecords and PaginatedStockOutRecords are defined 
+# after StockInRecord and StockOutRecord classes below
 
 
 # ---------- DASHBOARD STATS ----------
@@ -435,3 +459,59 @@ class StockOutRecord(BaseModel):
     total_amount: float | None = None
     created_at: str
     status: str = "completed"
+
+
+# ---------- PAGINATION WRAPPERS (Part 2 - Stock Records) ----------
+
+
+class PaginatedStockInRecords(BaseModel):
+    data: List[StockInRecord]
+    page: int
+    page_size: int
+    total: int
+
+
+class PaginatedStockOutRecords(BaseModel):
+    data: List[StockOutRecord]
+    page: int
+    page_size: int
+    total: int
+
+
+# ---------- SEARCH SUMMARIES ----------
+
+
+class ItemSearchResult(BaseModel):
+    id: int
+    sku: str
+    name: str
+    unit: str
+    quantity: int
+
+
+class SupplierSearchResult(BaseModel):
+    id: int
+    name: str
+    phone: str
+    tax_id: str
+
+
+class StockInSearchResult(BaseModel):
+    id: str
+    warehouse_code: str
+    supplier: str
+    date: str
+
+
+class StockOutSearchResult(BaseModel):
+    id: str
+    warehouse_code: str
+    recipient: str
+    date: str
+
+
+class GlobalSearchResponse(BaseModel):
+    items: List[ItemSearchResult]
+    suppliers: List[SupplierSearchResult]
+    stock_in: List[StockInSearchResult]
+    stock_out: List[StockOutSearchResult]

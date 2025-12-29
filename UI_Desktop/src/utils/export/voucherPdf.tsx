@@ -10,6 +10,7 @@ import { save } from '@tauri-apps/plugin-dialog';
 import { writeFile } from '@tauri-apps/plugin-fs';
 import type { VoucherExportData } from '../../types/voucher';
 import { amountToVietnameseWords } from './numberToWordsVi';
+import { showToast } from '../../utils/toast';
 
 // Register font (optional - sử dụng font mặc định nếu không cần tiếng Việt đặc biệt)
 // Font.register({ family: 'Roboto', src: '...' });
@@ -294,7 +295,7 @@ export async function exportVoucherToPDF(data: VoucherExportData): Promise<boole
   try {
     // Validate: max 30 items
     if (data.items.length > 30) {
-      alert('Template chỉ hỗ trợ tối đa 30 dòng hàng hóa. Vui lòng giảm số lượng.');
+      showToast.warning('Template chỉ hỗ trợ tối đa 30 dòng hàng hóa. Vui lòng giảm số lượng.');
       return false;
     }
 
@@ -321,7 +322,7 @@ export async function exportVoucherToPDF(data: VoucherExportData): Promise<boole
     return true;
   } catch (error) {
     console.error('Export PDF error:', error);
-    alert(`Lỗi khi xuất PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    showToast.error(`Lỗi khi xuất PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
     return false;
   }
 }
