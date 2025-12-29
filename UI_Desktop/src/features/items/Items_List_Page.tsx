@@ -4,9 +4,9 @@ import Icon from '../../components/ui/Icon';
 import Modal from '../../components/ui/Modal';
 import CustomSelect from '../../components/ui/CustomSelect';
 import DatePicker from '../../components/ui/DatePicker';
-import PasskeyModal from '../../components/ui/PasskeyModal';
 import { showToast } from '../../utils/toast';
 
+// Danh sách danh mục
 const CATEGORIES = [
   'Điện tử',
   'Thực phẩm',
@@ -46,6 +46,7 @@ const emptyFormData: ItemFormData = {
   description: '',
 };
 
+// --- Helper Functions ---
 function isExpiringSoon(expiryDate?: string): boolean {
   if (!expiryDate) return false;
   const expiry = new Date(expiryDate);
@@ -83,6 +84,9 @@ function getDaysUntilExpiry(expiryDate?: string): number | null {
   return Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 }
 
+// ============================================
+// COMPONENT CHÍNH (Đã xóa Mock Data)
+// ============================================
 
 export default function Items_List_Page() {
   const [items, setItems] = useState<Item[]>([]);
@@ -92,7 +96,6 @@ export default function Items_List_Page() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showPasskeyModal, setShowPasskeyModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [formData, setFormData] = useState<ItemFormData>(emptyFormData);
   const [formErrors, setFormErrors] = useState<Partial<ItemFormData>>({});
@@ -110,8 +113,8 @@ export default function Items_List_Page() {
       const data = await apiGetItems();
       setItems(data);
     } catch (error) {
-      console.error("Error loading items:", error);
-      showToast.error("Không thể tải dữ liệu!");
+      console.error("Lỗi tải danh sách:", error);
+      showToast.error("Không thể kết nối tới Database!");
       setItems([]); 
     } finally {
       setLoading(false);
@@ -126,6 +129,7 @@ export default function Items_List_Page() {
     if (!formData.price || parseFloat(formData.price) <= 0) errors.price = 'Vui lòng nhập giá hợp lệ';
     if (!formData.category) errors.category = 'Vui lòng chọn danh mục';
     
+    // Check trùng SKU
     const existingSku = items.find(item => 
       item.sku.toLowerCase() === formData.sku.trim().toLowerCase() &&
       item.id !== selectedItem?.id
@@ -164,6 +168,7 @@ export default function Items_List_Page() {
     setShowDeleteModal(true);
   };
 
+  // --- XỬ LÝ THÊM MỚI (REAL API) ---
   const handleAdd = async () => {
     if (!validateForm()) return;
 
@@ -181,15 +186,17 @@ export default function Items_List_Page() {
 
     try {
       const created = await apiCreateItem(newItem);
+      // Backend trả về ID số, React state cập nhật đúng chuẩn
       setItems([...items, created]);
       setShowAddModal(false);
       showToast.success('Thêm hàng hoá thành công!');
     } catch (e: any) {
-      console.error("Error creating item:", e);
-      showToast.error('Lỗi khi lưu: ' + (e.message || "Unknown error"));
+      console.error(e);
+      showToast.error('Lỗi khi lưu vào DB: ' + (e.message || "Unknown error"));
     }
   };
 
+  // --- XỬ LÝ CẬP NHẬT (REAL API) ---
   const handleUpdate = async () => {
     if (!selectedItem || !validateForm()) return;
 
@@ -205,6 +212,8 @@ export default function Items_List_Page() {
     };
 
     try {
+      // Backend yêu cầu ID là số (selectedItem.id bây giờ là number)
+      // Chuyển sang string nếu hàm api yêu cầu string, nhưng giá trị phải là số
       await apiUpdateItem(selectedItem.id.toString(), updatedData);
       
       const updatedItem = { ...selectedItem, ...updatedData };
@@ -212,33 +221,25 @@ export default function Items_List_Page() {
       setShowEditModal(false);
       showToast.success('Cập nhật thành công!');
     } catch (e: any) {
-       console.error("Error updating item:", e);
+       console.error(e);
        showToast.error('Không thể cập nhật: ' + (e.message || "Unknown error"));
     }
   };
 
-  const handleDeleteClick = () => {
-    setShowDeleteModal(false);
-    setShowPasskeyModal(true);
-  };
-  
-  const handlePasskeyConfirm = async (passkey: string) => {
+  // --- XỬ LÝ XÓA (REAL API) ---
+  const handleDelete = async () => {
     if (!selectedItem) return;
 
     try {
-      await apiDeleteItem(selectedItem.id.toString(), passkey);
+      // Backend yêu cầu ID số
+      await apiDeleteItem(selectedItem.id.toString());
       setItems(items.filter(item => item.id !== selectedItem.id));
-      setShowPasskeyModal(false);
+      setShowDeleteModal(false);
       showToast.success('Đã xóa hàng hoá khỏi DB!');
     } catch (e: any) {
-       console.error("Error deleting item:", e);
-       showToast.error('Không thể xóa: ' + (e.message || "Unknown error"));
+       console.error(e);
+       showToast.error('Không thể xóa: ' + (e.message || "Có thể do ràng buộc khóa ngoại"));
     }
-  };
-  
-  const handlePasskeyCancel = () => {
-    setShowPasskeyModal(false);
-    setSelectedItem(null);
   };
 
   // Filter items
@@ -267,7 +268,7 @@ export default function Items_List_Page() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h1 className="text-[24px] font-semibold text-[var(--text-1)]">Danh sách hàng hoá</h1>
+        <h1 className="text-[24px] font-semibold text-[var(--text-1)]">Danh sách hàng hoá (Database)</h1>
         <button onClick={handleOpenAdd} className="h-11 px-6 rounded-[var(--radius-md)] bg-[var(--success)] text-white font-medium hover:opacity-90 transition-opacity flex items-center gap-2">
           <Icon name="plus" size="sm" className="text-white" />
           Thêm hàng hoá
@@ -335,7 +336,7 @@ export default function Items_List_Page() {
                   <td colSpan={8} className="text-center py-12 text-[var(--text-3)]">
                     <div className="flex items-center justify-center gap-2">
                       <div className="w-5 h-5 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
-                      Đang tải dữ liệu...
+                      Đang kết nối Database...
                     </div>
                   </td>
                 </tr>
@@ -444,18 +445,9 @@ export default function Items_List_Page() {
                 <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[var(--danger-light)] flex items-center justify-center"><Icon name="trash" size="xl" className="text-[var(--danger)]" /></div>
                 <p className="text-[15px] text-[var(--text-1)]">Bạn có chắc muốn xoá hàng hoá</p><p className="text-[16px] font-semibold text-[var(--text-1)] mt-1">"{selectedItem?.name}"?</p><p className="text-[13px] text-[var(--text-3)] mt-2">Hành động này không thể hoàn tác.</p>
             </div>
-            <div className="flex gap-3 justify-center pt-2"><button type="button" onClick={() => setShowDeleteModal(false)} className="h-11 px-6 rounded-[var(--radius-md)] bg-[var(--surface-2)] text-[var(--text-2)] font-medium border border-[var(--border)] hover:border-[var(--border-hover)] transition-colors">Hủy</button><button type="button" onClick={handleDeleteClick} className="h-11 px-8 rounded-[var(--radius-md)] bg-[var(--danger)] text-white font-medium hover:opacity-90 transition-opacity">Xoá</button></div>
+            <div className="flex gap-3 justify-center pt-2"><button type="button" onClick={() => setShowDeleteModal(false)} className="h-11 px-6 rounded-[var(--radius-md)] bg-[var(--surface-2)] text-[var(--text-2)] font-medium border border-[var(--border)] hover:border-[var(--border-hover)] transition-colors">Hủy</button><button type="button" onClick={handleDelete} className="h-11 px-8 rounded-[var(--radius-md)] bg-[var(--danger)] text-white font-medium hover:opacity-90 transition-opacity">Xoá</button></div>
         </div>
       </Modal>
-      
-      {/* Passkey Modal for Delete */}
-      <PasskeyModal
-        isOpen={showPasskeyModal}
-        onClose={handlePasskeyCancel}
-        onConfirm={handlePasskeyConfirm}
-        title="Xác nhận xóa hàng hóa"
-        message={`Nhập Passkey 6 chữ số để xóa "${selectedItem?.name}"`}
-      />
     </div>
   );
 }

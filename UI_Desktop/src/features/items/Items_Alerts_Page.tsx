@@ -1,7 +1,6 @@
 /** Items_Alerts_Page.tsx - Cảnh báo tồn kho */
 
 import { useState, useEffect } from 'react';
-import { apiGetItemsAlerts } from '../../app/api_client';
 import Icon from '../../components/ui/Icon';
 
 interface AlertItem {
@@ -25,7 +24,9 @@ export default function Items_Alerts_Page() {
     // Call API để lấy danh sách cảnh báo
     const fetchAlerts = async () => {
       try {
-        const data = await apiGetItemsAlerts();
+        const response = await fetch('http://localhost:8000/items/alerts');
+        if (!response.ok) throw new Error('Failed to fetch alerts');
+        const data = await response.json();
         setAlerts(data);
         /* Expected JSON structure from BE:
         [
