@@ -18,6 +18,7 @@ import { save } from '@tauri-apps/plugin-dialog';
 import { writeFile } from '@tauri-apps/plugin-fs';
 import type { VoucherExportData } from '../../types/voucher';
 import { amountToVietnameseWords } from './numberToWordsVi';
+import { showToast } from '../../utils/toast';
 
 // Import templates as URLs (Vite will handle these as assets)
 import templateNhapUrl from '../../assets/templates/Mau_Phieu_Nhap.xlsx?url';
@@ -94,7 +95,7 @@ export async function exportVoucherToExcel(data: VoucherExportData): Promise<boo
   try {
     // Validate: max 30 items
     if (data.items.length > 30) {
-      alert('Template chỉ hỗ trợ tối đa 30 dòng hàng hóa. Vui lòng giảm số lượng.');
+      showToast.warning('Template chỉ hỗ trợ tối đa 30 dòng hàng hóa. Vui lòng giảm số lượng.');
       return false;
     }
 
@@ -190,7 +191,7 @@ export async function exportVoucherToExcel(data: VoucherExportData): Promise<boo
     return true;
   } catch (error) {
     console.error('Export Excel error:', error);
-    alert(`Lỗi khi xuất Excel: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    showToast.error(`Lỗi khi xuất Excel: ${error instanceof Error ? error.message : 'Unknown error'}`);
     return false;
   }
 }

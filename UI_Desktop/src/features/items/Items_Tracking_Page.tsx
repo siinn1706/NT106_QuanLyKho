@@ -1,7 +1,7 @@
 /** Items_Tracking_Page.tsx - Theo dõi hàng hoá với biểu đồ */
 
 import { useEffect, useState, useRef } from 'react';
-import { apiGetItems, Item } from '../../app/api_client';
+import { apiGetItems, apiGetTopItems, apiGetMonthlyTrend, apiGetCategoryDistribution, Item } from '../../app/api_client';
 import { useThemeStore } from '../../theme/themeStore';
 import DatePicker from '../../components/ui/DatePicker';
 import Icon from '../../components/ui/Icon';
@@ -34,12 +34,12 @@ export default function Items_Tracking_Page() {
     const fetchChartData = async () => {
       try {
         const [topRes, monthlyRes, categoryRes] = await Promise.all([
-          fetch('http://localhost:8000/items/top-items'),
-          fetch('http://localhost:8000/items/monthly-trend'),
-          fetch('http://localhost:8000/items/category-distribution')
+          apiGetTopItems(),
+          apiGetMonthlyTrend(),
+          apiGetCategoryDistribution()
         ]);
         
-        if (topRes.ok) setTopItems(await topRes.json());
+        setTopItems(topRes);
         /* Expected JSON structure from BE (GET /items/top-items):
         [
           {
@@ -53,7 +53,7 @@ export default function Items_Tracking_Page() {
         ]
         */
         
-        if (monthlyRes.ok) setMonthlyData(await monthlyRes.json());
+        setMonthlyData(monthlyRes);
         /* Expected JSON structure from BE (GET /items/monthly-trend):
         [
           {
@@ -67,7 +67,7 @@ export default function Items_Tracking_Page() {
         ]
         */
         
-        if (categoryRes.ok) setCategoryDistribution(await categoryRes.json());
+        setCategoryDistribution(categoryRes);
         /* Expected JSON structure from BE (GET /items/category-distribution):
         [
           {
