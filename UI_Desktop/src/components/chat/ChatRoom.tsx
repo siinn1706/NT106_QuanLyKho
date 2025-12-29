@@ -5,7 +5,7 @@ import ChatBackground from "./ChatBackground";
 import DateSeparator from "./DateSeparator";
 import ChatDatePicker from "./ChatDatePicker";
 import { useThemeStore } from "../../theme/themeStore";
-import { useChatStore, Message } from "../../state/chat_store";
+import { useChatStore, Message, Attachment } from "../../state/chat_store";
 import { useChatSync } from "../../hooks/useChatSync";
 import { apiChat } from "../../app/api_client";
 import Icon from "../ui/Icon";
@@ -20,6 +20,16 @@ function getDateKey(isoString: string): string {
 function parseLocalDateKey(key: string): Date {
   const [y, m, d] = key.split('-').map(Number);
   return new Date(y, m - 1, d);
+}
+
+// Type cho file attachment
+interface FileAttachment {
+  id: string;
+  url: string;
+  name: string;
+  type: string;
+  size: number;
+  thumbnailUrl?: string;
 }
 
 export default function ChatRoom({ conversationId, sidebarCollapsed, onExpandSidebar }: { 
@@ -40,7 +50,14 @@ export default function ChatRoom({ conversationId, sidebarCollapsed, onExpandSid
   const [isTyping, setIsTyping] = useState(false);
   const [replyingTo, setReplyingTo] = useState<{ id: string; text: string; sender: string } | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  
+  // File upload states
+  const [selectedFiles, setSelectedFiles] = useState<FileAttachment[]>([]);
+  const [uploadingFiles, setUploadingFiles] = useState<boolean>(false);
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+  
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const dateRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -85,7 +102,7 @@ export default function ChatRoom({ conversationId, sidebarCollapsed, onExpandSid
     }
   }, []);
 
-  // Category icons mapping - dùng icon name thay vì emoji
+  // Category icons mapping
   const categoryIcons: Record<string, string> = {
     'stock': 'box',
     'orders': 'clipboard-list', 
@@ -106,49 +123,156 @@ export default function ChatRoom({ conversationId, sidebarCollapsed, onExpandSid
     }, 100);
   };
 
-  // Scroll to bottom khi messages thay đổi hoặc conversationId thay đổi
   useEffect(() => {
     scrollToBottom();
   }, [messages, conversationId]);
 
-  // Handler cho reaction change - update store và sync lên server
   const handleReactionChange = (messageId: string, reactions: string[]) => {
     updateMessageReactions(messageId, reactions);
     saveReactions(messageId, reactions);
   };
 
+  // Format file size
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  };
+
+  // Get file icon based on type
+  const getFileIcon = (type: string): string => {
+    if (type.startsWith('image/')) return 'image';
+    if (type.startsWith('video/')) return 'video';
+    if (type.startsWith('audio/')) return 'music';
+    if (type.includes('pdf')) return 'file-pdf';
+    if (type.includes('word')) return 'file-word';
+    if (type.includes('excel') || type.includes('spreadsheet')) return 'file-excel';
+    return 'file';
+  };
+
+  // Xử lý chọn file
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploadingFiles(true);
+    const newFiles: FileAttachment[] = [];
+
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const fileId = `file_${Date.now()}_${i}`;
+        
+        // Initialize upload progress
+        setUploadProgress(prev => ({ ...prev, [fileId]: 0 }));
+
+        // Upload file to backend
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('conversationId', conversationId);
+
+        try {
+          // TODO: Replace with your actual API endpoint
+          // Example API call:
+          // const response = await fetch('/api/upload', {
+          //   method: 'POST',
+          //   body: formData,
+          // });
+          // const data = await response.json();
+          
+          // Simulate upload for demo (remove this in production)
+          await new Promise(resolve => {
+            let progress = 0;
+            const interval = setInterval(() => {
+              progress += 20;
+              setUploadProgress(prev => ({ ...prev, [fileId]: progress }));
+              if (progress >= 100) {
+                clearInterval(interval);
+                resolve(true);
+              }
+            }, 200);
+          });
+
+          // Create file attachment object
+          const attachment: FileAttachment = {
+            id: fileId,
+            url: URL.createObjectURL(file), // Replace with server URL in production
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            thumbnailUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined,
+          };
+
+          newFiles.push(attachment);
+        } catch (uploadError) {
+          console.error(`Error uploading file ${file.name}:`, uploadError);
+          alert(`Lỗi khi tải file "${file.name}". Vui lòng thử lại.`);
+        }
+      }
+
+      setSelectedFiles(prev => [...prev, ...newFiles]);
+    } catch (error) {
+      console.error('File upload error:', error);
+      alert('Lỗi khi tải file lên. Vui lòng thử lại.');
+    } finally {
+      setUploadingFiles(false);
+      setUploadProgress({});
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  // Xóa file khỏi danh sách
+  const handleRemoveFile = (fileId: string) => {
+    setSelectedFiles(prev => prev.filter(f => f.id !== fileId));
+  };
+
   const handleSend = async () => {
-    if (!inputValue.trim()) return;
+    if (!inputValue.trim() && selectedFiles.length === 0) return;
     
-    // Lưu reply info trước khi clear
     const currentReply = replyingTo ? { ...replyingTo } : null;
+    const currentFiles = [...selectedFiles];
     
-    // Tạo user message với timestamp unique
+    // Tạo user message với attachments
     const userMsg: Message = {
       id: `msg_${conversationId}_${Date.now()}_user`,
       conversationId,
       sender: "user",
-      text: inputValue,
+      text: inputValue || (selectedFiles.length > 0 ? `📎 ${selectedFiles.length} file đính kèm` : ''),
       createdAt: new Date().toISOString(),
-      replyTo: currentReply, // Lưu thông tin reply
+      replyTo: currentReply,
+      attachments: currentFiles.length > 0 ? currentFiles.map(f => ({
+        file_name: f.name,
+        file_type: f.type,
+        file_url: f.url,
+        file_size: f.size,
+      })) : undefined,
     };
     
-    // Lưu vào store (UI sẽ tự động cập nhật vì messages là reactive)
     addMessage(userMsg);
-    
-    // Sync lên server (nếu đã đăng nhập)
     saveMessage(userMsg);
     
     const userText = inputValue;
     setInputValue("");
-    setReplyingTo(null); // Clear reply sau khi gửi
+    setReplyingTo(null);
+    setSelectedFiles([]); // Clear files after send
 
-    // Hiển thị typing indicator
     setIsTyping(true);
 
-    // Gọi BE -> Gemini
     try {
-      const res = await apiChat({ prompt: userText, system_instruction: "Bạn là trợ lý kho N3T, trả lời ngắn gọn." });
+      // Nếu có file đính kèm, gửi thông tin file cùng với prompt
+      const prompt = currentFiles.length > 0 
+        ? `${userText}\n\n[Files attached: ${currentFiles.map(f => f.name).join(', ')}]`
+        : userText;
+        
+      const res = await apiChat({ 
+        prompt, 
+        system_instruction: "Bạn là trợ lý kho N3T, trả lời ngắn gọn." 
+      });
+      
       const botMsg: Message = {
         id: `msg_${conversationId}_${Date.now()}_bot`,
         conversationId,
@@ -157,16 +281,11 @@ export default function ChatRoom({ conversationId, sidebarCollapsed, onExpandSid
         createdAt: new Date().toISOString(),
       };
       
-      // Lưu vào store (UI sẽ tự động cập nhật)
       addMessage(botMsg);
-      
-      // Sync lên server
       saveMessage(botMsg);
     } catch (e: any) {
-      // Xử lý lỗi với thông báo thân thiện hơn
       let errorText = `❌ Lỗi: ${e?.message ?? String(e)}`;
       
-      // Nếu là lỗi quota (429), hiển thị thông báo đặc biệt
       if (e?.status === 429) {
         errorText = e?.message || errorText;
       }
@@ -179,10 +298,8 @@ export default function ChatRoom({ conversationId, sidebarCollapsed, onExpandSid
         createdAt: new Date().toISOString(),
       };
       
-      // Lưu vào store (UI sẽ tự động cập nhật)
       addMessage(errMsg);
     } finally {
-      // Ẩn typing indicator khi đã nhận được phản hồi
       setIsTyping(false);
     }
   };
@@ -253,13 +370,11 @@ export default function ChatRoom({ conversationId, sidebarCollapsed, onExpandSid
         {/* Render messages theo nhóm ngày */}
         {messagesGroupedByDate.map((group) => (
           <div key={group.dateKey} ref={(el) => { dateRefs.current[group.dateKey] = el; }}>
-            {/* Date separator */}
             <DateSeparator 
               date={group.date} 
               onClick={() => setShowDatePicker(true)} 
             />
             
-            {/* Messages trong ngày */}
             {group.messages.map((m, index) => {
               const next = group.messages[index + 1];
               const isSameSender = next && next.sender === m.sender;
@@ -308,6 +423,7 @@ export default function ChatRoom({ conversationId, sidebarCollapsed, onExpandSid
         availableDates={availableDates}
       />
 
+      {/* Input Area */}
       <div className={`relative z-10 flex flex-col border-t shrink-0 ${
         isDarkMode
           ? "bg-zinc-900/80 backdrop-blur-md border-white/5"
@@ -340,39 +456,157 @@ export default function ChatRoom({ conversationId, sidebarCollapsed, onExpandSid
           </div>
         )}
         
+        {/* File Preview Area */}
+        {selectedFiles.length > 0 && (
+          <div className={`px-4 py-3 border-b ${
+            isDarkMode ? "border-white/10 bg-zinc-800/30" : "border-black/10 bg-gray-50"
+          }`}>
+            <div className="flex items-center gap-2 mb-2">
+              <Icon name="paperclip" size="sm" className={isDarkMode ? "text-zinc-400" : "text-gray-500"} />
+              <span className={`text-xs font-medium ${isDarkMode ? "text-zinc-400" : "text-gray-600"}`}>
+                {selectedFiles.length} file đính kèm
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {selectedFiles.map((file) => (
+                <div
+                  key={file.id}
+                  className={`relative group flex items-center gap-2 px-3 py-2 rounded-lg border transition-all ${
+                    isDarkMode
+                      ? "bg-zinc-800/80 border-zinc-700 hover:border-zinc-600"
+                      : "bg-white border-gray-300 hover:border-gray-400"
+                  }`}
+                >
+                  {/* Thumbnail or Icon */}
+                  <div className="flex-shrink-0">
+                    {file.thumbnailUrl ? (
+                      <img
+                        src={file.thumbnailUrl}
+                        alt={file.name}
+                        className="w-10 h-10 rounded object-cover"
+                      />
+                    ) : (
+                      <div className={`w-10 h-10 rounded flex items-center justify-center ${
+                        isDarkMode ? "bg-zinc-700" : "bg-gray-200"
+                      }`}>
+                        <Icon name={getFileIcon(file.type)} size="md" className="text-primary" />
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* File Info */}
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-medium truncate max-w-[150px] ${
+                      isDarkMode ? "text-zinc-200" : "text-gray-800"
+                    }`}>
+                      {file.name}
+                    </p>
+                    <p className={`text-xs ${
+                      isDarkMode ? "text-zinc-500" : "text-gray-500"
+                    }`}>
+                      {formatFileSize(file.size)}
+                    </p>
+                  </div>
+                  
+                  {/* Remove Button */}
+                  <button
+                    onClick={() => handleRemoveFile(file.id)}
+                    className={`absolute -top-2 -right-2 w-5 h-5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:scale-110 ${
+                      isDarkMode
+                        ? "bg-red-500 text-white hover:bg-red-600"
+                        : "bg-red-500 text-white hover:bg-red-600"
+                    }`}
+                    title="Xóa file"
+                  >
+                    <Icon name="times" size="xs" />
+                  </button>
+                  
+                  {/* Upload Progress Overlay */}
+                  {uploadProgress[file.id] !== undefined && uploadProgress[file.id] < 100 && (
+                    <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
+                      <span className="text-white text-xs font-medium">
+                        {uploadProgress[file.id]}%
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        
         {/* Input row */}
         <div className="flex items-center gap-3 p-4">
-        <button className={`p-2.5 rounded-full transition-all duration-150 hover:scale-105 ${
-          isDarkMode ? "text-zinc-400 hover:bg-zinc-800/50" : "text-gray-600 hover:bg-gray-200/50"
-        }`} title="Gửi file"><Icon name="paperclip" size="md" /></button>
-        <button className={`p-2.5 rounded-full transition-all duration-150 hover:scale-105 ${
-          isDarkMode ? "text-zinc-400 hover:bg-zinc-800/50" : "text-gray-600 hover:bg-gray-200/50"
-        }`} title="Ghi âm"><Icon name="microphone" size="md" /></button>
-        <input
-          ref={inputRef}
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          type="text"
-          placeholder="Nhập tin nhắn..."
-          className={`flex-1 px-4 py-2.5 rounded-[24px] focus:outline-none focus:ring-1 focus:ring-[var(--primary)]/30 transition-all hover:scale-[1.02] hover:-translate-y-0.5 ${
-            isDarkMode
-              ? "bg-zinc-800/80 border border-white/10 text-white placeholder-zinc-500 focus:border-[var(--primary)]/50"
-              : "bg-white/90 border border-black/10 text-gray-900 placeholder-gray-400 focus:border-[var(--primary)]/50"
-          }`}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault(); handleSend();
-            }
-          }}
-        />
-        <button 
-          className="text-white p-3 rounded-full hover:scale-105 transition-all duration-150 shadow-ios-lg liquid-glass-hover" 
-          style={{ backgroundColor: 'var(--primary)' }}
-          onClick={handleSend} 
-          title="Gửi"
-        >
-          <Icon name="send" size="md" />
-        </button>
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+          
+          {/* File attach button */}
+          <button 
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadingFiles}
+            className={`p-2.5 rounded-full transition-all duration-150 hover:scale-105 ${
+              uploadingFiles
+                ? isDarkMode ? "text-zinc-600 cursor-not-allowed" : "text-gray-400 cursor-not-allowed"
+                : isDarkMode ? "text-zinc-400 hover:bg-zinc-800/50" : "text-gray-600 hover:bg-gray-200/50"
+            }`} 
+            title="Đính kèm file"
+          >
+            {uploadingFiles ? (
+              <div className="animate-spin">
+                <Icon name="spinner" size="md" />
+              </div>
+            ) : (
+              <Icon name="paperclip" size="md" />
+            )}
+          </button>
+          
+          {/* Voice record button */}
+          <button 
+            className={`p-2.5 rounded-full transition-all duration-150 hover:scale-105 ${
+              isDarkMode ? "text-zinc-400 hover:bg-zinc-800/50" : "text-gray-600 hover:bg-gray-200/50"
+            }`} 
+            title="Ghi âm"
+          >
+            <Icon name="microphone" size="md" />
+          </button>
+          
+          {/* Text input */}
+          <input
+            ref={inputRef}
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            type="text"
+            placeholder={selectedFiles.length > 0 ? "Thêm chú thích (không bắt buộc)..." : "Nhập tin nhắn..."}
+            className={`flex-1 px-4 py-2.5 rounded-[24px] focus:outline-none focus:ring-1 focus:ring-[var(--primary)]/30 transition-all hover:scale-[1.02] hover:-translate-y-0.5 ${
+              isDarkMode
+                ? "bg-zinc-800/80 border border-white/10 text-white placeholder-zinc-500 focus:border-[var(--primary)]/50"
+                : "bg-white/90 border border-black/10 text-gray-900 placeholder-gray-400 focus:border-[var(--primary)]/50"
+            }`}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault(); 
+                handleSend();
+              }
+            }}
+          />
+          
+          {/* Send button */}
+          <button 
+            className="text-white p-3 rounded-full hover:scale-105 transition-all duration-150 shadow-ios-lg liquid-glass-hover disabled:opacity-50 disabled:cursor-not-allowed" 
+            style={{ backgroundColor: 'var(--primary)' }}
+            onClick={handleSend}
+            disabled={uploadingFiles || (!inputValue.trim() && selectedFiles.length === 0)}
+            title="Gửi"
+          >
+            <Icon name="send" size="md" />
+          </button>
         </div>
       </div>
     </ChatBackground>
