@@ -1,12 +1,4 @@
-/* tokens.css - Design System Tokens
- * 
- * MỤC TIÊU: UI "người làm", không "AI UI"
- * - KHÔNG shadow (trừ focus ring)
- * - KHÔNG emoji icon - dùng FontAwesome
- * - Border-based depth
- * - Radius cha > con
- * - Animation ≤ 200ms
- */
+/* tokens.css - Design System Tokens */
 
 /* ===== COLOR TOKENS - LIGHT THEME ===== */
 :root {
@@ -68,11 +60,53 @@
   --input-bg: #FFFFFF;
   --input-border: #E2E8F0;
   --input-placeholder: #94A3B8;
+
+  /* ===== LIQUID GLASS - LIGHT MODE ===== */
+  --glass-blur: 32px;
+  --glass-blur-strong: 64px;
+  --glass-blur-ultra: 80px;
+  
+  /* Button glass - frosted milky with radial glow */
+  --glass-btn-bg: rgba(255, 255, 255, 0.65);
+  --glass-btn-bg-hover: rgba(255, 255, 255, 0.78);
+  --glass-btn-bg-active: rgba(255, 255, 255, 0.58);
+  --glass-btn-border: rgba(255, 255, 255, 0.85);
+  --glass-btn-border-inner: rgba(255, 255, 255, 0.45);
+  --glass-btn-rim: rgba(255, 255, 255, 0.92);
+  /* Soft shadow - minimal theo Apple style */
+  --glass-btn-shadow: 0 2px 20px -4px rgba(0, 0, 0, 0.06), 0 10px 40px -10px rgba(0, 0, 0, 0.04);
+  --glass-btn-shadow-hover: 0 4px 28px -6px rgba(0, 0, 0, 0.08), 0 14px 56px -14px rgba(0, 0, 0, 0.06);
+  /* Inset highlight - subtle để tạo độ sâu */
+  --glass-btn-inset: inset 0 1px 2px rgba(255, 255, 255, 0.75), inset 0 -1px 2px rgba(0, 0, 0, 0.025);
+  /* Radial overlay - tỏa đều từ tâm */
+  --glass-btn-radial: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0) 70%);
+  
+  /* Primary button glass - cyan với radial glow */
+  --glass-primary-bg: var(--primary);
+  --glass-primary-border: rgba(255, 255, 255, 0.3);
+  --glass-primary-rim: rgba(255, 255, 255, 0.5);
+  --glass-primary-radial: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0) 65%, rgba(0, 0, 0, 0.06) 100%);
+  
+  /* Dropdown/menu glass - stronger blur, more opaque */
+  --glass-menu-bg: rgba(255, 255, 255, 0.88);
+  --glass-menu-border: rgba(255, 255, 255, 0.7);
+  --glass-menu-rim: rgba(255, 255, 255, 0.95);
+  --glass-menu-shadow: 0 8px 40px -8px rgba(0, 0, 0, 0.15), 0 20px 60px -20px rgba(0, 0, 0, 0.1);
+  
+  /* Item hover/selected */
+  --glass-item-hover: rgba(0, 0, 0, 0.04);
+  --glass-item-selected: rgba(0, 188, 212, 0.12);
+  --glass-item-selected-border: rgba(0, 188, 212, 0.2);
+  
+  /* Input glass */
+  --glass-input-bg: rgba(255, 255, 255, 0.7);
+  --glass-input-border: rgba(0, 0, 0, 0.08);
+  --glass-input-focus-bg: rgba(255, 255, 255, 0.9);
 }
 
 /* ===== COLOR TOKENS - DARK THEME ===== */
 .dark {
-  /* Background layers - Distinct gray tones for clear hierarchy */
+  /* Background layers */
   --bg: #121214;
   --surface-1: #1C1C1F;
   --surface-2: #26262A;
@@ -84,12 +118,12 @@
   --text-3: #6B6B6B;
   --text-inverse: #0A0A0A;
   
-  /* Border - very subtle gray, allows Tailwind opacity modifiers */
+  /* Border */
   --border: #1a1a1a;
   --border-hover: #2a2a2a;
   --border-focus: #00BCD4;
   
-  /* Status colors - slightly brighter for dark mode */
+  /* Status colors - brighter for dark mode */
   --success: #34D399;
   --success-light: rgba(52, 211, 153, 0.15);
   --success-border: rgba(52, 211, 153, 0.35);
@@ -111,7 +145,7 @@
   --overstock-light: rgba(167, 139, 250, 0.15);
   --overstock-border: rgba(167, 139, 250, 0.35);
   
-  /* Sidebar specific - PURE BLACK */
+  /* Sidebar specific */
   --sidebar-bg: #141414;
   --sidebar-hover: #1F1F1F;
   --sidebar-active: rgba(0, 188, 212, 0.15);
@@ -119,10 +153,45 @@
   --sidebar-text-active: #00BCD4;
   --sidebar-border: #262626;
   
-  /* Input specific - PURE BLACK */
+  /* Input specific */
   --input-bg: #141414;
   --input-border: #262626;
   --input-placeholder: #6B6B6B;
+
+  /* ===== LIQUID GLASS - DARK MODE ===== */
+  /* Button glass - dark frosted với bright rim */
+  --glass-btn-bg: rgba(42, 42, 48, 0.68);
+  --glass-btn-bg-hover: rgba(52, 52, 60, 0.78);
+  --glass-btn-bg-active: rgba(36, 36, 42, 0.72);
+  --glass-btn-border: rgba(255, 255, 255, 0.1);
+  --glass-btn-border-inner: rgba(255, 255, 255, 0.05);
+  --glass-btn-rim: rgba(255, 255, 255, 0.18);
+  --glass-btn-shadow: 0 2px 20px -4px rgba(0, 0, 0, 0.4), 0 10px 40px -10px rgba(0, 0, 0, 0.3);
+  --glass-btn-shadow-hover: 0 4px 28px -6px rgba(0, 0, 0, 0.5), 0 14px 56px -14px rgba(0, 0, 0, 0.4);
+  --glass-btn-inset: inset 0 1px 2px rgba(255, 255, 255, 0.1), inset 0 -1px 2px rgba(0, 0, 0, 0.2);
+  --glass-btn-radial: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0) 70%);
+  
+  /* Primary button glass */
+  --glass-primary-bg: var(--primary);
+  --glass-primary-border: rgba(255, 255, 255, 0.2);
+  --glass-primary-rim: rgba(255, 255, 255, 0.3);
+  --glass-primary-radial: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 65%, rgba(0, 0, 0, 0.1) 100%);
+  
+  /* Dropdown/menu glass */
+  --glass-menu-bg: rgba(24, 24, 28, 0.92);
+  --glass-menu-border: rgba(255, 255, 255, 0.08);
+  --glass-menu-rim: rgba(255, 255, 255, 0.12);
+  --glass-menu-shadow: 0 8px 40px -8px rgba(0, 0, 0, 0.5), 0 20px 60px -20px rgba(0, 0, 0, 0.4);
+  
+  /* Item hover/selected */
+  --glass-item-hover: rgba(255, 255, 255, 0.06);
+  --glass-item-selected: rgba(0, 188, 212, 0.18);
+  --glass-item-selected-border: rgba(0, 188, 212, 0.3);
+  
+  /* Input glass */
+  --glass-input-bg: rgba(255, 255, 255, 0.04);
+  --glass-input-border: rgba(255, 255, 255, 0.06);
+  --glass-input-focus-bg: rgba(255, 255, 255, 0.08);
 }
 
 /* ===== SPACING SCALE ===== */
@@ -137,22 +206,21 @@
   --space-3xl: 48px;
 }
 
-/* ===== BORDER RADIUS SCALE - Apple-inspired (giảm bớt để tinh tế hơn) ===== */
+/* ===== BORDER RADIUS SCALE ===== */
 :root {
-  --radius-xs: 4px;    /* Badge, Tag nhỏ */
-  --radius-sm: 6px;    /* Badge, Pills */
-  --radius-md: 8px;    /* Input, Button, Select */
-  --radius-lg: 10px;   /* Dropdown, small cards */
-  --radius-xl: 12px;   /* Card, Panel */
-  --radius-2xl: 16px;  /* Modal, large containers */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --radius-full: 9999px;
 }
 
 /* ===== TYPOGRAPHY ===== */
-/* Font: SF Pro Display ONLY */
 :root {
   --font-sans: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   
-  /* Size scale - slightly larger for better readability */
   --text-display: 32px;
   --text-h1: 24px;
   --text-h2: 20px;
@@ -162,13 +230,12 @@
   --text-caption: 12px;
   --text-tiny: 11px;
   
-  /* Line height */
   --leading-tight: 1.25;
   --leading-normal: 1.5;
   --leading-relaxed: 1.625;
 }
 
-/* ===== TRANSITIONS - Apple-style spring easing ===== */
+/* ===== TRANSITIONS ===== */
 :root {
   --transition-fast: 120ms cubic-bezier(0.25, 0.1, 0.25, 1);
   --transition-base: 180ms cubic-bezier(0.25, 0.1, 0.25, 1);
@@ -176,19 +243,8 @@
   --transition-spring: 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-/* ===== LIQUID GLASS EFFECTS ===== */
-:root {
-  /* Subtle glass blur for surfaces */
-  --glass-blur: 20px;
-  --glass-bg-light: rgba(255, 255, 255, 0.72);
-  --glass-bg-dark: rgba(20, 20, 20, 0.72);
-  --glass-border-light: rgba(255, 255, 255, 0.18);
-  --glass-border-dark: rgba(255, 255, 255, 0.08);
-}
-
 /* ===== UTILITY CLASSES ===== */
 @layer utilities {
-  /* Surface backgrounds - KHÔNG shadow */
   .surface-1 {
     background-color: var(--surface-1);
     border: 1px solid var(--border);
@@ -199,20 +255,10 @@
     border: 1px solid var(--border);
   }
   
-  /* Text colors */
-  .text-primary {
-    color: var(--text-1);
-  }
+  .text-primary { color: var(--text-1); }
+  .text-secondary { color: var(--text-2); }
+  .text-muted { color: var(--text-3); }
   
-  .text-secondary {
-    color: var(--text-2);
-  }
-  
-  .text-muted {
-    color: var(--text-3);
-  }
-  
-  /* Interactive states - border based, NO shadow */
   .interactive {
     transition: all var(--transition-base);
   }
@@ -226,14 +272,12 @@
     transform: scale(0.99);
   }
   
-  /* Focus ring - CHỈ shadow được phép */
   .focus-ring:focus {
     outline: none;
     border-color: var(--border-focus);
     box-shadow: 0 0 0 3px rgba(0, 188, 212, 0.15);
   }
   
-  /* Status badges */
   .badge-success {
     background-color: var(--success-light);
     color: var(--success);
@@ -262,5 +306,132 @@
     background-color: var(--overstock-light);
     color: var(--overstock);
     border: 1px solid rgba(156, 39, 176, 0.3);
+  }
+  
+  /* === LIQUID GLASS UTILITIES === */
+  .liquid-glass {
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+  }
+  
+  .liquid-glass-strong {
+    backdrop-filter: blur(var(--glass-blur-strong));
+    -webkit-backdrop-filter: blur(var(--glass-blur-strong));
+  }
+  
+  .liquid-glass-ultra {
+    backdrop-filter: blur(var(--glass-blur-ultra));
+    -webkit-backdrop-filter: blur(var(--glass-blur-ultra));
+  }
+  
+  /* Liquid glass button base */
+  .liquid-glass-btn {
+    position: relative;
+    background: var(--glass-btn-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-btn-border);
+    box-shadow: var(--glass-btn-shadow), var(--glass-btn-inset);
+  }
+  
+  /* Radial overlay cho button */
+  .liquid-glass-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: var(--glass-btn-radial);
+    pointer-events: none;
+  }
+  
+  /* Rim highlight - viền sáng mỏng */
+  .liquid-glass-btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(180deg, var(--glass-btn-rim) 0%, transparent 50%);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+  
+  /* Dropdown/Menu glass */
+  .liquid-glass-dropdown {
+    background: var(--glass-menu-bg);
+    backdrop-filter: blur(var(--glass-blur-strong));
+    -webkit-backdrop-filter: blur(var(--glass-blur-strong));
+    border: 1px solid var(--glass-menu-border);
+    box-shadow: var(--glass-menu-shadow);
+    border-radius: var(--radius-xl);
+  }
+  
+  /* Dropdown rim */
+  .liquid-glass-dropdown::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(180deg, var(--glass-menu-rim) 0%, transparent 40%);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+  
+  /* Glass scrollbar */
+  .glass-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .glass-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .glass-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 3px;
+  }
+  
+  .glass-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.25);
+  }
+  
+  .dark .glass-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+  }
+  
+  .dark .glass-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.25);
+  }
+  
+  /* Animation cho dropdown */
+  @keyframes glass-in {
+    from {
+      opacity: 0;
+      transform: scale(0.95) translateY(-8px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+  
+  @keyframes glass-dropdown-in {
+    from {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  
+  .animate-glass-in {
+    animation: glass-in 200ms cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
   }
 }

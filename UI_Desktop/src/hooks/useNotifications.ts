@@ -110,11 +110,23 @@ export function useNotifications() {
     setUnreadCount(0);
   };
 
+  const removeNotification = (id: string) => {
+    setNotifications(prev => {
+      const notification = prev.find(n => n.id === id);
+      const filtered = prev.filter(n => n.id !== id);
+      if (notification && !notification.read) {
+        setUnreadCount(prevCount => Math.max(0, prevCount - 1));
+      }
+      return filtered;
+    });
+  };
+
   return {
     notifications,
     unreadCount,
     markAsRead,
     markAllAsRead,
+    removeNotification,
   };
 }
 

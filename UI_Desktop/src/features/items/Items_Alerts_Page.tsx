@@ -19,7 +19,7 @@ interface AlertItem {
 export default function Items_Alerts_Page() {
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'critical' | 'warning' | 'low' | 'overstock'>('all');
+  const [filter, setFilter] = useState<'all' | 'critical' | 'overstock'>('all');
 
   useEffect(() => {
     // Call API để lấy danh sách cảnh báo
@@ -103,8 +103,6 @@ export default function Items_Alerts_Page() {
     : alerts.filter(alert => alert.status === filter);
 
   const criticalCount = alerts.filter(a => a.status === 'critical').length;
-  const warningCount = alerts.filter(a => a.status === 'warning').length;
-  const lowCount = alerts.filter(a => a.status === 'low').length;
   const overstockCount = alerts.filter(a => a.status === 'overstock').length;
 
   if (loading) {
@@ -121,7 +119,7 @@ export default function Items_Alerts_Page() {
   return (
     <div className="space-y-6">
       {/* Stats Cards - KHÔNG shadow, border-based depth, KHÔNG transition-all */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Tổng cảnh báo */}
         <div className="bg-[var(--surface-1)] rounded-[var(--radius-2xl)] border border-[var(--border)] p-6 transition-colors duration-150 hover:border-[var(--border-hover)]">
           <div className="flex items-center justify-between mb-3">
@@ -142,28 +140,6 @@ export default function Items_Alerts_Page() {
             <span className="text-3xl font-bold text-red-500">{criticalCount}</span>
           </div>
           <p className="text-sm text-[var(--text-2)] font-medium">Cực kỳ thấp</p>
-        </div>
-
-        {/* Thấp */}
-        <div className="bg-[var(--surface-1)] rounded-[var(--radius-2xl)] border border-[var(--border)] p-6 transition-colors duration-150 hover:border-[var(--border-hover)]">
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-12 h-12 rounded-[var(--radius-md)] bg-[var(--warning-light)] flex items-center justify-center">
-              <Icon name="arrow-down" size="lg" className="text-[var(--warning)]" />
-            </div>
-            <span className="text-3xl font-bold text-[var(--warning)]">{warningCount}</span>
-          </div>
-          <p className="text-sm text-[var(--text-2)] font-medium">Thấp</p>
-        </div>
-
-        {/* Cần nhập thêm */}
-        <div className="bg-[var(--surface-1)] rounded-[var(--radius-2xl)] border border-[var(--border)] p-6 transition-colors duration-150 hover:border-[var(--border-hover)]">
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-12 h-12 rounded-[var(--radius-md)] bg-[var(--info-light)] flex items-center justify-center">
-              <Icon name="archive" size="lg" className="text-[var(--info)]" />
-            </div>
-            <span className="text-3xl font-bold text-[var(--info)]">{lowCount}</span>
-          </div>
-          <p className="text-sm text-[var(--text-2)] font-medium">Cần nhập thêm</p>
         </div>
 
         {/* Tồn kho quá nhiều */}
@@ -202,30 +178,10 @@ export default function Items_Alerts_Page() {
             Cực kỳ thấp ({criticalCount})
           </button>
           <button
-            onClick={() => setFilter('warning')}
-            className={`flex-1 px-4 py-2.5 rounded-[var(--radius-lg)] font-medium transition-all duration-150 ${
-              filter === 'warning'
-                ? 'bg-[var(--warning-light)] text-[var(--warning)] border border-[var(--warning)]/30'
-                : 'text-[var(--text-2)] hover:bg-[var(--surface-2)] border border-transparent'
-            }`}
-          >
-            Thấp ({warningCount})
-          </button>
-          <button
-            onClick={() => setFilter('low')}
-            className={`flex-1 px-4 py-2.5 rounded-[var(--radius-lg)] font-medium transition-all duration-150 ${
-              filter === 'low'
-                ? 'bg-[var(--info-light)] text-[var(--info)] border border-[var(--info)]/30'
-                : 'text-[var(--text-2)] hover:bg-[var(--surface-2)] border border-transparent'
-            }`}
-          >
-            Cần nhập ({lowCount})
-          </button>
-          <button
             onClick={() => setFilter('overstock')}
             className={`flex-1 px-4 py-2.5 rounded-[var(--radius-lg)] font-medium transition-all duration-150 ${
               filter === 'overstock'
-                ? 'bg-[var(--overstock-light)] text-[var(--overstock)] border border-[var(--overstock)]/30'
+                ? 'bg-purple-500/10 text-purple-400 border border-purple-500/30'
                 : 'text-[var(--text-2)] hover:bg-[var(--surface-2)] border border-transparent'
             }`}
           >
