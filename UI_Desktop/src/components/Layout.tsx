@@ -11,8 +11,7 @@ import NotificationsPanel from './NotificationsPanel';
 import { apiLogout, BASE_URL } from '../app/api_client';
 import Icon from './ui/Icon';
 import { useKeyboardShortcuts, commonShortcuts } from '../hooks/useKeyboardShortcuts';
-import { useNotificationBadges } from '../hooks/useNotificationBadges';
-
+import { useNotificationBadges, useNotifications } from '../hooks/useNotificationBadges';
 interface LayoutProps {
   children: ReactNode;
 }
@@ -31,6 +30,7 @@ export default function Layout({ children }: LayoutProps) {
   const { isDarkMode, toggleDarkMode } = useThemeStore();
   const { user, logout } = useAuthStore();
   const { warehouses, activeWarehouseId } = useCompanyStore();
+  const { unreadCount } = useNotifications();
   const activeWarehouse = warehouses.find(wh => wh.id === activeWarehouseId);
   const navigate = useNavigate();
   const location = useLocation();
@@ -43,13 +43,12 @@ export default function Layout({ children }: LayoutProps) {
   const badges = useNotificationBadges();
 
   const menuItems: MenuItem[] = [
-    { id: 'home', label: 'Trang chủ', icon: 'home', path: '/dashboard', badge: badges.home },
+    { id: 'home', label: 'Trang chủ', icon: 'home', path: '/dashboard' },
     { 
       id: 'items', 
       label: 'Hàng hoá', 
       icon: 'box', 
       path: '/items',
-      badge: badges.items,
       subItems: [
         { id: 'item-list', label: 'Danh sách hàng', path: '/items' },
         { id: 'item-tracking', label: 'Theo dõi hàng', path: '/items/tracking' },
@@ -60,16 +59,16 @@ export default function Layout({ children }: LayoutProps) {
       id: 'stock', 
       label: 'Nhập/Xuất kho', 
       icon: 'exchange', 
-      path: '/stock',
-      badge: badges.stock,
+      path: '/stock', 
+      badge: 14,
       subItems: [
         { id: 'stock-in', label: 'Nhập kho', path: '/stock/in' },
         { id: 'stock-out', label: 'Xuất kho', path: '/stock/out' }
       ]
     },
-    { id: 'suppliers', label: 'Nhà cung cấp', icon: 'building', path: '/suppliers', badge: badges.suppliers },
-    { id: 'warehouses', label: 'Kho hàng', icon: 'warehouse', path: '/warehouses', badge: badges.warehouses },
-    { id: 'reports', label: 'Báo cáo', icon: 'chart', path: '/reports', badge: badges.reports },
+    { id: 'suppliers', label: 'Nhà cung cấp', icon: 'building', path: '/suppliers' },
+    { id: 'warehouses', label: 'Kho hàng', icon: 'warehouse', path: '/warehouses' },
+    { id: 'reports', label: 'Báo cáo', icon: 'chart', path: '/reports' },
   ];
 
   const toggleSection = (sectionId: string) => {
@@ -166,6 +165,10 @@ export default function Layout({ children }: LayoutProps) {
             const isExpanded = expandedSections.includes(item.id);
             const hasSubItems = item.subItems && item.subItems.length > 0;
             
+            // Check if current path matches item or any of its subitems
+            const isActive = location.pathname === item.path || 
+              (hasSubItems && item.subItems!.some(subItem => location.pathname === subItem.path));
+            
             return (
               <div key={item.id} className="mb-2">
                 <button
@@ -179,7 +182,7 @@ export default function Layout({ children }: LayoutProps) {
                   className={`w-full flex items-center ${
                     isSidebarCollapsed ? 'justify-center p-3 relative' : 'gap-3 px-4 py-3'
                   } rounded-[var(--radius-xl)] transition-all duration-150 ${
-                    location.pathname === item.path
+                    isActive
                       ? 'bg-[var(--primary-light)] text-[var(--primary)] border border-[var(--primary)]/20'
                       : 'hover:bg-[var(--surface-2)] border border-transparent'
                   }`}

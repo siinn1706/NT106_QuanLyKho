@@ -9,12 +9,13 @@ import { Notification } from '../types/notification';
 export default function NotificationsPanel() {
   const [isOpen, setIsOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
-  const { 
-    unreadNotifications, 
-    readNotifications, 
-    unreadCount, 
-    markRead, 
-    markAllRead 
+  const {
+    notifications,
+    unreadNotifications,
+    readNotifications,
+    unreadCount,
+    markRead,
+    markAllRead,
   } = useNotifications();
   const navigate = useNavigate();
 
@@ -93,7 +94,7 @@ export default function NotificationsPanel() {
         <Icon name="bell" size="lg" />
         {unreadCount > 0 && (
           <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-[var(--danger)] text-white text-xs font-bold rounded-full flex items-center justify-center shadow-sm">
-            {unreadCount > 9 ? '9+' : unreadCount}
+            {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
       </button>
@@ -110,7 +111,7 @@ export default function NotificationsPanel() {
               <h3 className="font-semibold text-[var(--text-1)]">Thông báo</h3>
               {unreadCount > 0 && (
                 <button
-                  onClick={markAllAsRead}
+                  onClick={() => markAllRead()}
                   className="text-sm text-[var(--primary)] hover:underline"
                 >
                   Đánh dấu tất cả đã đọc
@@ -134,7 +135,7 @@ export default function NotificationsPanel() {
                         Mới ({unreadNotifications.length})
                       </div>
                       {unreadNotifications.map((notification) => (
-                        <button
+                        <div
                           key={notification.id}
                           onClick={() => handleNotificationClick(notification)}
                           className="w-full px-4 py-3 text-left hover:bg-[var(--surface-2)] transition-colors flex items-start gap-3"
@@ -150,7 +151,7 @@ export default function NotificationsPanel() {
                             </p>
                           </div>
                           <div className="w-2 h-2 rounded-full bg-[var(--primary)] flex-shrink-0 mt-2" />
-                        </button>
+                        </div>
                       ))}
                     </div>
                   )}
@@ -164,7 +165,7 @@ export default function NotificationsPanel() {
                         </div>
                       )}
                       {readNotifications.map((notification) => (
-                        <button
+                        <div
                           key={notification.id}
                           onClick={() => handleNotificationClick(notification)}
                           className="w-full px-4 py-3 text-left hover:bg-[var(--surface-2)] transition-colors flex items-start gap-3 opacity-70"
@@ -175,11 +176,11 @@ export default function NotificationsPanel() {
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-[var(--text-1)] text-sm">{notification.title}</p>
                             <p className="text-xs text-[var(--text-2)] mt-1">{notification.message}</p>
-                            <p className="text-xs text-[var(--text-3)} mt-1">
+                            <p className="text-xs text-[var(--text-3)] mt-1">
                               {new Date(notification.createdAt).toLocaleString('vi-VN')}
                             </p>
                           </div>
-                        </button>
+                        </div>
                       ))}
                     </div>
                   )}
@@ -192,4 +193,3 @@ export default function NotificationsPanel() {
     </div>
   );
 }
-
