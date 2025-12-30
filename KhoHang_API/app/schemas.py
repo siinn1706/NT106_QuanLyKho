@@ -282,14 +282,6 @@ class ReplyInfo(BaseModel):
     sender: str
 
 
-class ChatAttachment(BaseModel):
-    """Thông tin file đính kèm trong tin nhắn"""
-    file_name: str  # Tên file gốc
-    file_type: str  # Loại file (image/png, application/pdf, ...)
-    file_url: str  # URL để truy cập file
-    file_size: int  # Kích thước file (bytes)
-
-
 class ChatMessageBase(BaseModel):
     id: str
     conversation_id: str
@@ -297,7 +289,6 @@ class ChatMessageBase(BaseModel):
     text: str
     reply_to: ReplyInfo | None = None
     reactions: List[str] = []  # ["👍", "❤️", ...]
-    attachments: List[ChatAttachment] = []  # Danh sách file đính kèm
 
 
 class ChatMessageCreate(ChatMessageBase):

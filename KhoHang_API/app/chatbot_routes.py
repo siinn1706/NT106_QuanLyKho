@@ -20,13 +20,8 @@ DATA_DIR = get_datadir()
 CHATBOT_AVATAR_DIR = DATA_DIR / "uploads" / "chatbot"
 CHATBOT_AVATAR_DIR.mkdir(parents=True, exist_ok=True)
 
-# Thư mục lưu file đính kèm (dùng chung cho chatbot và tin nhắn người dùng)
-ATTACHMENTS_DIR = DATA_DIR / "uploads" / "attachments"
-ATTACHMENTS_DIR.mkdir(parents=True, exist_ok=True)
-
 MAX_AVATAR_SIZE = 800  # px
 WEBP_QUALITY = 85
-MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 
 class ChatbotConfigResponse(BaseModel):
     avatar_url: Optional[str]
@@ -147,73 +142,3 @@ def update_chatbot_config(
         "bot_name": config.bot_name,
         "bot_description": config.bot_description
     }
-
-
-@router.post("/upload")
-async def upload_attachment(
-    file: UploadFile = File(...),
-    current_user: dict = Depends(get_current_user)
-):
-    """
-    Upload file đính kèm (dùng chung cho chatbot và tin nhắn người dùng).
-    
-    Endpoint này được Frontend gọi khi người dùng upload ảnh/file trong bất kỳ 
-    cuộc hội thoại nào (với Bot hoặc với người khác).
-    
-    Returns:
-        {
-            "file_url": "/uploads/attachments/...",
-            "file_name": "original_name.ext",
-            "file_type": "image/png",
-            "file_size": 12345
-        }
-    """
-    try:
-        # Đọc file content
-        contents = await file.read()
-        file_size = len(contents)
-        
-        # Kiểm tra kích thước file
-        if file_size > MAX_FILE_SIZE:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"File size exceeds maximum allowed size of {MAX_FILE_SIZE / (1024*1024):.1f}MB"
-            )
-        
-        # Lấy thông tin file gốc
-        original_filename = file.filename or "file"
-        file_type = file.content_type or "application/octet-stream"
-        
-        # Lấy extension từ filename gốc
-        ext = Path(original_filename).suffix.lower()
-        if not ext:
-            # Nếu không có extension, thử đoán từ content_type
-            if file_type.startswith("image/"):
-                ext = ".jpg"
-            elif file_type.startswith("application/pdf"):
-                ext = ".pdf"
-            else:
-                ext = ".bin"
-        
-        # Tạo tên file duy nhất với UUID
-        unique_filename = f"{uuid.uuid4().hex}{ext}"
-        filepath = ATTACHMENTS_DIR / unique_filename
-        
-        # Lưu file
-        with open(filepath, "wb") as f:
-            f.write(contents)
-        
-        # Tạo URL để truy cập file
-        file_url = f"/uploads/attachments/{unique_filename}"
-        
-        return {
-            "file_url": file_url,
-            "file_name": original_filename,
-            "file_type": file_type,
-            "file_size": file_size
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error uploading file: {str(e)}")
