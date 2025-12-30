@@ -11,8 +11,7 @@ import NotificationsPanel from './NotificationsPanel';
 import { apiLogout, BASE_URL } from '../app/api_client';
 import Icon from './ui/Icon';
 import { useKeyboardShortcuts, commonShortcuts } from '../hooks/useKeyboardShortcuts';
-import { useNotifications } from '../hooks/useNotifications';
-
+import { useNotificationBadges, useNotifications } from '../hooks/useNotificationBadges';
 interface LayoutProps {
   children: ReactNode;
 }
@@ -39,21 +38,17 @@ export default function Layout({ children }: LayoutProps) {
   const [settingsTab, setSettingsTab] = useState<'general' | 'company' | 'warehouse' | 'account' | 'notifications' | 'about'>('general');
   const [expandedSections, setExpandedSections] = useState<string[]>(['items']);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  
+  // Get badge counts from store
+  const badges = useNotificationBadges();
 
   const menuItems: MenuItem[] = [
-    { 
-      id: 'home', 
-      label: 'Trang chủ', 
-      icon: 'home', 
-      path: '/dashboard',
-      badge: unreadCount > 0 ? unreadCount : undefined
-    },
+    { id: 'home', label: 'Trang chủ', icon: 'home', path: '/dashboard' },
     { 
       id: 'items', 
       label: 'Hàng hoá', 
       icon: 'box', 
       path: '/items',
-      badge: unreadCount > 0 ? unreadCount : undefined,
       subItems: [
         { id: 'item-list', label: 'Danh sách hàng', path: '/items' },
         { id: 'item-tracking', label: 'Theo dõi hàng', path: '/items/tracking' },
@@ -65,33 +60,15 @@ export default function Layout({ children }: LayoutProps) {
       label: 'Nhập/Xuất kho', 
       icon: 'exchange', 
       path: '/stock', 
-      badge: unreadCount > 0 ? unreadCount : undefined,
+      badge: 14,
       subItems: [
         { id: 'stock-in', label: 'Nhập kho', path: '/stock/in' },
         { id: 'stock-out', label: 'Xuất kho', path: '/stock/out' }
       ]
     },
-    { 
-      id: 'suppliers', 
-      label: 'Nhà cung cấp', 
-      icon: 'building', 
-      path: '/suppliers',
-      badge: unreadCount > 0 ? unreadCount : undefined
-    },
-    { 
-      id: 'warehouses', 
-      label: 'Kho hàng', 
-      icon: 'warehouse', 
-      path: '/warehouses',
-      badge: unreadCount > 0 ? unreadCount : undefined
-    },
-    { 
-      id: 'reports', 
-      label: 'Báo cáo', 
-      icon: 'chart', 
-      path: '/reports',
-      badge: unreadCount > 0 ? unreadCount : undefined
-    },
+    { id: 'suppliers', label: 'Nhà cung cấp', icon: 'building', path: '/suppliers' },
+    { id: 'warehouses', label: 'Kho hàng', icon: 'warehouse', path: '/warehouses' },
+    { id: 'reports', label: 'Báo cáo', icon: 'chart', path: '/reports' },
   ];
 
   const toggleSection = (sectionId: string) => {
@@ -203,7 +180,7 @@ export default function Layout({ children }: LayoutProps) {
                     }
                   }}
                   className={`w-full flex items-center ${
-                    isSidebarCollapsed ? 'justify-center p-3' : 'gap-3 px-4 py-3'
+                    isSidebarCollapsed ? 'justify-center p-3 relative' : 'gap-3 px-4 py-3'
                   } rounded-[var(--radius-xl)] transition-all duration-150 ${
                     isActive
                       ? 'bg-[var(--primary-light)] text-[var(--primary)] border border-[var(--primary)]/20'
@@ -212,14 +189,19 @@ export default function Layout({ children }: LayoutProps) {
                   title={isSidebarCollapsed ? item.label : undefined}
                 >
                   <Icon name={item.icon === 'home' ? 'home' : item.icon === 'box' ? 'box' : item.icon === 'exchange' ? 'exchange' : item.icon === 'building' ? 'building' : item.icon === 'warehouse' ? 'warehouse' : item.icon === 'chart' ? 'chart-bar' : item.icon} size={isSidebarCollapsed ? 'lg' : 'md'} className="flex-shrink-0" />
+                  {isSidebarCollapsed && item.badge !== undefined && item.badge > 0 && (
+                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-[var(--danger)] text-white text-xs font-bold rounded-full flex items-center justify-center shadow-sm">
+                      {item.badge > 9 ? '9+' : item.badge}
+                    </span>
+                  )}
                   {!isSidebarCollapsed && (
                     <>
                       <span className="flex-1 text-left font-medium whitespace-nowrap">
                         {item.label}
                       </span>
-                      {item.badge && (
-                        <span className="bg-[var(--danger)] text-white text-xs px-2 py-0.5 rounded-full flex-shrink-0">
-                          {item.badge}
+                      {item.badge !== undefined && item.badge > 0 && (
+                        <span className="bg-[var(--danger)] text-white text-xs px-2 py-0.5 rounded-full flex-shrink-0 min-w-[20px] text-center">
+                          {item.badge > 99 ? '99+' : item.badge}
                         </span>
                       )}
                       {hasSubItems && (
