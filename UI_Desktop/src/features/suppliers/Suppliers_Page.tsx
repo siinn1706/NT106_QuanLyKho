@@ -1,9 +1,10 @@
 /** Suppliers_Page.tsx - Quản lý nhà cung cấp */
 
 import { useEffect, useState } from 'react';
-import { apiGetSuppliers, apiCreateSupplier, apiGetSupplierTransactions, Supplier, SupplierTransactions } from '../../app/api_client';
+import { apiGetSuppliers, apiCreateSupplier, apiUpdateSupplier, apiDeleteSupplier, apiGetSupplierTransactions, Supplier, SupplierTransactions } from '../../app/api_client';
 import { useUIStore } from '../../state/ui_store';
 import Modal from '../../components/ui/Modal';
+import PasskeyModal from '../../components/ui/PasskeyModal';
 import Icon from '../../components/ui/Icon';
 import { showToast } from '../../utils/toast';
 interface SupplierForm {
@@ -41,6 +42,11 @@ export default function Suppliers_Page() {
   const [supplierTransactions, setSupplierTransactions] = useState<SupplierTransactions | null>(null);
   const [loadingTransactions, setLoadingTransactions] = useState(false);
   const [activeTab, setActiveTab] = useState<'info' | 'transactions'>('info');
+  
+  // Delete passkey modal states
+  const [showDeletePasskeyModal, setShowDeletePasskeyModal] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     loadSuppliers();
@@ -102,10 +108,13 @@ export default function Suppliers_Page() {
       return;
     }
     
+    setIsSubmitting(true);
     try {
       if (editingSupplier) {
-        // TODO: Call API update
-        showToast.info('Chức năng cập nhật đang phát triển');
+        // Call API update
+        const updated = await apiUpdateSupplier(Number(editingSupplier.id), formData);
+        setSuppliers(suppliers.map(s => s.id === editingSupplier.id ? updated : s));
+        showToast.success('Đã cập nhật nhà cung cấp thành công!');
       } else {
         const newSupplier = await apiCreateSupplier(formData);
         setSuppliers([...suppliers, newSupplier]);
@@ -115,7 +124,9 @@ export default function Suppliers_Page() {
       resetForm();
     } catch (error) {
       console.error('Submit supplier error:', error);
-      showToast.error('Không thể lưu nhà cung cấp!');
+      showToast.error(error instanceof Error ? error.message : 'Không thể lưu nhà cung cấp!');
+    } finally {
+      setIsSubmitting(false);
     }
   };
   
@@ -139,8 +150,31 @@ export default function Suppliers_Page() {
   
   const handleDelete = (_id: string) => {
     if (!confirm('Bạn có chắc muốn xóa nhà cung cấp này?')) return;
-    // TODO: Call API delete
-    showToast.info('Chức năng xóa đang phát triển');
+    setPendingDeleteId(Number(_id));
+    setShowDeletePasskeyModal(true);
+  };
+  
+  const handleDeleteConfirm = async (passkey: string) => {
+    if (!pendingDeleteId) return;
+    
+    setIsSubmitting(true);
+    try {
+      await apiDeleteSupplier(pendingDeleteId, passkey);
+      setSuppliers(suppliers.filter(s => Number(s.id) !== pendingDeleteId));
+      showToast.success('Đã xóa nhà cung cấp thành công!');
+      setShowDeletePasskeyModal(false);
+      setPendingDeleteId(null);
+    } catch (error) {
+      console.error('Delete supplier error:', error);
+      showToast.error(error instanceof Error ? error.message : 'Không thể xóa nhà cung cấp!');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
+  const handleDeleteCancel = () => {
+    setShowDeletePasskeyModal(false);
+    setPendingDeleteId(null);
   };
 
   return (
@@ -616,6 +650,16 @@ export default function Suppliers_Page() {
           </div>
         )}
       </Modal>
+
+      {/* Delete Passkey Confirmation Modal */}
+      <PasskeyModal
+        isOpen={showDeletePasskeyModal}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        title="Xác nhận xóa nhà cung cấp"
+        description="Nhập mã PIN bảo mật để xác nhận xóa nhà cung cấp này. Thao tác không thể hoàn tác."
+        loading={isSubmitting}
+      />
     </div>
   );
 }

@@ -1,7 +1,7 @@
-/** Dashboard_Page.tsx - Màn hình trang chủ
- *  - Hiển thị các thống kê tổng quan: tổng số hàng hoá, cảnh báo hàng sắp hết, tổng giá trị kho.
- *  - Bảng giao dịch gần đây (nhập/xuất kho).
- *  - Biểu đồ trạng thái hàng hoá (có thể thêm sau).
+/** Dashboard_Page.tsx - Main dashboard
+ *  - Display overview statistics: total items, low stock alerts, total warehouse value
+ *  - Recent transactions table (stock in/out)
+ *  - Item status charts
  */
 
 import { useEffect, useState } from 'react';
@@ -18,30 +18,10 @@ export default function Dashboard_Page() {
   const [timeRange, setTimeRange] = useState('7days');
 
   useEffect(() => {
-    // Load stats từ BE
     apiGetDashboardStats()
       .then(setStats)
-      .catch((err) => console.error('Lỗi khi tải dashboard stats:', err))
+      .catch((err) => console.error('Error loading dashboard stats:', err))
       .finally(() => setLoading(false));
-    /* Expected JSON structure from BE:
-    {
-      "total_items": 245,
-      "low_stock_count": 14,
-      "total_value": 156000000,
-      "system_uptime": 96,
-      "warehouse_usage": 78,
-      "recent_transactions": [
-        {
-          "id": "TXN001",
-          "item_name": "Laptop Dell XPS",
-          "type": "Nhập kho",
-          "quantity": 10,
-          "date": "2024-01-15",
-          "status": "Hoàn thành"
-        }
-      ]
-    }
-    */
   }, []);
 
   if (loading) {
@@ -55,7 +35,6 @@ export default function Dashboard_Page() {
     );
   }
 
-  // Nếu API fail thì dùng giá trị mặc định 0
   const safeStats = stats || {
     total_items: 0,
     low_stock_count: 0,
@@ -65,18 +44,16 @@ export default function Dashboard_Page() {
 
   return (
     <div className="space-y-6">
-      {/* Stats Cards - Liquid Glass Design */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Card 1: Uptime */}
         <div 
           onClick={() => navigate('/reports')}
-          className="bg-[var(--surface-1)] rounded-[var(--radius-2xl)] border border-[var(--border)] p-6 transition-all duration-200 hover:border-[var(--border-hover)] cursor-pointer group"
+          className="bg-[var(--surface-1)] rounded-[var(--radius-2xl)] border border-[var(--border)] p-6 hover:border-[var(--border-hover)] cursor-pointer group"
         >
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-medium text-[var(--text-3)]">
               Hiệu suất hệ thống
             </h3>
-            <span className="w-10 h-10 flex items-center justify-center rounded-[var(--radius-md)] bg-[var(--success)]/15 group-hover:scale-105 transition-transform">
+            <span className="w-10 h-10 flex items-center justify-center rounded-[var(--radius-md)] bg-[var(--success)]/15">
               <Icon name="chart-line" size="lg" className="text-[var(--success)]" />
             </span>
           </div>
@@ -86,16 +63,15 @@ export default function Dashboard_Page() {
           </p>
         </div>
 
-        {/* Card 2: Issues */}
         <div 
           onClick={() => navigate('/items/alerts')}
-          className="bg-[var(--surface-1)] rounded-[var(--radius-2xl)] border border-[var(--border)] p-6 transition-all duration-200 hover:border-[var(--border-hover)] cursor-pointer group"
+          className="bg-[var(--surface-1)] rounded-[var(--radius-2xl)] border border-[var(--border)] p-6 hover:border-[var(--border-hover)] cursor-pointer group"
         >
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-medium text-[var(--text-3)]">
               Cảnh báo hàng tồn kho
             </h3>
-            <span className="w-10 h-10 flex items-center justify-center rounded-[var(--radius-md)] bg-[var(--danger)]/15 group-hover:scale-105 transition-transform">
+            <span className="w-10 h-10 flex items-center justify-center rounded-[var(--radius-md)] bg-[var(--danger)]/15">
               <Icon name="warning" size="lg" className="text-[var(--danger)]" />
             </span>
           </div>
@@ -105,16 +81,15 @@ export default function Dashboard_Page() {
           </p>
         </div>
 
-        {/* Card 3: Usage */}
         <div 
           onClick={() => navigate('/items/tracking')}
-          className="bg-[var(--surface-1)] rounded-[var(--radius-2xl)] border border-[var(--border)] p-6 transition-all duration-200 hover:border-[var(--border-hover)] cursor-pointer group"
+          className="bg-[var(--surface-1)] rounded-[var(--radius-2xl)] border border-[var(--border)] p-6 hover:border-[var(--border-hover)] cursor-pointer group"
         >
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-medium text-[var(--text-3)]">
               Tỷ lệ sử dụng kho
             </h3>
-            <span className="w-10 h-10 flex items-center justify-center rounded-[var(--radius-md)] bg-[var(--primary)]/15 group-hover:scale-105 transition-transform">
+            <span className="w-10 h-10 flex items-center justify-center rounded-[var(--radius-md)] bg-[var(--primary)]/15">
               <Icon name="archive" size="lg" className="text-[var(--primary)]" />
             </span>
           </div>
@@ -122,7 +97,7 @@ export default function Dashboard_Page() {
             <p className="text-4xl font-bold">{safeStats.warehouse_usage || 0}%</p>
             <div className="flex-1 mb-2">
               <div className="h-3 bg-[var(--surface-2)] rounded-full overflow-hidden">
-                <div className="h-full bg-[var(--success)] rounded-full transition-all duration-500" style={{ width: `${safeStats.warehouse_usage || 0}%` }}></div>
+                <div className="h-full bg-[var(--success)] rounded-full" style={{ width: `${safeStats.warehouse_usage || 0}%` }}></div>
               </div>
             </div>
           </div>
@@ -132,10 +107,9 @@ export default function Dashboard_Page() {
         </div>
       </div>
 
-      {/* Equipment and Inventory Status Table */}
       <div className="bg-[var(--surface-1)] rounded-[var(--radius-2xl)] border border-[var(--border)]">
         <div className="p-6 border-b border-[var(--border)] flex items-center justify-between overflow-visible">
-          <h2 className="text-xl font-semibold">Trạng thái Hàng hoá và Tồn kho</h2>
+          <h2 className="text-xl font-semibold">Giao dịch gần đây</h2>
           <div className="flex gap-2 relative z-10">
             <CustomSelect
               value={selectedCategory}
@@ -170,7 +144,7 @@ export default function Dashboard_Page() {
                   STT
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-[var(--text-3)] uppercase tracking-wider">
-                  Tiêu đề
+                  Loại giao dịch
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-[var(--text-3)] uppercase tracking-wider">
                   Ghi chú
