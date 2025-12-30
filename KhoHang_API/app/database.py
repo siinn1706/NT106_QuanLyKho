@@ -4,7 +4,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
-from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, Text, ForeignKey, JSON
+from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, Text, ForeignKey, JSON, text
 from datetime import datetime, timezone
 from pathlib import Path
 import os
@@ -116,6 +116,9 @@ class StockTransactionModel(Base):
     quantity = Column(Integer, nullable=False)
     note = Column(Text, nullable=True)
     timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    warehouse_code = Column(String, nullable=True, index=True)
+    voucher_id = Column(String, nullable=True, index=True)
+    actor_user_id = Column(String, ForeignKey("users.id"), nullable=True, index=True)
     item = relationship("ItemModel", backref="transactions")
 
 class StockInRecordModel(Base):
@@ -254,8 +257,25 @@ def get_db():
     finally:
         db.close()
 
+def ensure_stock_transaction_columns(engine):
+    """Ensure new stock transaction columns exist for backward compatibility."""
+    try:
+        with engine.begin() as conn:
+            existing_cols = [row[1] for row in conn.execute(text("PRAGMA table_info(stock_transactions)"))]
+            if "warehouse_code" not in existing_cols:
+                conn.execute(text("ALTER TABLE stock_transactions ADD COLUMN warehouse_code TEXT"))
+            if "voucher_id" not in existing_cols:
+                conn.execute(text("ALTER TABLE stock_transactions ADD COLUMN voucher_id TEXT"))
+            if "actor_user_id" not in existing_cols:
+                conn.execute(text("ALTER TABLE stock_transactions ADD COLUMN actor_user_id TEXT"))
+    except Exception as e:
+        # Avoid crashing app if migration fails; log the warning instead
+        print(f"[WARN] Could not migrate stock_transactions columns: {e}")
+
+
 def init_db():
     Base.metadata.create_all(bind=engine)
+    ensure_stock_transaction_columns(engine)
     print(f"Database initialized at {DATABASE_URL}")
 
 init_db()
