@@ -211,7 +211,7 @@ class AuthService {
   // PASSKEY MANAGEMENT
   // ==================================
 
-  async passkeyRequestOTP(): Promise<{ message: string }> {
+  async passkeyRequestOTP(password: string): Promise<{ message: string }> {
     const token = this.getToken();
     if (!token) throw new Error('Not authenticated');
 
@@ -221,6 +221,7 @@ class AuthService {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
+      body: JSON.stringify({ password }),
     });
 
     if (!response.ok) {

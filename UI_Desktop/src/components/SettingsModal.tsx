@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useUIStore } from '../state/ui_store';
 import { useThemeStore } from '../theme/themeStore';
 import { useAuthStore } from '../state/auth_store';
-import { useCompanyStore, Warehouse } from '../state/company_store';
-import { type WarehouseManager } from '../app/api_client';
+import { useCompanyStore, Warehouse, type WarehouseManager } from '../state/company_store';
 import { apiLogout, apiUploadCompanyLogo } from '../app/api_client';
 import { BASE_URL } from '../app/api_client';
+import { authService } from '../app/auth_service';
 import CustomSelect from './ui/CustomSelect';
 import PasskeyModal from './ui/PasskeyModal';
 import EditProfileModal from './EditProfileModal';
@@ -61,8 +61,19 @@ export default function SettingsModal({ isOpen, onClose, initialTab = 'general' 
   // Passkey states
   const [showChangePasskeyModal, setShowChangePasskeyModal] = useState(false);
   const [showForgotPasskeyModal, setShowForgotPasskeyModal] = useState(false);
-  const [changePasskeyData, setChangePasskeyData] = useState({ currentPassword: '', newPasskey: '', confirmPasskey: '' });
+  const [changePasskeyData, setChangePasskeyData] = useState({ 
+    currentPassword: '', 
+    newPasskey: '', 
+    confirmPasskey: '' 
+  });
   const [forgotPasskeyData, setForgotPasskeyData] = useState({ password: '', email: '' });
+  
+  // Passkey flow states (step-based)
+  const [passkeyStep, setPasskeyStep] = useState<1 | 2 | 3>(1); // 1=Password, 2=OTP, 3=Set Passkey
+  const [passkeyOtp, setPasskeyOtp] = useState(['', '', '', '', '', '']);
+  const [passkeyLoading, setPasskeyLoading] = useState(false);
+  const [passkeyError, setPasskeyError] = useState('');
+  const [otpResendCountdown, setOtpResendCountdown] = useState(0);
   
   // Passkey validation for warehouse operations
   const [showPasskeyModal, setShowPasskeyModal] = useState(false);
@@ -84,6 +95,14 @@ export default function SettingsModal({ isOpen, onClose, initialTab = 'general' 
       setEditingWarehouseId(null);
     }
   }, [isOpen, initialTab, companyInfo]);
+
+  // OTP countdown effect for passkey modal
+  useEffect(() => {
+    if (otpResendCountdown > 0) {
+      const timer = setTimeout(() => setOtpResendCountdown(otpResendCountdown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [otpResendCountdown]);
 
   if (!isOpen) return null;
 
@@ -288,24 +307,135 @@ export default function SettingsModal({ isOpen, onClose, initialTab = 'general' 
   };
 
   // ===== PASSKEY HANDLERS =====
-  const handleChangePasskey = () => {
-    // Validate
-    if (!changePasskeyData.currentPassword || !changePasskeyData.newPasskey || !changePasskeyData.confirmPasskey) {
-      showToast.info('Vui lòng điền đầy đủ thông tin!');
+  
+  const resetPasskeyModal = () => {
+    setShowChangePasskeyModal(false);
+    setPasskeyStep(1);
+    setPasskeyOtp(['', '', '', '', '', '']);
+    setChangePasskeyData({ currentPassword: '', newPasskey: '', confirmPasskey: '' });
+    setPasskeyError('');
+    setPasskeyLoading(false);
+  };
+  
+  // Step 1: Verify password and request OTP
+  const handlePasskeyStep1 = async () => {
+    if (!changePasskeyData.currentPassword) {
+      setPasskeyError('Vui lòng nhập mật khẩu!');
+      return;
+    }
+    
+    setPasskeyLoading(true);
+    setPasskeyError('');
+    
+    try {
+      await authService.passkeyRequestOTP(changePasskeyData.currentPassword);
+      showToast.success('Mã OTP đã được gửi đến email của bạn');
+      setPasskeyStep(2);
+      setOtpResendCountdown(60);
+    } catch (err: any) {
+      setPasskeyError(err.message || 'Xác thực thất bại. Vui lòng thử lại.');
+    } finally {
+      setPasskeyLoading(false);
+    }
+  };
+  
+  // Step 2: Verify OTP and go to step 3
+  const handlePasskeyStep2 = () => {
+    const otpCode = passkeyOtp.join('');
+    if (otpCode.length !== 6) {
+      setPasskeyError('Vui lòng nhập đủ 6 số OTP');
+      return;
+    }
+    setPasskeyError('');
+    setPasskeyStep(3);
+  };
+  
+  // Step 3: Set new passkey
+  const handlePasskeyStep3 = async () => {
+    if (!changePasskeyData.newPasskey) {
+      setPasskeyError('Vui lòng nhập passkey mới');
       return;
     }
     if (changePasskeyData.newPasskey.length !== 6 || !/^\d{6}$/.test(changePasskeyData.newPasskey)) {
-      showToast.info('Passkey phải là 6 chữ số!');
+      setPasskeyError('Passkey phải là 6 chữ số!');
       return;
     }
     if (changePasskeyData.newPasskey !== changePasskeyData.confirmPasskey) {
-      showToast.info('Passkey mới không khớp!');
+      setPasskeyError('Passkey xác nhận không khớp!');
       return;
     }
-    // TODO: Call API để đổi passkey (BE sẽ verify password và gửi mail)
-    showToast.info('Đã gửi yêu cầu đổi passkey. Vui lòng kiểm tra email!');
-    setShowChangePasskeyModal(false);
-    setChangePasskeyData({ currentPassword: '', newPasskey: '', confirmPasskey: '' });
+    
+    setPasskeyLoading(true);
+    setPasskeyError('');
+    
+    try {
+      const otpCode = passkeyOtp.join('');
+      await authService.passkeyConfirm(otpCode, changePasskeyData.newPasskey);
+      showToast.success(user?.has_passkey ? 'Đổi passkey thành công!' : 'Đặt passkey thành công!');
+      resetPasskeyModal();
+      // Update user state to reflect has_passkey
+      if (user) {
+        useAuthStore.getState().refreshUser({ ...user, has_passkey: true });
+      }
+    } catch (err: any) {
+      setPasskeyError(err.message || 'Đặt passkey thất bại. Vui lòng thử lại.');
+    } finally {
+      setPasskeyLoading(false);
+    }
+  };
+  
+  // Resend OTP
+  const handleResendOtp = async () => {
+    if (otpResendCountdown > 0) return;
+    
+    setPasskeyLoading(true);
+    try {
+      await authService.passkeyRequestOTP(changePasskeyData.currentPassword);
+      showToast.success('Mã OTP mới đã được gửi');
+      setOtpResendCountdown(60);
+      setPasskeyOtp(['', '', '', '', '', '']);
+    } catch (err: any) {
+      setPasskeyError(err.message || 'Không thể gửi lại OTP. Vui lòng thử lại.');
+    } finally {
+      setPasskeyLoading(false);
+    }
+  };
+  
+  // OTP input handlers
+  const handleOtpChange = (index: number, value: string) => {
+    if (!/^\d*$/.test(value)) return;
+    
+    const newOtp = [...passkeyOtp];
+    newOtp[index] = value;
+    setPasskeyOtp(newOtp);
+    setPasskeyError('');
+
+    // Auto-focus next input
+    if (value && index < 5) {
+      const nextInput = document.getElementById(`otp-input-${index + 1}`);
+      nextInput?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !passkeyOtp[index] && index > 0) {
+      const prevInput = document.getElementById(`otp-input-${index - 1}`);
+      prevInput?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    const newOtp = pastedData.split('').concat(Array(6 - pastedData.length).fill(''));
+    setPasskeyOtp(newOtp);
+  };
+
+  const handleChangePasskey = () => {
+    // This is now handled by step functions
+    if (passkeyStep === 1) handlePasskeyStep1();
+    else if (passkeyStep === 2) handlePasskeyStep2();
+    else if (passkeyStep === 3) handlePasskeyStep3();
   };
 
   const handleForgotPasskey = () => {
@@ -802,14 +932,14 @@ export default function SettingsModal({ isOpen, onClose, initialTab = 'general' 
                           <input
                             type="text"
                             value={managerForm.name}
-                            onChange={(e) => setManagerForm((prev: WarehouseManager) => ({ ...prev, name: e.target.value }))}
+                            onChange={(e) => setManagerForm((prev) => ({ ...prev, name: e.target.value }))}
                             placeholder="Tên người quản lý"
                             className="flex-1 px-3 py-2 rounded-lg border bg-[var(--surface-1)] border-[var(--border)] focus:border-[var(--primary)] outline-none text-sm"
                           />
                           <input
                             type="text"
                             value={managerForm.position}
-                            onChange={(e) => setManagerForm((prev: WarehouseManager) => ({ ...prev, position: e.target.value }))}
+                            onChange={(e) => setManagerForm((prev) => ({ ...prev, position: e.target.value }))}
                             placeholder="Chức vụ"
                             className="flex-1 px-3 py-2 rounded-lg border bg-[var(--surface-1)] border-[var(--border)] focus:border-[var(--primary)] outline-none text-sm"
                           />
@@ -1193,6 +1323,11 @@ export default function SettingsModal({ isOpen, onClose, initialTab = 'general' 
                     <div className="flex items-center gap-2 mb-2">
                       <Icon name="lock" size="sm" className="text-[var(--primary)]" />
                       <span className="text-sm font-medium">Passkey (6 số)</span>
+                      {user?.has_passkey && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--success-light)] text-[var(--success)]">
+                          Đã thiết lập
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-[var(--text-2)] mb-3">Mã bảo mật 6 chữ số để xác thực các thao tác quan trọng</p>
                     <div className="flex gap-2">
@@ -1200,14 +1335,16 @@ export default function SettingsModal({ isOpen, onClose, initialTab = 'general' 
                         onClick={() => setShowChangePasskeyModal(true)}
                         className="flex-1 px-3 py-2 rounded-xl border transition-colors duration-150 bg-[var(--surface-1)] border-[var(--border)] hover:bg-[var(--surface-3)] text-sm"
                       >
-                        Đổi Passkey
+                        {user?.has_passkey ? 'Đổi Passkey' : 'Đặt Passkey'}
                       </button>
-                      <button 
-                        onClick={() => setShowForgotPasskeyModal(true)}
-                        className="flex-1 px-3 py-2 rounded-xl border transition-colors duration-150 border-[var(--warning)]/50 text-[var(--warning)] hover:bg-[var(--warning-light)] text-sm"
-                      >
-                        Quên Passkey
-                      </button>
+                      {user?.has_passkey && (
+                        <button 
+                          onClick={() => setShowForgotPasskeyModal(true)}
+                          className="flex-1 px-3 py-2 rounded-xl border transition-colors duration-150 border-[var(--warning)]/50 text-[var(--warning)] hover:bg-[var(--warning-light)] text-sm"
+                        >
+                          Quên Passkey
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1234,81 +1371,198 @@ export default function SettingsModal({ isOpen, onClose, initialTab = 'general' 
         </div>
       </div>
 
-      {/* Change Passkey Modal */}
+      {/* Change Passkey Modal - Step-based flow */}
       {showChangePasskeyModal && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="w-[450px] rounded-[24px] bg-[var(--surface-1)] border border-[var(--border)] p-6">
+            {/* Header */}
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold">Đổi Passkey</h3>
+              <div>
+                <h3 className="text-lg font-semibold">
+                  {user?.has_passkey ? 'Đổi Passkey' : 'Đặt Passkey'}
+                </h3>
+                <p className="text-xs text-[var(--text-2)] mt-1">
+                  Bước {passkeyStep}/3: {
+                    passkeyStep === 1 ? 'Xác thực mật khẩu' : 
+                    passkeyStep === 2 ? 'Nhập mã OTP' : 
+                    'Đặt passkey mới'
+                  }
+                </p>
+              </div>
               <button
-                onClick={() => {
-                  setShowChangePasskeyModal(false);
-                  setChangePasskeyData({ currentPassword: '', newPasskey: '', confirmPasskey: '' });
-                }}
+                onClick={resetPasskeyModal}
                 className="p-2 rounded-full hover:bg-[var(--surface-2)] transition-colors"
               >
                 <Icon name="close" size="sm" />
               </button>
             </div>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Mật khẩu hiện tại *</label>
-                <input
-                  type="password"
-                  value={changePasskeyData.currentPassword}
-                  onChange={(e) => setChangePasskeyData({ ...changePasskeyData, currentPassword: e.target.value })}
-                  placeholder="Nhập mật khẩu để xác thực"
-                  className="w-full px-3 py-2 rounded-lg border bg-[var(--surface-2)] border-[var(--border)] focus:border-[var(--primary)] outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Passkey mới (6 chữ số) *</label>
-                <input
-                  type="text"
-                  maxLength={6}
-                  value={changePasskeyData.newPasskey}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/\D/g, '');
-                    setChangePasskeyData({ ...changePasskeyData, newPasskey: val });
-                  }}
-                  placeholder="123456"
-                  className="w-full px-3 py-2 rounded-lg border bg-[var(--surface-2)] border-[var(--border)] focus:border-[var(--primary)] outline-none font-mono text-center text-lg tracking-widest"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Xác nhận Passkey mới *</label>
-                <input
-                  type="text"
-                  maxLength={6}
-                  value={changePasskeyData.confirmPasskey}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/\D/g, '');
-                    setChangePasskeyData({ ...changePasskeyData, confirmPasskey: val });
-                  }}
-                  placeholder="123456"
-                  className="w-full px-3 py-2 rounded-lg border bg-[var(--surface-2)] border-[var(--border)] focus:border-[var(--primary)] outline-none font-mono text-center text-lg tracking-widest"
-                />
-              </div>
-              <p className="text-xs text-[var(--text-2)] bg-[var(--info-light)] p-3 rounded-lg border border-[var(--info)]/30">
-                <Icon name="info" size="xs" className="inline mr-1" />
-                Mã xác thực sẽ được gửi đến email của bạn sau khi hoàn tất.
-              </p>
+            
+            {/* Step indicator */}
+            <div className="flex items-center gap-2 mb-6">
+              {[1, 2, 3].map((step) => (
+                <div key={step} className="flex items-center flex-1">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
+                    passkeyStep >= step 
+                      ? 'bg-[var(--primary)] text-white' 
+                      : 'bg-[var(--surface-2)] text-[var(--text-2)]'
+                  }`}>
+                    {passkeyStep > step ? <Icon name="check" size="xs" /> : step}
+                  </div>
+                  {step < 3 && (
+                    <div className={`flex-1 h-1 mx-2 rounded ${
+                      passkeyStep > step ? 'bg-[var(--primary)]' : 'bg-[var(--surface-2)]'
+                    }`} />
+                  )}
+                </div>
+              ))}
             </div>
+
+            {/* Error message */}
+            {passkeyError && (
+              <div className="mb-4 p-3 rounded-lg bg-[var(--danger-light)] border border-[var(--danger)]/30 text-[var(--danger)] text-sm">
+                <Icon name="warning" size="xs" className="inline mr-1" />
+                {passkeyError}
+              </div>
+            )}
+
+            <div className="space-y-4">
+              {/* Step 1: Password verification */}
+              {passkeyStep === 1 && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Mật khẩu hiện tại *</label>
+                    <input
+                      type="password"
+                      value={changePasskeyData.currentPassword}
+                      onChange={(e) => {
+                        setChangePasskeyData({ ...changePasskeyData, currentPassword: e.target.value });
+                        setPasskeyError('');
+                      }}
+                      placeholder="Nhập mật khẩu để xác thực"
+                      className="w-full px-4 py-3 rounded-xl border bg-[var(--surface-2)] border-[var(--border)] focus:border-[var(--primary)] outline-none"
+                      autoFocus
+                    />
+                  </div>
+                  <p className="text-xs text-[var(--text-2)] bg-[var(--info-light)] p-3 rounded-lg border border-[var(--info)]/30">
+                    <Icon name="info" size="xs" className="inline mr-1" />
+                    Sau khi xác thực, mã OTP 6 số sẽ được gửi đến email của bạn.
+                  </p>
+                </>
+              )}
+
+              {/* Step 2: OTP verification */}
+              {passkeyStep === 2 && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Mã OTP (6 chữ số) *</label>
+                    <div className="flex gap-2 justify-center" onPaste={handleOtpPaste}>
+                      {passkeyOtp.map((digit, index) => (
+                        <input
+                          key={index}
+                          id={`otp-input-${index}`}
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={1}
+                          value={digit}
+                          onChange={(e) => handleOtpChange(index, e.target.value)}
+                          onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                          className="w-12 h-14 text-center text-xl font-mono rounded-xl border bg-[var(--surface-2)] border-[var(--border)] focus:border-[var(--primary)] outline-none"
+                          autoFocus={index === 0}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm text-[var(--text-2)] mb-2">
+                      Mã OTP đã được gửi đến email của bạn
+                    </p>
+                    <button
+                      onClick={handleResendOtp}
+                      disabled={otpResendCountdown > 0 || passkeyLoading}
+                      className={`text-sm ${
+                        otpResendCountdown > 0 
+                          ? 'text-[var(--text-2)] cursor-not-allowed' 
+                          : 'text-[var(--primary)] hover:underline'
+                      }`}
+                    >
+                      {otpResendCountdown > 0 
+                        ? `Gửi lại sau ${otpResendCountdown}s` 
+                        : 'Gửi lại mã OTP'
+                      }
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {/* Step 3: Set new passkey */}
+              {passkeyStep === 3 && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Passkey mới (6 chữ số) *</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={6}
+                      value={changePasskeyData.newPasskey}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, '');
+                        setChangePasskeyData({ ...changePasskeyData, newPasskey: val });
+                        setPasskeyError('');
+                      }}
+                      placeholder="• • • • • •"
+                      className="w-full px-4 py-3 rounded-xl border bg-[var(--surface-2)] border-[var(--border)] focus:border-[var(--primary)] outline-none font-mono text-center text-2xl tracking-[0.5em]"
+                      autoFocus
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Xác nhận Passkey *</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={6}
+                      value={changePasskeyData.confirmPasskey}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, '');
+                        setChangePasskeyData({ ...changePasskeyData, confirmPasskey: val });
+                        setPasskeyError('');
+                      }}
+                      placeholder="• • • • • •"
+                      className="w-full px-4 py-3 rounded-xl border bg-[var(--surface-2)] border-[var(--border)] focus:border-[var(--primary)] outline-none font-mono text-center text-2xl tracking-[0.5em]"
+                    />
+                  </div>
+                  <p className="text-xs text-[var(--text-2)] bg-[var(--success-light)] p-3 rounded-lg border border-[var(--success)]/30">
+                    <Icon name="shield" size="xs" className="inline mr-1 text-[var(--success)]" />
+                    Passkey sẽ được yêu cầu khi thực hiện các thao tác nhạy cảm như xóa dữ liệu.
+                  </p>
+                </>
+              )}
+            </div>
+
+            {/* Actions */}
             <div className="flex gap-2 mt-6">
               <button
                 onClick={() => {
-                  setShowChangePasskeyModal(false);
-                  setChangePasskeyData({ currentPassword: '', newPasskey: '', confirmPasskey: '' });
+                  if (passkeyStep === 1) {
+                    resetPasskeyModal();
+                  } else {
+                    setPasskeyStep((passkeyStep - 1) as 1 | 2 | 3);
+                    setPasskeyError('');
+                  }
                 }}
-                className="flex-1 px-4 py-2 rounded-xl border bg-[var(--surface-2)] border-[var(--border)] hover:bg-[var(--surface-3)] transition-colors"
+                disabled={passkeyLoading}
+                className="flex-1 px-4 py-3 rounded-xl border bg-[var(--surface-2)] border-[var(--border)] hover:bg-[var(--surface-3)] transition-colors disabled:opacity-50"
               >
-                Hủy
+                {passkeyStep === 1 ? 'Hủy' : 'Quay lại'}
               </button>
               <button
                 onClick={handleChangePasskey}
-                className="flex-1 px-4 py-2 rounded-xl bg-[var(--primary)] text-white font-semibold hover:bg-[var(--primary-hover)] transition-colors"
+                disabled={passkeyLoading}
+                className="flex-1 px-4 py-3 rounded-xl bg-[var(--primary)] text-white font-semibold hover:bg-[var(--primary-hover)] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                Xác nhận
+                {passkeyLoading && (
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                )}
+                {passkeyStep === 1 ? 'Tiếp tục' : passkeyStep === 2 ? 'Xác nhận OTP' : 'Hoàn tất'}
               </button>
             </div>
           </div>

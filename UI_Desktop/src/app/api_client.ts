@@ -120,11 +120,19 @@ export async function apiUpdateItem(id: string, item: Partial<Item>): Promise<It
   return res.json();
 }
 
-export async function apiDeleteItem(id: string): Promise<void> {
-  const res = await apiFetch(`${BASE_URL}/items/${id}`, {
+export async function apiDeleteItem(id: string, passkey?: string): Promise<void> {
+  const headers = await getAuthHeaders();
+  if (passkey) {
+    (headers as Record<string, string>)['X-Passkey'] = passkey;
+  }
+  const res = await fetch(`${BASE_URL}/items/${id}`, {
     method: 'DELETE',
+    headers,
   });
-  if (!res.ok) throw new Error("Không thể xoá hàng hoá");
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || "Không thể xoá hàng hoá");
+  }
 }
 
 // === API Nhập/Xuất kho ===
@@ -159,6 +167,33 @@ export async function apiCreateSupplier(supplier: Omit<Supplier, 'id' | 'outstan
   });
   if (!res.ok) throw new Error("Không thể thêm nhà cung cấp");
   return res.json();
+}
+
+export async function apiUpdateSupplier(id: number, supplier: Partial<Supplier>): Promise<Supplier> {
+  const res = await apiFetch(`${BASE_URL}/suppliers/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(supplier),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || "Không thể cập nhật nhà cung cấp");
+  }
+  return res.json();
+}
+
+export async function apiDeleteSupplier(id: number, passkey: string): Promise<void> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${BASE_URL}/suppliers/${id}`, {
+    method: 'DELETE',
+    headers: {
+      ...headers,
+      'X-Passkey': passkey,
+    },
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || "Không thể xóa nhà cung cấp");
+  }
 }
 
 export interface SupplierTransactions {
@@ -390,17 +425,26 @@ export async function apiCreateStockIn(data: StockInBatchCreate): Promise<StockI
     body: JSON.stringify(data),
   });
   if (!res.ok) {
-    const error = await res.json().catch(() => ({}));
-    throw new Error(error.detail || "Không thể tạo phiếu nhập kho");
+    const error = await res.json().catch(() => ({ detail: 'Unknown error' }));
+    const errorMessage = typeof error === 'string' ? error : (error.detail || JSON.stringify(error));
+    throw new Error(errorMessage);
   }
   return res.json();
 }
 
-export async function apiDeleteStockIn(id: string): Promise<void> {
-  const res = await apiFetch(`${BASE_URL}/stock/in/${id}`, {
+export async function apiDeleteStockIn(id: string, passkey: string): Promise<void> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${BASE_URL}/stock/in/${id}`, {
     method: 'DELETE',
+    headers: {
+      ...headers,
+      'X-Passkey': passkey,
+    },
   });
-  if (!res.ok) throw new Error("Không thể xóa phiếu nhập kho");
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || "Không thể xóa phiếu nhập kho");
+  }
 }
 
 
@@ -473,11 +517,19 @@ export async function apiCreateStockOut(data: StockOutBatchCreate): Promise<Stoc
   return res.json();
 }
 
-export async function apiDeleteStockOut(id: string): Promise<void> {
-  const res = await apiFetch(`${BASE_URL}/stock/out/${id}`, {
+export async function apiDeleteStockOut(id: string, passkey: string): Promise<void> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${BASE_URL}/stock/out/${id}`, {
     method: 'DELETE',
+    headers: {
+      ...headers,
+      'X-Passkey': passkey,
+    },
   });
-  if (!res.ok) throw new Error("Không thể xóa phiếu xuất kho");
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || "Không thể xóa phiếu xuất kho");
+  }
 }
 
 
@@ -511,7 +563,7 @@ export interface CompanyInfoUpdate {
 }
 
 export interface WarehouseManager {
-  name: string;
+  email: string;
   position: string;
 }
 
@@ -821,5 +873,129 @@ export async function apiUpdateUserPreferences(
     body: JSON.stringify(data),
   });
   if (!res.ok) throw new Error("Không thể cập nhật preferences");
+  return res.json();
+}
+
+
+// =============================================================
+// GLOBAL SEARCH API
+// =============================================================
+
+export interface ItemSearchResult {
+  id: number;
+  sku: string;
+  name: string;
+  unit: string;
+  quantity: number;
+}
+
+export interface SupplierSearchResult {
+  id: number;
+  name: string;
+  phone: string;
+  tax_id: string;
+}
+
+export interface StockInSearchResult {
+  id: string;
+  warehouse_code: string;
+  supplier: string;
+  date: string;
+}
+
+export interface StockOutSearchResult {
+  id: string;
+  warehouse_code: string;
+  recipient: string;
+  date: string;
+}
+
+export interface GlobalSearchResponse {
+  items: ItemSearchResult[];
+  suppliers: SupplierSearchResult[];
+  stock_in: StockInSearchResult[];
+  stock_out: StockOutSearchResult[];
+}
+
+/**
+ * API: GET /search/global?q=&limit=
+ * Purpose: Tìm kiếm toàn hệ thống
+ */
+export async function apiGlobalSearch(q: string, limit: number = 5): Promise<GlobalSearchResponse> {
+  const res = await fetch(`${BASE_URL}/search/global?q=${encodeURIComponent(q)}&limit=${limit}`);
+  if (!res.ok) {
+    // Fallback to empty results if API not available
+    return { items: [], suppliers: [], stock_in: [], stock_out: [] };
+  }
+  return res.json();
+}
+
+
+// =============================================================
+// ITEMS ALERTS & TRACKING API
+// =============================================================
+
+export interface ItemAlert {
+  id: string;
+  name: string;
+  sku: string;
+  currentStock: number;
+  minStock: number;
+  maxStock: number;
+  category: string;
+  lastUpdate: string;
+  status: 'critical' | 'warning' | 'low' | 'overstock';
+}
+
+export interface TopItem {
+  name: string;
+  value: number;
+}
+
+export interface MonthlyTrend {
+  month: string;
+  value: number;
+}
+
+export interface CategoryDistribution {
+  name: string;
+  value: number;
+  color: string;
+}
+
+/**
+ * API: GET /items/alerts
+ * Purpose: Lấy danh sách cảnh báo tồn kho
+ */
+export async function apiGetItemsAlerts(): Promise<ItemAlert[]> {
+  const res = await fetch(`${BASE_URL}/items/alerts`);
+  if (!res.ok) throw new Error("Không thể tải cảnh báo tồn kho");
+  return res.json();
+}
+
+/**
+ * API: GET /items/top-items
+ */
+export async function apiGetTopItems(): Promise<TopItem[]> {
+  const res = await fetch(`${BASE_URL}/items/top-items`);
+  if (!res.ok) return [];
+  return res.json();
+}
+
+/**
+ * API: GET /items/monthly-trend
+ */
+export async function apiGetMonthlyTrend(): Promise<MonthlyTrend[]> {
+  const res = await fetch(`${BASE_URL}/items/monthly-trend`);
+  if (!res.ok) return [];
+  return res.json();
+}
+
+/**
+ * API: GET /items/category-distribution
+ */
+export async function apiGetCategoryDistribution(): Promise<CategoryDistribution[]> {
+  const res = await fetch(`${BASE_URL}/items/category-distribution`);
+  if (!res.ok) return [];
   return res.json();
 }
