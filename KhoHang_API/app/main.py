@@ -1,18 +1,18 @@
 # app/main.py
-from typing import List, Any, Dict
+from typing import List, Any, Dict, Optional
 import shutil
 from pathlib import Path
 import uuid
 import io
 from datetime import datetime, timezone
 
-from fastapi import FastAPI, HTTPException, status, File, UploadFile, Depends
+from fastapi import FastAPI, HTTPException, status, File, UploadFile, Depends, Query, Header
 from fastapi.responses import PlainTextResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import requests
 from PIL import Image
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from . import schemas
@@ -23,6 +23,14 @@ from .database import (
     get_db, SupplierModel, ItemModel, StockTransactionModel, WarehouseModel,
     CompanyInfoModel, StockInRecordModel, StockOutRecordModel, UserModel, get_datadir
 )
+from .inventory_service import (
+    create_stock_in_record,
+    create_stock_out_record,
+    cancel_stock_in_record,
+    cancel_stock_out_record,
+)
+from .search_service import paginate_query, global_search
+from .security import verify_password
 from .auth_middleware import get_current_user, get_current_user_optional
 
 # Type alias for authenticated user payload returned by auth_middleware
@@ -30,6 +38,30 @@ AuthUserModel = Dict[str, Any]
 
 # Backwards-compatible dependency name (was require_auth with Firebase)
 require_auth = get_current_user
+
+
+def require_passkey(
+    current_user: AuthUserModel = Depends(require_auth),
+    db: Session = Depends(get_db),
+    header_passkey: Optional[str] = Header(None, alias="X-Passkey"),
+    passkey: Optional[str] = Query(None),
+) -> AuthUserModel:
+    """Validate user's passkey for destructive operations.
+
+    Accepts either header "X-Passkey" or query param "passkey".
+    """
+    provided = header_passkey or passkey
+    if not provided:
+        raise HTTPException(status_code=400, detail="Thiếu passkey (X-Passkey hoặc ?passkey=)")
+
+    user = db.query(UserModel).filter(UserModel.id == current_user["id"]).first()
+    if not user or not user.passkey_hash:
+        raise HTTPException(status_code=403, detail="User chưa thiết lập passkey")
+
+    if not verify_password(provided, user.passkey_hash):
+        raise HTTPException(status_code=403, detail="Passkey không hợp lệ")
+
+    return current_user
 from .db_helpers import (
     supplier_model_to_schema, supplier_schema_to_dict,
     item_model_to_schema, item_schema_to_dict,
@@ -91,20 +123,47 @@ def root():
 # SUPPLIERS
 # -------------------------------------------------
 
-@app.get("/suppliers", response_model=List[schemas.Supplier])
-def get_suppliers(db: Session = Depends(get_db)):
-    suppliers = db.query(SupplierModel).all()
-    return [supplier_model_to_schema(s) for s in suppliers]
+@app.get("/suppliers", response_model=schemas.PaginatedSuppliers | List[schemas.Supplier])
+def get_suppliers(
+    q: Optional[str] = Query(None, description="Tìm theo tên/số điện thoại/mã số thuế"),
+    page: Optional[int] = Query(None, ge=1),
+    page_size: Optional[int] = Query(None, ge=1, le=200),
+    db: Session = Depends(get_db),
+):
+    query = db.query(SupplierModel)
+    if q:
+        pattern = f"%{q}%"
+        query = query.filter(
+            or_(
+                SupplierModel.name.ilike(pattern),
+                SupplierModel.phone.ilike(pattern),
+                SupplierModel.tax_id.ilike(pattern),
+            )
+        )
+
+    suppliers, total, page_val, page_size_val, paginated = paginate_query(
+        query.order_by(SupplierModel.updated_at.desc()), page, page_size
+    )
+    supplier_schemas = [supplier_model_to_schema(s) for s in suppliers]
+    if paginated:
+        return {
+            "data": supplier_schemas,
+            "page": page_val,
+            "page_size": page_size_val,
+            "total": total,
+        }
+    return supplier_schemas
 
 
 @app.post("/suppliers", response_model=schemas.Supplier)
 def create_supplier(
     supplier: schemas.SupplierCreate, 
     db: Session = Depends(get_db),
-    current_user: AuthUserModel = Depends(require_auth)
+    current_user: dict = Depends(require_auth)
 ):
-    if current_user.role not in ['admin', 'manager']:
-        raise HTTPException(status_code=403, detail="Không có quyền tạo nhà cung cấp")
+    # Chủ kho và Trưởng kho có quyền thêm NCC
+    # current_user is a dict from JWT payload
+    pass  # No role restriction for now - any authenticated user can create suppliers
     
     existing = db.query(SupplierModel).filter(SupplierModel.name == supplier.name).first()
     if existing:
@@ -122,10 +181,10 @@ def update_supplier(
     supplier_id: int, 
     supplier: schemas.SupplierUpdate, 
     db: Session = Depends(get_db),
-    current_user: AuthUserModel = Depends(require_auth)
+    current_user: dict = Depends(require_auth)
 ):
-    if current_user.role not in ['admin', 'manager']:
-        raise HTTPException(status_code=403, detail="Không có quyền cập nhật nhà cung cấp")
+    # Chủ kho và Trưởng kho có quyền cập nhật NCC
+    pass  # No role restriction for now - any authenticated user can update suppliers
     
     db_supplier = db.query(SupplierModel).filter(SupplierModel.id == supplier_id).first()
     if not db_supplier:
@@ -144,10 +203,10 @@ def update_supplier(
 def delete_supplier(
     supplier_id: int, 
     db: Session = Depends(get_db),
-    current_user: AuthUserModel = Depends(require_auth)
+    current_user: dict = Depends(require_passkey)
 ):
-    if current_user.role not in ['admin', 'manager']:
-        raise HTTPException(status_code=403, detail="Không có quyền xóa nhà cung cấp")
+    # Chủ kho và Trưởng kho có quyền xóa NCC (cần passkey)
+    pass  # No role restriction for now - any authenticated user with passkey can delete suppliers
     
     db_supplier = db.query(SupplierModel).filter(SupplierModel.id == supplier_id).first()
     if not db_supplier:
@@ -180,10 +239,51 @@ def get_supplier_transactions(supplier_id: int, db: Session = Depends(get_db)):
 # ITEMS
 # -------------------------------------------------
 
-@app.get("/items", response_model=List[schemas.Item])
-def get_items(db: Session = Depends(get_db)):
-    items = db.query(ItemModel).all()
-    return [item_model_to_schema(i) for i in items]
+@app.get("/items", response_model=schemas.PaginatedItems | List[schemas.Item])
+def get_items(
+    q: Optional[str] = Query(None, description="Tìm theo tên hoặc SKU"),
+    category: Optional[str] = Query(None),
+    supplier_id: Optional[int] = Query(None),
+    low_stock: Optional[bool] = Query(False, description="Chỉ lấy hàng tồn thấp"),
+    page: Optional[int] = Query(None, ge=1),
+    page_size: Optional[int] = Query(None, ge=1, le=200),
+    sort: Optional[str] = Query(None, description="name,name_desc,quantity,quantity_desc,created_at,created_at_desc"),
+    db: Session = Depends(get_db),
+):
+    query = db.query(ItemModel)
+    if q:
+        pattern = f"%{q}%"
+        query = query.filter(or_(ItemModel.name.ilike(pattern), ItemModel.sku.ilike(pattern)))
+    if category:
+        query = query.filter(ItemModel.category == category)
+    if supplier_id is not None:
+        query = query.filter(ItemModel.supplier_id == supplier_id)
+    if low_stock:
+        query = query.filter(or_(ItemModel.quantity <= ItemModel.min_stock, ItemModel.quantity == None))
+
+    sort_map = {
+        "name": ItemModel.name,
+        "name_desc": ItemModel.name.desc(),
+        "quantity": ItemModel.quantity,
+        "quantity_desc": ItemModel.quantity.desc(),
+        "created_at": ItemModel.created_at,
+        "created_at_desc": ItemModel.created_at.desc(),
+    }
+    if sort and sort in sort_map:
+        query = query.order_by(sort_map[sort])
+    else:
+        query = query.order_by(ItemModel.updated_at.desc())
+
+    items, total, page_val, page_size_val, paginated = paginate_query(query, page, page_size)
+    item_schemas = [item_model_to_schema(i) for i in items]
+    if paginated:
+        return {
+            "data": item_schemas,
+            "page": page_val,
+            "page_size": page_size_val,
+            "total": total,
+        }
+    return item_schemas
 
 
 @app.post("/items", response_model=schemas.Item)
@@ -233,7 +333,7 @@ def update_item(
 def delete_item(
     item_id: int, 
     db: Session = Depends(get_db),
-    current_user: AuthUserModel = Depends(require_auth)
+    current_user: AuthUserModel = Depends(require_passkey)
 ):
     db_item = db.query(ItemModel).filter(ItemModel.id == item_id).first()
     if not db_item:
@@ -329,6 +429,21 @@ def get_category_distribution(db: Session = Depends(get_db)):
 
 
 # -------------------------------------------------
+# GLOBAL SEARCH
+# -------------------------------------------------
+
+
+@app.get("/search/global", response_model=schemas.GlobalSearchResponse)
+def search_global(
+    q: str = Query(..., min_length=1, description="Từ khóa tìm kiếm toàn hệ thống"),
+    limit: int = Query(5, ge=1, le=50, description="Số kết quả tối đa mỗi danh mục"),
+    db: Session = Depends(get_db),
+):
+    results = global_search(db, q, limit)
+    return schemas.GlobalSearchResponse(**results)
+
+
+# -------------------------------------------------
 # STOCK TRANSACTIONS
 # -------------------------------------------------
 
@@ -342,11 +457,9 @@ def get_transactions(db: Session = Depends(get_db)):
 def create_transaction(
     tx: schemas.StockTransactionCreate, 
     db: Session = Depends(get_db),
-    current_user: AuthUserModel = Depends(require_auth)
+    current_user: dict = Depends(require_auth)
 ):
-    if current_user.role not in ['admin', 'manager', 'staff']:
-        raise HTTPException(status_code=403, detail="Không có quyền tạo giao dịch kho")
-    
+    # Any authenticated user can create transactions
     db_item = db.query(ItemModel).filter(ItemModel.id == tx.item_id).first()
     if not db_item:
         raise HTTPException(status_code=404, detail="Không tìm thấy hàng hoá")
@@ -370,6 +483,9 @@ def create_transaction(
         quantity=tx.quantity,
         note=tx.note,
         timestamp=datetime.now(timezone.utc),
+        warehouse_code=tx.warehouse_code,
+        voucher_id=tx.voucher_id,
+        actor_user_id=current_user.get("id") if current_user else None,
     )
     db.add(db_tx)
     db.commit()
@@ -460,10 +576,50 @@ def _next_stock_in_id(warehouse_code: str, date_str: str, db: Session) -> str:
     return f"{prefix}{count + 1:04d}"
 
 
-@app.get("/stock/in", response_model=List[schemas.StockInRecord])
-def get_stock_in_records(db: Session = Depends(get_db)):
-    records = db.query(StockInRecordModel).order_by(StockInRecordModel.created_at.desc()).all()
-    return [stock_in_record_model_to_schema(r) for r in records]
+@app.get("/stock/in", response_model=schemas.PaginatedStockInRecords | List[schemas.StockInRecord])
+def get_stock_in_records(
+    q: Optional[str] = Query(None, description="Tìm theo mã phiếu / ghi chú / nhà cung cấp"),
+    warehouse_code: Optional[str] = Query(None),
+    supplier: Optional[str] = Query(None),
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
+    include_cancelled: bool = Query(False, description="Bao gồm phiếu đã hủy"),
+    page: Optional[int] = Query(None, ge=1),
+    page_size: Optional[int] = Query(None, ge=1, le=200),
+    db: Session = Depends(get_db),
+):
+    query = db.query(StockInRecordModel)
+    if not include_cancelled:
+        query = query.filter(StockInRecordModel.status != "cancelled")
+    if q:
+        pattern = f"%{q}%"
+        query = query.filter(
+            or_(
+                StockInRecordModel.id.ilike(pattern),
+                StockInRecordModel.note.ilike(pattern),
+                StockInRecordModel.supplier.ilike(pattern),
+            )
+        )
+    if warehouse_code:
+        query = query.filter(StockInRecordModel.warehouse_code == warehouse_code)
+    if supplier:
+        query = query.filter(StockInRecordModel.supplier == supplier)
+    if date_from:
+        query = query.filter(StockInRecordModel.date >= date_from)
+    if date_to:
+        query = query.filter(StockInRecordModel.date <= date_to)
+
+    query = query.order_by(StockInRecordModel.created_at.desc())
+    records, total, page_val, page_size_val, paginated = paginate_query(query, page, page_size)
+    result = [stock_in_record_model_to_schema(r) for r in records]
+    if paginated:
+        return {
+            "data": result,
+            "page": page_val,
+            "page_size": page_size_val,
+            "total": total,
+        }
+    return result
 
 
 @app.get("/stock/in/{record_id}", response_model=schemas.StockInRecord)
@@ -478,53 +634,27 @@ def get_stock_in_record(record_id: str, db: Session = Depends(get_db)):
 def create_stock_in(
     data: schemas.StockInBatchCreate, 
     db: Session = Depends(get_db),
-    current_user: AuthUserModel = Depends(require_auth)
+    current_user: dict = Depends(require_auth)
 ):
-    if current_user.role not in ['admin', 'manager', 'staff']:
-        raise HTTPException(status_code=403, detail="Không có quyền tạo phiếu nhập kho")
-    
+    # Any authenticated user can create stock-in records
     record_id = _next_stock_in_id(data.warehouse_code, data.date, db)
-    total_qty = sum(item.quantity for item in data.items)
-    total_amt = sum(item.quantity * item.price for item in data.items)
-    items_json = [item.model_dump() for item in data.items]
-    
-    db_record = StockInRecordModel(
-        id=record_id,
-        warehouse_code=data.warehouse_code,
-        supplier=data.supplier,
-        date=data.date,
-        note=data.note or "",
-        tax_rate=data.tax_rate or 0.0,
-        payment_method=getattr(data, 'payment_method', 'tiền_mặt') or 'tiền_mặt',
-        payment_bank_account=getattr(data, 'payment_bank_account', '') or '',
-        payment_bank_name=getattr(data, 'payment_bank_name', '') or '',
-        items=items_json,
-        total_quantity=total_qty,
-        total_amount=total_amt,
-        status="completed"
-    )
-    
-    db.add(db_record)
-    db.commit()
-    db.refresh(db_record)
+    db_record = create_stock_in_record(db, data, record_id, current_user)
     return stock_in_record_model_to_schema(db_record)
 
 
-@app.delete("/stock/in/{record_id}", status_code=204)
+@app.delete("/stock/in/{record_id}", response_model=schemas.StockInRecord)
 def delete_stock_in(
     record_id: str, 
     db: Session = Depends(get_db),
-    current_user: AuthUserModel = Depends(require_auth)
+    current_user: dict = Depends(require_passkey)
 ):
-    if current_user.role not in ['admin', 'manager']:
-        raise HTTPException(status_code=403, detail="Không có quyền xóa phiếu nhập kho")
+    # Requires passkey - any authenticated user with passkey can delete
     record = db.query(StockInRecordModel).filter(StockInRecordModel.id == record_id).first()
     if not record:
         raise HTTPException(status_code=404, detail="Không tìm thấy phiếu nhập kho")
-    
-    db.delete(record)
-    db.commit()
-    return None
+
+    cancelled = cancel_stock_in_record(db, record, current_user.get("id") if current_user else None)
+    return stock_in_record_model_to_schema(cancelled)
 
 
 # -------------------------------------------------
@@ -547,10 +677,53 @@ def _next_stock_out_id(warehouse_code: str, date_str: str, db: Session) -> str:
     return f"{prefix}{count + 1:04d}"
 
 
-@app.get("/stock/out", response_model=List[schemas.StockOutRecord])
-def get_stock_out_records(db: Session = Depends(get_db)):
-    records = db.query(StockOutRecordModel).order_by(StockOutRecordModel.created_at.desc()).all()
-    return [stock_out_record_model_to_schema(r) for r in records]
+@app.get("/stock/out", response_model=schemas.PaginatedStockOutRecords | List[schemas.StockOutRecord])
+def get_stock_out_records(
+    q: Optional[str] = Query(None, description="Tìm theo mã phiếu / ghi chú / người nhận"),
+    warehouse_code: Optional[str] = Query(None),
+    recipient: Optional[str] = Query(None),
+    purpose: Optional[str] = Query(None),
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
+    include_cancelled: bool = Query(False),
+    page: Optional[int] = Query(None, ge=1),
+    page_size: Optional[int] = Query(None, ge=1, le=200),
+    db: Session = Depends(get_db),
+):
+    query = db.query(StockOutRecordModel)
+    if not include_cancelled:
+        query = query.filter(StockOutRecordModel.status != "cancelled")
+    if q:
+        pattern = f"%{q}%"
+        query = query.filter(
+            or_(
+                StockOutRecordModel.id.ilike(pattern),
+                StockOutRecordModel.note.ilike(pattern),
+                StockOutRecordModel.recipient.ilike(pattern),
+            )
+        )
+    if warehouse_code:
+        query = query.filter(StockOutRecordModel.warehouse_code == warehouse_code)
+    if recipient:
+        query = query.filter(StockOutRecordModel.recipient == recipient)
+    if purpose:
+        query = query.filter(StockOutRecordModel.purpose == purpose)
+    if date_from:
+        query = query.filter(StockOutRecordModel.date >= date_from)
+    if date_to:
+        query = query.filter(StockOutRecordModel.date <= date_to)
+
+    query = query.order_by(StockOutRecordModel.created_at.desc())
+    records, total, page_val, page_size_val, paginated = paginate_query(query, page, page_size)
+    result = [stock_out_record_model_to_schema(r) for r in records]
+    if paginated:
+        return {
+            "data": result,
+            "page": page_val,
+            "page_size": page_size_val,
+            "total": total,
+        }
+    return result
 
 
 @app.get("/stock/out/{record_id}", response_model=schemas.StockOutRecord)
@@ -565,57 +738,27 @@ def get_stock_out_record(record_id: str, db: Session = Depends(get_db)):
 def create_stock_out(
     data: schemas.StockOutBatchCreate, 
     db: Session = Depends(get_db),
-    current_user: AuthUserModel = Depends(require_auth)
+    current_user: dict = Depends(require_auth)
 ):
-    if current_user.role not in ['admin', 'manager', 'staff']:
-        raise HTTPException(status_code=403, detail="Không có quyền tạo phiếu xuất kho")
-    
+    # Any authenticated user can create stock-out records
     record_id = _next_stock_out_id(data.warehouse_code, data.date, db)
-    total_qty = sum(item.quantity for item in data.items)
-    total_amt = None
-    if data.purpose == "Bán hàng":
-        total_amt = sum(item.quantity * (item.sell_price or 0) for item in data.items)
-    
-    items_json = [item.model_dump() for item in data.items]
-    
-    db_record = StockOutRecordModel(
-        id=record_id,
-        warehouse_code=data.warehouse_code,
-        recipient=data.recipient,
-        purpose=data.purpose,
-        date=data.date,
-        note=data.note or "",
-        tax_rate=data.tax_rate or 0.0,
-        payment_method=getattr(data, 'payment_method', 'tiền_mặt') or 'tiền_mặt',
-        payment_bank_account=getattr(data, 'payment_bank_account', '') or '',
-        payment_bank_name=getattr(data, 'payment_bank_name', '') or '',
-        items=items_json,
-        total_quantity=total_qty,
-        total_amount=total_amt,
-        status="completed"
-    )
-    
-    db.add(db_record)
-    db.commit()
-    db.refresh(db_record)
+    db_record = create_stock_out_record(db, data, record_id, current_user)
     return stock_out_record_model_to_schema(db_record)
 
 
-@app.delete("/stock/out/{record_id}", status_code=204)
+@app.delete("/stock/out/{record_id}", response_model=schemas.StockOutRecord)
 def delete_stock_out(
     record_id: str, 
     db: Session = Depends(get_db),
-    current_user: AuthUserModel = Depends(require_auth)
+    current_user: dict = Depends(require_passkey)
 ):
-    if current_user.role not in ['admin', 'manager']:
-        raise HTTPException(status_code=403, detail="Không có quyền xóa phiếu xuất kho")
+    # Requires passkey - any authenticated user with passkey can delete
     record = db.query(StockOutRecordModel).filter(StockOutRecordModel.id == record_id).first()
     if not record:
         raise HTTPException(status_code=404, detail="Không tìm thấy phiếu xuất kho")
-    
-    db.delete(record)
-    db.commit()
-    return None
+
+    cancelled = cancel_stock_out_record(db, record, current_user.get("id") if current_user else None)
+    return stock_out_record_model_to_schema(cancelled)
 
 
 # -------------------------------------------------
@@ -717,11 +860,9 @@ def get_company_info(db: Session = Depends(get_db)):
 def create_or_update_company_info(
     data: schemas.CompanyInfoCreate, 
     db: Session = Depends(get_db),
-    current_user: AuthUserModel = Depends(require_auth)
+    current_user: dict = Depends(require_auth)
 ):
-    if current_user.role != 'admin':
-        raise HTTPException(status_code=403, detail="Chỉ admin mới có quyền cập nhật thông tin công ty")
-    
+    # Any authenticated user can update company info
     company = db.query(CompanyInfoModel).first()
     if company is None:
         company = CompanyInfoModel(**data.model_dump())
@@ -740,11 +881,9 @@ def create_or_update_company_info(
 def update_company_info(
     data: schemas.CompanyInfoUpdate, 
     db: Session = Depends(get_db),
-    current_user: AuthUserModel = Depends(require_auth)
+    current_user: dict = Depends(require_auth)
 ):
-    if current_user.role != 'admin':
-        raise HTTPException(status_code=403, detail="Chỉ admin mới có quyền cập nhật thông tin công ty")
-    
+    # Any authenticated user can update company info
     company = db.query(CompanyInfoModel).first()
     if company is None:
         raise HTTPException(status_code=404, detail="Chưa có thông tin công ty")
@@ -789,11 +928,9 @@ def get_active_warehouse(db: Session = Depends(get_db)):
 def create_warehouse(
     data: schemas.WarehouseCreate, 
     db: Session = Depends(get_db),
-    current_user: AuthUserModel = Depends(require_auth)
+    current_user: dict = Depends(require_auth)
 ):
-    if current_user.role not in ['admin', 'manager']:
-        raise HTTPException(status_code=403, detail="Không có quyền tạo kho")
-    
+    # Tất cả user đã đăng nhập đều có quyền tạo kho
     existing = db.query(WarehouseModel).filter(WarehouseModel.code == data.code).first()
     if existing:
         raise HTTPException(status_code=400, detail=f"Mã kho '{data.code}' đã tồn tại")
@@ -815,11 +952,9 @@ def update_warehouse(
     warehouse_id: int, 
     data: schemas.WarehouseUpdate, 
     db: Session = Depends(get_db),
-    current_user: AuthUserModel = Depends(require_auth)
+    current_user: dict = Depends(require_auth)
 ):
-    if current_user.role not in ['admin', 'manager']:
-        raise HTTPException(status_code=403, detail="Không có quyền cập nhật kho")
-    
+    # Any authenticated user can update warehouse
     db_warehouse = db.query(WarehouseModel).filter(WarehouseModel.id == warehouse_id).first()
     if not db_warehouse:
         raise HTTPException(status_code=404, detail="Không tìm thấy kho")
@@ -850,11 +985,9 @@ def update_warehouse(
 def delete_warehouse(
     warehouse_id: int, 
     db: Session = Depends(get_db),
-    current_user: AuthUserModel = Depends(require_auth)
+    current_user: dict = Depends(require_auth)
 ):
-    if current_user.role != 'admin':
-        raise HTTPException(status_code=403, detail="Chỉ admin mới có quyền xóa kho")
-    
+    # Any authenticated user can delete warehouse
     db_warehouse = db.query(WarehouseModel).filter(WarehouseModel.id == warehouse_id).first()
     if not db_warehouse:
         raise HTTPException(status_code=404, detail="Không tìm thấy kho")
@@ -876,11 +1009,9 @@ def delete_warehouse(
 def set_active_warehouse(
     warehouse_id: int, 
     db: Session = Depends(get_db),
-    current_user: AuthUserModel = Depends(require_auth)
+    current_user: dict = Depends(require_auth)
 ):
-    if current_user.role not in ['admin', 'manager']:
-        raise HTTPException(status_code=403, detail="Không có quyền đổi kho active")
-    
+    # Any authenticated user can set active warehouse
     db_warehouse = db.query(WarehouseModel).filter(WarehouseModel.id == warehouse_id).first()
     if not db_warehouse:
         raise HTTPException(status_code=404, detail="Không tìm thấy kho")

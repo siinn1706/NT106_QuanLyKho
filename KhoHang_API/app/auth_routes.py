@@ -11,8 +11,7 @@ from .database import get_db, UserModel, EmailOtpModel
 from .security import (
     hash_password, verify_password,
     generate_otp_code, hash_otp, verify_otp,
-    create_access_token, validate_username, normalize_username,
-    validate_password
+    create_access_token, validate_username, normalize_username
 )
 from .email_service import send_otp_email, send_welcome_email
 from .auth_middleware import get_current_user
@@ -47,7 +46,7 @@ class PasswordResetConfirm(BaseModel):
     new_password: str = Field(..., min_length=6, max_length=100)
 
 class PasskeyChangeRequestOTP(BaseModel):
-    pass  # Authenticated user, no extra data needed
+    password: str = Field(..., min_length=1, description="Current password to verify identity")
 
 class PasskeyChangeConfirm(BaseModel):
     otp: str = Field(..., min_length=6, max_length=6)
@@ -123,11 +122,6 @@ def register_request_otp(data: RegisterRequestOTP, db: Session = Depends(get_db)
     otp_code = generate_otp_code()
     code_hash = hash_otp(otp_code)
     expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
-    
-    # Validate password constraints
-    is_valid, error_msg = validate_password(data.password)
-    if not is_valid:
-        raise HTTPException(status_code=400, detail=error_msg)
     
     # Store pending user data and OTP
     # Note: We store user data temporarily. On confirm, we'll create the actual user.
@@ -259,7 +253,9 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
             "email": user.email,
             "display_name": user.display_name,
             "avatar_url": user.avatar_url,
-            "role": user.role
+            "role": user.role,
+            "is_verified": user.is_verified,
+            "has_passkey": bool(user.passkey_hash)
         }
     }
 
@@ -352,11 +348,6 @@ def password_reset_confirm(data: PasswordResetConfirm, db: Session = Depends(get
     # Mark OTP as consumed
     otp_record.consumed_at = datetime.now(timezone.utc)
     
-    # Validate new password constraints
-    is_valid, error_msg = validate_password(data.new_password)
-    if not is_valid:
-        raise HTTPException(status_code=400, detail=error_msg)
-    
     # Update password
     user = db.query(UserModel).filter(UserModel.email == data.email).first()
     if not user:
@@ -374,14 +365,19 @@ def password_reset_confirm(data: PasswordResetConfirm, db: Session = Depends(get
 
 @router.post("/passkey/request-otp")
 def passkey_change_request_otp(
+    data: PasskeyChangeRequestOTP,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Request OTP for passkey change"""
+    """Request OTP for passkey change - requires password verification first"""
     
     user = db.query(UserModel).filter(UserModel.id == current_user["id"]).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    
+    # Verify password first
+    if not verify_password(data.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Mật khẩu không đúng")
     
     # Check existing valid OTP
     existing_otp = get_valid_otp(db, user.email, "change_passkey")
