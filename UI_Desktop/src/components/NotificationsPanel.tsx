@@ -8,7 +8,7 @@ import Icon from './ui/Icon';
 export default function NotificationsPanel() {
   const [isOpen, setIsOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, removeNotification } = useNotifications();
   const navigate = useNavigate();
 
   const unreadNotifications = notifications.filter(n => !n.read);
@@ -107,23 +107,37 @@ export default function NotificationsPanel() {
                         Mới ({unreadNotifications.length})
                       </div>
                       {unreadNotifications.map((notification) => (
-                        <button
+                        <div
                           key={notification.id}
-                          onClick={() => handleNotificationClick(notification)}
-                          className="w-full px-4 py-3 text-left hover:bg-[var(--surface-2)] transition-colors flex items-start gap-3"
+                          className="group relative flex items-start gap-3 px-4 py-3 hover:bg-[var(--surface-2)] transition-colors"
                         >
-                          <div className={`w-10 h-10 rounded-lg bg-[var(--surface-2)] flex items-center justify-center flex-shrink-0 ${getTypeColor(notification.type)}`}>
-                            <Icon name={getTypeIcon(notification.type)} size="md" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-[var(--text-1)] text-sm">{notification.title}</p>
-                            <p className="text-xs text-[var(--text-2)] mt-1">{notification.message}</p>
-                            <p className="text-xs text-[var(--text-3)] mt-1">
-                              {notification.timestamp.toLocaleString('vi-VN')}
-                            </p>
-                          </div>
-                          <div className="w-2 h-2 rounded-full bg-[var(--primary)] flex-shrink-0 mt-2" />
-                        </button>
+                          <button
+                            onClick={() => handleNotificationClick(notification)}
+                            className="flex items-start gap-3 flex-1 min-w-0 text-left"
+                          >
+                            <div className={`w-10 h-10 rounded-lg bg-[var(--surface-2)] flex items-center justify-center flex-shrink-0 ${getTypeColor(notification.type)}`}>
+                              <Icon name={getTypeIcon(notification.type)} size="md" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-[var(--text-1)] text-sm">{notification.title}</p>
+                              <p className="text-xs text-[var(--text-2)] mt-1">{notification.message}</p>
+                              <p className="text-xs text-[var(--text-3)] mt-1">
+                                {notification.timestamp.toLocaleString('vi-VN')}
+                              </p>
+                            </div>
+                            <div className="w-2 h-2 rounded-full bg-[var(--primary)] flex-shrink-0 mt-2" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeNotification(notification.id);
+                            }}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 hover:bg-[var(--danger)]/10 rounded-lg flex-shrink-0"
+                            title="Xóa thông báo"
+                          >
+                            <Icon name="close" size="sm" className="text-[var(--danger)]" />
+                          </button>
+                        </div>
                       ))}
                     </div>
                   )}
@@ -137,22 +151,36 @@ export default function NotificationsPanel() {
                         </div>
                       )}
                       {readNotifications.map((notification) => (
-                        <button
+                        <div
                           key={notification.id}
-                          onClick={() => handleNotificationClick(notification)}
-                          className="w-full px-4 py-3 text-left hover:bg-[var(--surface-2)] transition-colors flex items-start gap-3 opacity-70"
+                          className="group relative flex items-start gap-3 px-4 py-3 hover:bg-[var(--surface-2)] transition-colors opacity-70"
                         >
-                          <div className={`w-10 h-10 rounded-lg bg-[var(--surface-2)] flex items-center justify-center flex-shrink-0 ${getTypeColor(notification.type)}`}>
-                            <Icon name={getTypeIcon(notification.type)} size="md" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-[var(--text-1)] text-sm">{notification.title}</p>
-                            <p className="text-xs text-[var(--text-2)] mt-1">{notification.message}</p>
-                            <p className="text-xs text-[var(--text-3)] mt-1">
-                              {notification.timestamp.toLocaleString('vi-VN')}
-                            </p>
-                          </div>
-                        </button>
+                          <button
+                            onClick={() => handleNotificationClick(notification)}
+                            className="flex items-start gap-3 flex-1 min-w-0 text-left"
+                          >
+                            <div className={`w-10 h-10 rounded-lg bg-[var(--surface-2)] flex items-center justify-center flex-shrink-0 ${getTypeColor(notification.type)}`}>
+                              <Icon name={getTypeIcon(notification.type)} size="md" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-[var(--text-1)] text-sm">{notification.title}</p>
+                              <p className="text-xs text-[var(--text-2)] mt-1">{notification.message}</p>
+                              <p className="text-xs text-[var(--text-3)] mt-1">
+                                {notification.timestamp.toLocaleString('vi-VN')}
+                              </p>
+                            </div>
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeNotification(notification.id);
+                            }}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 hover:bg-[var(--danger)]/10 rounded-lg flex-shrink-0"
+                            title="Xóa thông báo"
+                          >
+                            <Icon name="close" size="sm" className="text-[var(--danger)]" />
+                          </button>
+                        </div>
                       ))}
                     </div>
                   )}

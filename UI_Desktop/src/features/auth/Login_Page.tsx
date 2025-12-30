@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../state/auth_store';
 import { authService } from '../../app/auth_service';
 import Icon from '../../components/ui/Icon';
+import Button from '../../components/ui/Button';
 import { showToast } from '../../utils/toast';
 
 export default function Login_Page() {
@@ -49,30 +50,28 @@ export default function Login_Page() {
     }
   };
 
-  const inputClass = "w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-[#007AFF]/30 transition-all hover:scale-[1.02] shadow-ios";
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[var(--bg)] flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 mb-4 bg-white/5 rounded-2xl p-2 border border-white/10">
+          <div className="inline-flex items-center justify-center w-20 h-20 mb-4 liquid-glass rounded-2xl p-2 border border-[var(--glass-btn-border)]">
             <img src="/src/resources/logo.png" alt="N3T Logo" className="w-full h-full object-contain" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">Đăng nhập</h1>
-          <p className="text-zinc-400">Chào mừng trở lại! Vui lòng đăng nhập để tiếp tục</p>
+          <h1 className="text-3xl font-bold text-[var(--text-1)] mb-2">Đăng nhập</h1>
+          <p className="text-[var(--text-2)]">Chào mừng trở lại! Vui lòng đăng nhập để tiếp tục</p>
         </div>
 
-        <div className="bg-zinc-900/60 backdrop-blur-xl rounded-[32px] border border-white/10 p-8 shadow-2xl">
+        <div className="liquid-glass-card rounded-[var(--radius-2xl)] p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
             {error && (
-              <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-lg text-sm flex items-center gap-2">
+              <div className="bg-[var(--danger-light)] border border-[var(--danger-border)] text-[var(--danger)] px-4 py-3 rounded-[var(--radius-lg)] text-sm flex items-center gap-2">
                 <Icon name="warning" size="sm" />
                 {error}
               </div>
             )}
 
             <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-2 ml-1">
+              <label className="block text-sm font-medium text-[var(--text-2)] mb-2 ml-1">
                 Username hoặc Email
               </label>
               <input
@@ -80,13 +79,13 @@ export default function Login_Page() {
                 value={usernameOrEmail}
                 onChange={(e) => setUsernameOrEmail(e.target.value)}
                 placeholder="username hoặc email@example.com"
-                className={inputClass}
+                className="w-full px-4 py-3 liquid-glass-input rounded-[var(--radius-xl)] text-[var(--text-1)] placeholder-[var(--text-3)]"
                 disabled={loading}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-2 ml-1">
+              <label className="block text-sm font-medium text-[var(--text-2)] mb-2 ml-1">
                 Mật khẩu
               </label>
               <div className="relative">
@@ -95,13 +94,13 @@ export default function Login_Page() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Nhập mật khẩu"
-                  className={`${inputClass} pr-12`}
+                  className="w-full px-4 py-3 pr-12 liquid-glass-input rounded-[var(--radius-xl)] text-[var(--text-1)] placeholder-[var(--text-3)]"
                   disabled={loading}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white transition-colors"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-3)] hover:text-[var(--text-1)] transition-colors"
                 >
                   <Icon name={showPassword ? 'eye-slash' : 'eye'} size="md" />
                 </button>
@@ -114,41 +113,36 @@ export default function Login_Page() {
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 rounded border-zinc-600 bg-zinc-800 text-primary focus:ring-offset-0 focus:ring-1 focus:ring-primary/50 cursor-pointer"
+                  className="w-4 h-4 rounded border-[var(--border)] bg-[var(--glass-input-bg)] text-[var(--primary)] focus:ring-offset-0 focus:ring-1 focus:ring-[var(--primary)]/50 cursor-pointer"
                 />
-                <span className="text-sm text-zinc-400 group-hover:text-zinc-300 transition-colors">Ghi nhớ đăng nhập</span>
+                <span className="text-sm text-[var(--text-2)] group-hover:text-[var(--text-1)] transition-colors">Ghi nhớ đăng nhập</span>
               </label>
               <button
                 type="button"
                 onClick={() => navigate('/forgot-password')}
-                className="text-sm text-primary hover:text-primary-light transition-colors font-medium"
+                className="text-sm text-[var(--primary)] hover:text-[var(--primary-hover)] transition-colors font-medium"
               >
                 Quên mật khẩu?
               </button>
             </div>
 
-            <button
+            <Button
               type="submit"
-              disabled={loading}
-              className="w-full bg-[#007AFF] hover:bg-[#0062cc] text-white font-semibold py-3.5 rounded-xl transition-all duration-200 shadow-lg hover:shadow-primary/25 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
+              variant="primary"
+              size="lg"
+              isLoading={loading}
+              className="w-full"
             >
-              {loading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  Đang đăng nhập...
-                </span>
-              ) : (
-                'Đăng nhập'
-              )}
-            </button>
+              Đăng nhập
+            </Button>
           </form>
 
-          <div className="mt-8 text-center border-t border-white/10 pt-6">
-            <p className="text-zinc-400 text-sm">
+          <div className="mt-8 text-center border-t border-[var(--border)] pt-6">
+            <p className="text-[var(--text-2)] text-sm">
               Chưa có tài khoản?{' '}
               <button
                 onClick={() => navigate('/register')}
-                className="text-[#007AFF] hover:text-[#4da3ff] font-semibold transition-colors ml-1"
+                className="text-[var(--primary)] hover:text-[var(--primary-hover)] font-semibold transition-colors ml-1"
               >
                 Đăng ký ngay
               </button>
@@ -156,7 +150,7 @@ export default function Login_Page() {
           </div>
         </div>
 
-        <p className="text-center text-zinc-500 text-xs mt-8">
+        <p className="text-center text-[var(--text-3)] text-xs mt-8">
           © 2025 N3T - Quản lý Kho. All rights reserved.
         </p>
       </div>

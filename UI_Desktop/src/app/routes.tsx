@@ -24,6 +24,8 @@ import Stock_Out_Page from '../features/stock/Stock_Out_Page';
 import Suppliers_Page from '../features/suppliers/Suppliers_Page';
 import Warehouse_Page from '../features/warehouses/Warehouse_Page';
 import Reports_Page from '../features/reports/Reports_Page';
+import ComponentDemo from '../features/demo/ComponentDemo';
+import LiquidGlassDemo from '../features/demo/LiquidGlassDemo';
 
 import Protected_Route from './Protected_Route';
 
@@ -32,6 +34,8 @@ export default function AppRoutes() {
     <Routes>
       {/* Auth */}
       <Route path="/login" element={<Login_Page />} />
+      <Route path="/demo" element={<ComponentDemo />} />
+      <Route path="/liquid-glass" element={<LiquidGlassDemo />} />
       <Route path="/register" element={<Register_Page />} />
       <Route path="/forgot-password" element={<Forgot_Password_Page />} />
       <Route path="/change-password" element={<Change_Password_Page />} />
