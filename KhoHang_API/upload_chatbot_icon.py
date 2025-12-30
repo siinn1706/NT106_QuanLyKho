@@ -1,5 +1,5 @@
 """
-Script để upload icon.png làm avatar cho chatbot
+Script de upload icon.png lam avatar cho chatbot
 """
 
 import sys
@@ -25,25 +25,25 @@ engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(bind=engine)
 
 def upload_icon_as_chatbot_avatar():
-    """Upload icon.png từ UI_Desktop/src/resources/ làm avatar chatbot"""
+    """Upload icon.png tu uploads/avatars_chatbot/ lam avatar chatbot"""
     
-    # Tìm file icon.png
-    project_root = Path(__file__).parent.parent  # Lên 1 cấp từ KhoHang_API
-    icon_path = project_root / "UI_Desktop" / "src" / "resources" / "icon.png"
+    # Tim file icon.png trong thu muc project (KhoHang_API/uploads/avatars_chatbot)
+    project_dir = Path(__file__).parent
+    icon_path = project_dir / "uploads" / "avatars_chatbot" / "icon.png"
     
     if not icon_path.exists():
-        print(f"❌ File không tồn tại: {icon_path}")
+        print(f"[X] File khong ton tai: {icon_path}")
         return
     
-    print(f"✅ Tìm thấy icon.png tại: {icon_path}")
+    print(f"[OK] Tim thay icon.png tai: {icon_path}")
     
     # Tạo thư mục lưu avatar chatbot
     chatbot_avatar_dir = DATA_DIR / "uploads" / "chatbot"
-    print(f"📁 DATA_DIR: {DATA_DIR}")
-    print(f"📁 chatbot_avatar_dir: {chatbot_avatar_dir}")
-    print(f"📁 Creating directory: {chatbot_avatar_dir}")
+    print(f"[DIR] DATA_DIR: {DATA_DIR}")
+    print(f"[DIR] chatbot_avatar_dir: {chatbot_avatar_dir}")
+    print(f"[DIR] Creating directory: {chatbot_avatar_dir}")
     chatbot_avatar_dir.mkdir(parents=True, exist_ok=True)
-    print(f"✅ Directory created/exists: {chatbot_avatar_dir.exists()}")
+    print(f"[OK] Directory created/exists: {chatbot_avatar_dir.exists()}")
     
     # Convert sang WebP
     try:
@@ -67,7 +67,7 @@ def upload_icon_as_chatbot_avatar():
         filepath = chatbot_avatar_dir / filename
         img.save(filepath, "WEBP", quality=85, method=6)
         
-        print(f"✅ Đã convert và lưu avatar tại: {filepath}")
+        print(f"[OK] Da convert va luu avatar tai: {filepath}")
         
         # Cập nhật database
         db = SessionLocal()
@@ -75,26 +75,26 @@ def upload_icon_as_chatbot_avatar():
             config = db.query(ChatbotConfigModel).first()
             
             if not config:
-                print("Tạo mới config chatbot...")
+                print("Tao moi config chatbot...")
                 config = ChatbotConfigModel(
                     bot_name="N3T Assistant",
-                    bot_description="Trợ lý quản lý kho"
+                    bot_description="Tro ly quan ly kho"
                 )
                 db.add(config)
             else:
-                print("Cập nhật config chatbot hiện tại...")
-                # Xóa avatar cũ nếu có
+                print("Cap nhat config chatbot hien tai...")
+                # Xoa avatar cu neu co
                 if config.avatar_url:
                     old_path = DATA_DIR / config.avatar_url.lstrip("/")
                     if old_path.exists():
                         old_path.unlink()
-                        print(f"🗑️  Đã xóa avatar cũ: {old_path}")
+                        print(f"[DEL] Da xoa avatar cu: {old_path}")
             
             config.avatar_url = f"/uploads/chatbot/{filename}"
             db.commit()
             db.refresh(config)
             
-            print(f"\n✅ Hoàn tất!")
+            print(f"\n[OK] Hoan tat!")
             print(f"   Avatar URL: {config.avatar_url}")
             print(f"   Bot Name: {config.bot_name}")
             print(f"   Description: {config.bot_description}")
@@ -103,13 +103,13 @@ def upload_icon_as_chatbot_avatar():
             db.close()
             
     except Exception as e:
-        print(f"❌ Lỗi: {e}")
+        print(f"[ERROR] Loi: {e}")
         import traceback
         traceback.print_exc()
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("Upload Icon.png làm Avatar Chatbot")
+    print("Upload Icon.png lam Avatar Chatbot")
     print("=" * 60)
     print()
     
