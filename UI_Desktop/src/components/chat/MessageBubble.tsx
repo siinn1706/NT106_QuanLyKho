@@ -11,15 +11,6 @@ interface ReplyInfo {
   sender: string;
 }
 
-interface FileAttachment {
-  id: string;
-  url: string;
-  name: string;
-  type: string;
-  size: number;
-  thumbnailUrl?: string;
-}
-
 export default function MessageBubble({
   messageId,
   text,
@@ -30,7 +21,6 @@ export default function MessageBubble({
   onReply,
   initialReactions = [],
   onReactionChange,
-  attachments = [],
 }: {
   messageId: string;
   text: string;
@@ -39,15 +29,12 @@ export default function MessageBubble({
   isLastInGroup?: boolean;
   replyTo?: ReplyInfo | null;
   onReply?: () => void;
-  initialReactions?: string[];
-  onReactionChange?: (messageId: string, reactions: string[]) => void;
-  attachments?: FileAttachment[];
+  initialReactions?: string[]; // Reactions từ server/store
+  onReactionChange?: (messageId: string, reactions: string[]) => void; // Callback khi reactions thay đổi
 }) {
   const [showAction, setShowAction] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [reactions, setReactions] = useState<string[]>(initialReactions);
-  const [imageViewerOpen, setImageViewerOpen] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const isDarkMode = useThemeStore((state) => state.isDarkMode);
 
   // Sync reactions khi initialReactions thay đổi (từ server)
@@ -75,36 +62,6 @@ export default function MessageBubble({
   
   // Lấy reaction đầu tiên để hiển thị (hoặc null)
   const displayReaction = reactions.length > 0 ? reactions[reactions.length - 1] : null;
-  
-  // Format file size
-  const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
-  };
-
-  // Get file icon based on type
-  const getFileIcon = (type: string): string => {
-    if (type.startsWith('image/')) return 'image';
-    if (type.startsWith('video/')) return 'video';
-    if (type.startsWith('audio/')) return 'music';
-    if (type.includes('pdf')) return 'file-pdf';
-    if (type.includes('word')) return 'file-word';
-    if (type.includes('excel') || type.includes('spreadsheet')) return 'file-excel';
-    return 'file';
-  };
-
-  // Handle image click - open in viewer
-  const handleImageClick = (url: string) => {
-    setSelectedImage(url);
-    setImageViewerOpen(true);
-  };
-
-  // Separate images and other files
-  const imageAttachments = attachments.filter(f => f.type.startsWith('image/'));
-  const fileAttachments = attachments.filter(f => !f.type.startsWith('image/'));
   
   return (
     <div 
@@ -153,121 +110,33 @@ export default function MessageBubble({
             }`}
             style={mine ? { backgroundColor: 'var(--primary)' } : undefined}
           >
-            {/* Text content */}
-            {text && (
-              <div className="markdown-content whitespace-pre-wrap">
-                <ReactMarkdown
-                  components={{
-                    p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-                    ul: ({ children }) => <ul className="list-disc ml-4 mb-2">{children}</ul>,
-                    ol: ({ children }) => <ol className="list-decimal ml-4 mb-2">{children}</ol>,
-                    li: ({ children }) => <li className="mb-1">{children}</li>,
-                    h1: ({ children }) => <h1 className="text-lg font-bold mb-2">{children}</h1>,
-                    h2: ({ children }) => <h2 className="text-base font-bold mb-2">{children}</h2>,
-                    h3: ({ children }) => <h3 className="text-sm font-bold mb-1">{children}</h3>,
-                    code: ({ children }) => (
-                      <code className={`px-1 py-0.5 rounded ${
-                        mine ? "bg-white/20" : isDarkMode ? "bg-zinc-700" : "bg-zinc-300"
-                      }`}>{children}</code>
-                    ),
-                    pre: ({ children }) => (
-                      <pre className={`p-2 rounded my-2 overflow-x-auto ${
-                        mine ? "bg-white/20" : isDarkMode ? "bg-zinc-700" : "bg-zinc-300"
-                      }`}>{children}</pre>
-                    ),
-                    strong: ({ children }) => <strong className="font-bold">{children}</strong>,
-                    em: ({ children }) => <em className="italic">{children}</em>,
-                  }}
-                >
-                  {text}
-                </ReactMarkdown>
-              </div>
-            )}
-
-            {/* Image attachments - Grid layout */}
-            {imageAttachments.length > 0 && (
-              <div className={`${text ? "mt-2" : ""} -mx-1 -mb-1`}>
-                <div className={`grid gap-1 ${
-                  imageAttachments.length === 1 ? "grid-cols-1" :
-                  imageAttachments.length === 2 ? "grid-cols-2" :
-                  imageAttachments.length === 3 ? "grid-cols-3" :
-                  "grid-cols-2"
-                }`}>
-                  {imageAttachments.map((img) => (
-                    <button
-                      key={img.id}
-                      onClick={() => handleImageClick(img.url)}
-                      className="relative group overflow-hidden rounded-lg aspect-square hover:opacity-90 transition-opacity"
-                    >
-                      <img
-                        src={img.thumbnailUrl || img.url}
-                        alt={img.name}
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                        <Icon 
-                          name="search-plus" 
-                          size="lg" 
-                          className="opacity-0 group-hover:opacity-100 text-white drop-shadow-lg transition-opacity"
-                        />
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* File attachments - List layout */}
-            {fileAttachments.length > 0 && (
-              <div className={`space-y-1.5 ${text || imageAttachments.length > 0 ? "mt-2" : ""}`}>
-                {fileAttachments.map((file) => (
-                  <a
-                    key={file.id}
-                    href={file.url}
-                    download={file.name}
-                    className={`flex items-center gap-2 p-2 rounded-lg border transition-all hover:scale-[1.02] ${
-                      mine
-                        ? "bg-white/10 border-white/20 hover:bg-white/20"
-                        : isDarkMode
-                          ? "bg-zinc-700/50 border-zinc-600 hover:bg-zinc-700"
-                          : "bg-white border-gray-300 hover:bg-gray-50"
-                    }`}
-                  >
-                    {/* File Icon */}
-                    <div className={`w-10 h-10 rounded flex items-center justify-center flex-shrink-0 ${
-                      mine
-                        ? "bg-white/20"
-                        : isDarkMode
-                          ? "bg-zinc-600"
-                          : "bg-gray-200"
-                    }`}>
-                      <Icon name={getFileIcon(file.type)} size="md" className={mine ? "text-white" : "text-primary"} />
-                    </div>
-                    
-                    {/* File Info */}
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-xs font-medium truncate ${
-                        mine ? "text-white" : isDarkMode ? "text-zinc-100" : "text-gray-900"
-                      }`}>
-                        {file.name}
-                      </p>
-                      <p className={`text-xs ${
-                        mine ? "text-white/70" : isDarkMode ? "text-zinc-400" : "text-gray-500"
-                      }`}>
-                        {formatFileSize(file.size)}
-                      </p>
-                    </div>
-                    
-                    {/* Download Icon */}
-                    <Icon 
-                      name="download" 
-                      size="sm" 
-                      className={mine ? "text-white/80" : isDarkMode ? "text-zinc-400" : "text-gray-500"}
-                    />
-                  </a>
-                ))}
-              </div>
-            )}
+            <div className="markdown-content whitespace-pre-wrap">
+              <ReactMarkdown
+                components={{
+                  p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                  ul: ({ children }) => <ul className="list-disc ml-4 mb-2">{children}</ul>,
+                  ol: ({ children }) => <ol className="list-decimal ml-4 mb-2">{children}</ol>,
+                  li: ({ children }) => <li className="mb-1">{children}</li>,
+                  h1: ({ children }) => <h1 className="text-lg font-bold mb-2">{children}</h1>,
+                  h2: ({ children }) => <h2 className="text-base font-bold mb-2">{children}</h2>,
+                  h3: ({ children }) => <h3 className="text-sm font-bold mb-1">{children}</h3>,
+                  code: ({ children }) => (
+                    <code className={`px-1 py-0.5 rounded ${
+                      isDarkMode ? "bg-zinc-700" : "bg-zinc-300"
+                    }`}>{children}</code>
+                  ),
+                  pre: ({ children }) => (
+                    <pre className={`p-2 rounded my-2 overflow-x-auto ${
+                      isDarkMode ? "bg-zinc-700" : "bg-zinc-300"
+                    }`}>{children}</pre>
+                  ),
+                  strong: ({ children }) => <strong className="font-bold">{children}</strong>,
+                  em: ({ children }) => <em className="italic">{children}</em>,
+                }}
+              >
+                {text}
+              </ReactMarkdown>
+            </div>
           </div>
           
           {/* Reaction badge - liquid glass style */}
@@ -353,44 +222,6 @@ export default function MessageBubble({
         >
           {time}
         </span>
-      )}
-
-      {/* Image Viewer Modal */}
-      {imageViewerOpen && selectedImage && (
-        <div 
-          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 backdrop-blur-sm"
-          onClick={() => setImageViewerOpen(false)}
-        >
-          <div className="relative max-w-4xl max-h-[90vh] w-full h-full flex items-center justify-center">
-            {/* Close button */}
-            <button
-              onClick={() => setImageViewerOpen(false)}
-              className="absolute top-4 right-4 p-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 transition-all hover:scale-110 z-10"
-              title="Đóng"
-            >
-              <Icon name="times" size="lg" />
-            </button>
-
-            {/* Download button */}
-            <a
-              href={selectedImage}
-              download
-              onClick={(e) => e.stopPropagation()}
-              className="absolute top-4 right-16 p-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 transition-all hover:scale-110 z-10"
-              title="Tải xuống"
-            >
-              <Icon name="download" size="lg" />
-            </a>
-
-            {/* Image */}
-            <img
-              src={selectedImage}
-              alt="Full size"
-              className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            />
-          </div>
-        </div>
       )}
     </div>
   );
