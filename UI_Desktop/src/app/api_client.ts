@@ -7,27 +7,24 @@
 import { useAuthStore } from '../state/auth_store'; // Đã thêm: Import store
 
 export const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+console.log('[API Client] Using BASE_URL:', BASE_URL);
 
-// Helper to get auth headers
 async function getAuthHeaders(): Promise<HeadersInit> {
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
   };
   
-  // CÁCH 1: Lấy token từ Auth Store (Ưu tiên số 1 - Sửa cho app của bạn)
   try {
     const token = useAuthStore.getState().token;
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
-      return headers; // Đã có token, trả về luôn
+      return headers;
     }
   } catch (e) {
-    console.warn("Lỗi đọc token từ store:", e);
+    console.warn("Error reading token from store:", e);
   }
 
-  // CÁCH 2: Fallback sang Firebase SDK (Giữ lại để tương thích cũ nếu cần)
   try {
-    // @ts-ignore - Firebase might not be initialized yet
     const { getAuth, getIdToken } = await import('firebase/auth');
     const auth = getAuth();
     const user = auth.currentUser;
@@ -37,23 +34,40 @@ async function getAuthHeaders(): Promise<HeadersInit> {
       headers['Authorization'] = `Bearer ${token}`;
     }
   } catch (error) {
-    // Firebase not available or not initialized - continue without token
     console.debug('Firebase auth not available:', error);
   }
   
   return headers;
 }
 
-// Helper to make authenticated API calls
 async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
   const headers = await getAuthHeaders();
-  return fetch(url, {
-    ...options,
-    headers: {
-      ...headers,
-      ...(options.headers || {}),
-    },
-  });
+  
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        ...headers,
+        ...(options.headers || {}),
+      },
+    });
+    
+    return response;
+  } catch (error: any) {
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      console.error(`[API Error] Failed to fetch: ${url}`);
+      console.error(`[API Error] BASE_URL: ${BASE_URL}`);
+      console.error(`[API Error] Full URL: ${url}`);
+      console.error(`[API Error] Network error - Check if:
+        1. Backend server is running
+        2. Backend URL is correct (${BASE_URL})
+        3. CORS is configured properly
+        4. Network/firewall allows connection`);
+      
+      throw new Error(`Không thể kết nối tới server (${BASE_URL}). Vui lòng kiểm tra:\n- Server có đang chạy?\n- URL có đúng không?\n- Có vấn đề về mạng/firewall?`);
+    }
+    throw error;
+  }
 }
 
 // Types cho dữ liệu (sẽ match với response từ BE)
@@ -98,7 +112,11 @@ export interface Supplier {
 // === API Hàng hoá ===
 export async function apiGetItems(): Promise<Item[]> {
   const res = await apiFetch(`${BASE_URL}/items`);
-  if (!res.ok) throw new Error("Không thể tải danh sách hàng hoá từ BE");
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => 'Unknown error');
+    console.error(`[API Error] GET /items failed (${res.status}):`, errorText);
+    throw new Error(`Không thể tải danh sách hàng hoá (${res.status}): ${errorText}`);
+  }
   return res.json();
 }
 
@@ -107,7 +125,11 @@ export async function apiCreateItem(item: Omit<Item, 'id'>): Promise<Item> {
     method: 'POST',
     body: JSON.stringify(item),
   });
-  if (!res.ok) throw new Error("Không thể thêm hàng hoá");
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => 'Unknown error');
+    console.error(`[API Error] POST /items failed (${res.status}):`, errorText);
+    throw new Error(`Không thể thêm hàng hoá (${res.status}): ${errorText}`);
+  }
   return res.json();
 }
 
@@ -116,7 +138,11 @@ export async function apiUpdateItem(id: string, item: Partial<Item>): Promise<It
     method: 'PUT',
     body: JSON.stringify(item),
   });
-  if (!res.ok) throw new Error("Không thể cập nhật hàng hoá");
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => 'Unknown error');
+    console.error(`[API Error] PUT /items/${id} failed (${res.status}):`, errorText);
+    throw new Error(`Không thể cập nhật hàng hoá (${res.status}): ${errorText}`);
+  }
   return res.json();
 }
 
@@ -125,13 +151,24 @@ export async function apiDeleteItem(id: string, passkey?: string): Promise<void>
   if (passkey) {
     (headers as Record<string, string>)['X-Passkey'] = passkey;
   }
-  const res = await fetch(`${BASE_URL}/items/${id}`, {
-    method: 'DELETE',
-    headers,
-  });
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({}));
-    throw new Error(error.detail || "Không thể xoá hàng hoá");
+  
+  try {
+    const res = await fetch(`${BASE_URL}/items/${id}`, {
+      method: 'DELETE',
+      headers,
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      const errorMsg = error.detail || "Không thể xoá hàng hoá";
+      console.error(`[API Error] DELETE /items/${id} failed (${res.status}):`, errorMsg);
+      throw new Error(`${errorMsg} (${res.status})`);
+    }
+  } catch (error: any) {
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      console.error(`[API Error] Failed to fetch: DELETE /items/${id}`);
+      throw new Error(`Không thể kết nối tới server (${BASE_URL})`);
+    }
+    throw error;
   }
 }
 
@@ -156,7 +193,11 @@ export async function apiCreateStockTransaction(
 // === API Nhà cung cấp ===
 export async function apiGetSuppliers(): Promise<Supplier[]> {
   const res = await apiFetch(`${BASE_URL}/suppliers`);
-  if (!res.ok) throw new Error("Không thể tải danh sách nhà cung cấp");
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => 'Unknown error');
+    console.error(`[API Error] GET /suppliers failed (${res.status}):`, errorText);
+    throw new Error(`Không thể tải danh sách nhà cung cấp (${res.status}): ${errorText}`);
+  }
   return res.json();
 }
 
@@ -220,9 +261,22 @@ export interface DashboardStats {
 }
 
 export async function apiGetDashboardStats(): Promise<DashboardStats> {
-  const res = await fetch(`${BASE_URL}/dashboard/stats`);
-  if (!res.ok) throw new Error("Không thể tải thống kê dashboard");
-  return res.json();
+  try {
+    const res = await fetch(`${BASE_URL}/dashboard/stats`);
+    if (!res.ok) {
+      const errorText = await res.text().catch(() => 'Unknown error');
+      console.error(`[API Error] GET /dashboard/stats failed (${res.status}):`, errorText);
+      throw new Error(`Không thể tải thống kê dashboard (${res.status}): ${errorText}`);
+    }
+    return res.json();
+  } catch (error: any) {
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      console.error(`[API Error] Failed to fetch: GET /dashboard/stats`);
+      console.error(`[API Error] BASE_URL: ${BASE_URL}`);
+      throw new Error(`Không thể kết nối tới server (${BASE_URL})`);
+    }
+    throw error;
+  }
 }
 
 // === API AI Chat (Gemini via BE) ===
