@@ -16,4 +16,5 @@ num2words
 sqlalchemy
 PyJWT
 passlib[bcrypt]
+bcrypt==4.1.3
 python-jose[cryptography]
