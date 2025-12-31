@@ -303,8 +303,11 @@ async def handle_msg_send(websocket: WebSocket, user_id: str, data: dict, db: Se
     db.commit()
     db.refresh(new_msg)
     
-    # Load sender info
+    # Load sender info and all members with user info
     sender = db.query(UserModel).filter(UserModel.id == user_id).first()
+    members_with_users = db.query(RTConversationMemberModel).filter(
+        RTConversationMemberModel.conversation_id == conversation_id
+    ).options(joinedload(RTConversationMemberModel.user)).all()
     
     # Send ACK to sender
     await manager.send_to_socket(websocket, {
@@ -318,7 +321,7 @@ async def handle_msg_send(websocket: WebSocket, user_id: str, data: dict, db: Se
         }
     })
     
-    # Broadcast msg:new to room members (exclude sender)
+    # Build message DTO
     message_dto = {
         "id": server_message_id,
         "conversationId": conversation_id,
@@ -335,18 +338,74 @@ async def handle_msg_send(websocket: WebSocket, user_id: str, data: dict, db: Se
         "senderAvatarUrl": sender.avatar_url if sender else None
     }
     
-    await manager.send_to_room(conversation_id, {
-        "type": "msg:new",
-        "data": {"message": message_dto}
-    }, exclude_ws=websocket)
+    # Broadcast msg:new to ALL members (including sender for multi-device support)
+    for member in members_with_users:
+        await manager.send_to_user(member.user_id, {
+            "type": "msg:new",
+            "data": {"message": message_dto}
+        })
+    
+    # Build conversation DTO and broadcast conv:upsert to all members
+    members_dto = []
+    for m in members_with_users:
+        members_dto.append({
+            "userId": m.user_id,
+            "role": m.role,
+            "joinedAt": m.joined_at.isoformat(),
+            "isAccepted": m.is_accepted,
+            "userEmail": m.user.email if m.user else None,
+            "userDisplayName": m.user.display_name if m.user else None,
+            "userAvatarUrl": m.user.avatar_url if m.user else None
+        })
+    
+    last_message_dto = {
+        "id": server_message_id,
+        "content": content,
+        "senderId": user_id,
+        "createdAt": created_at_server.isoformat()
+    }
+    
+    # Calculate unreadCount for each member
+    for member in members_with_users:
+        unread = 0
+        if member.user_id != user_id:
+            # Count unread messages for this member
+            unread = db.query(RTMessageModel).filter(
+                RTMessageModel.conversation_id == conversation_id,
+                RTMessageModel.sender_id != member.user_id,
+                RTMessageModel.deleted_at.is_(None)
+            ).join(
+                RTMessageReceiptModel,
+                (RTMessageReceiptModel.message_id == RTMessageModel.id) &
+                (RTMessageReceiptModel.user_id == member.user_id)
+            ).filter(
+                RTMessageReceiptModel.read_at.is_(None)
+            ).count()
+        
+        conv_dto = {
+            "id": conv.id,
+            "type": conv.type,
+            "title": conv.title,
+            "relatedEntityType": conv.related_entity_type,
+            "relatedEntityId": conv.related_entity_id,
+            "createdAt": conv.created_at.isoformat(),
+            "updatedAt": conv.updated_at.isoformat(),
+            "members": members_dto,
+            "lastMessage": last_message_dto,
+            "unreadCount": unread
+        }
+        
+        await manager.send_to_user(member.user_id, {
+            "type": "conv:upsert",
+            "data": {"conversation": conv_dto}
+        })
     
     # Mark delivered for online members
-    for member in members:
+    for member in members_with_users:
         if member.user_id == user_id:
             continue
         
         if member.user_id in manager.user_connections:
-            # User is online, mark delivered
             receipt = db.query(RTMessageReceiptModel).filter(
                 RTMessageReceiptModel.message_id == server_message_id,
                 RTMessageReceiptModel.user_id == member.user_id
@@ -355,7 +414,6 @@ async def handle_msg_send(websocket: WebSocket, user_id: str, data: dict, db: Se
                 receipt.delivered_at = datetime.now(timezone.utc)
                 db.commit()
                 
-                # Send msg:delivered to sender
                 await manager.send_to_user(user_id, {
                     "type": "msg:delivered",
                     "data": {
@@ -383,11 +441,22 @@ async def handle_msg_read(websocket: WebSocket, user_id: str, data: dict, db: Se
         })
         return
     
-    # Mark all messages up to lastReadMessageId as read
+    # Lookup the last read message to get its timestamp
+    last_read_msg = db.query(RTMessageModel).filter(
+        RTMessageModel.id == last_read_message_id
+    ).first()
+    
+    if not last_read_msg:
+        return
+    
+    last_read_timestamp = last_read_msg.created_at
+    
+    # Mark all messages with created_at <= last_read_timestamp as read
     messages_to_mark = db.query(RTMessageModel).filter(
         RTMessageModel.conversation_id == conversation_id,
-        RTMessageModel.id <= last_read_message_id,
-        RTMessageModel.sender_id != user_id
+        RTMessageModel.created_at <= last_read_timestamp,
+        RTMessageModel.sender_id != user_id,
+        RTMessageModel.deleted_at.is_(None)
     ).all()
     
     read_at = datetime.now(timezone.utc)
@@ -401,7 +470,6 @@ async def handle_msg_read(websocket: WebSocket, user_id: str, data: dict, db: Se
         if receipt and not receipt.read_at:
             receipt.read_at = read_at
             
-            # Broadcast msg:read to sender
             await manager.send_to_user(msg.sender_id, {
                 "type": "msg:read",
                 "data": {
@@ -437,7 +505,7 @@ async def handle_typing(websocket: WebSocket, user_id: str, data: dict, db: Sess
     }, exclude_ws=websocket)
 
 
-async def handle_conv_sync(websocket: WebSocket, user_id: str, data: dict, db: Session):
+async def handle_conv_sync(websocket: WebSocket, user_id: str, data: dict, db: Session, req_id: str = None):
     """
     Handle conv:sync event.
     Expected data: { conversationId, afterMessageId?, limit? }
@@ -445,7 +513,8 @@ async def handle_conv_sync(websocket: WebSocket, user_id: str, data: dict, db: S
     conversation_id = data.get("conversationId")
     after_message_id = data.get("afterMessageId")
     limit = data.get("limit", 50)
-    req_id = data.get("reqId")
+    if not req_id:
+        req_id = data.get("reqId")
     
     if not conversation_id:
         await manager.send_to_socket(websocket, {
@@ -455,7 +524,6 @@ async def handle_conv_sync(websocket: WebSocket, user_id: str, data: dict, db: S
         })
         return
     
-    # Check membership
     is_member = db.query(RTConversationMemberModel).filter(
         RTConversationMemberModel.conversation_id == conversation_id,
         RTConversationMemberModel.user_id == user_id
@@ -469,14 +537,17 @@ async def handle_conv_sync(websocket: WebSocket, user_id: str, data: dict, db: S
         })
         return
     
-    # Get messages
     query = db.query(RTMessageModel).filter(
         RTMessageModel.conversation_id == conversation_id,
         RTMessageModel.deleted_at.is_(None)
     ).options(joinedload(RTMessageModel.sender))
     
     if after_message_id:
-        query = query.filter(RTMessageModel.id > after_message_id)
+        after_msg = db.query(RTMessageModel).filter(
+            RTMessageModel.id == after_message_id
+        ).first()
+        if after_msg:
+            query = query.filter(RTMessageModel.created_at > after_msg.created_at)
     
     query = query.order_by(RTMessageModel.created_at.asc())
     messages = query.limit(limit + 1).all()

@@ -45,16 +45,10 @@ export default function ChatSidebar({ onSelect, activeId, onToggle }:{
       .catch(err => console.error('Error loading bot avatar:', err));
   }, []);
 
-  // Load pending conversations
+  // Load pending conversations once on mount
   useEffect(() => {
     loadPendingConversations();
-    
-    // Poll every 30 seconds for new pending messages
-    const interval = setInterval(() => {
-      loadPendingConversations();
-    }, 30000);
-    
-    return () => clearInterval(interval);
+    // No polling needed - conv:upsert event will push updates automatically
   }, [loadPendingConversations]);
 
   return (

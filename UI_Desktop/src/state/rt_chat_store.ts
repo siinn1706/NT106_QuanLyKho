@@ -90,6 +90,7 @@ interface RTChatState {
   handleMsgRead: (data: any) => void;
   handleTyping: (data: any) => void;
   handleConvSyncResult: (data: any) => void;
+  handleConvUpsert: (data: any) => void;
   handleError: (data: any) => void;
 }
 
@@ -105,6 +106,7 @@ export const useRTChatStore = create<RTChatState>()(
         rtWSClient.on('msg:read', (msg) => get().handleMsgRead(msg.data));
         rtWSClient.on('typing', (msg) => get().handleTyping(msg.data));
         rtWSClient.on('conv:sync:result', (msg) => get().handleConvSyncResult(msg.data));
+        rtWSClient.on('conv:upsert', (msg) => get().handleConvUpsert(msg.data));
         rtWSClient.on('error', (msg) => get().handleError(msg.data));
       };
       
@@ -583,6 +585,45 @@ export const useRTChatStore = create<RTChatState>()(
         
         handleError: (data) => {
           console.error('[RT-Chat] Error:', JSON.stringify(data, null, 2));
+        },
+        
+        handleConvUpsert: (data) => {
+          /**
+           * Handle conv:upsert event from server.
+           * Server sends full conversation DTO after message sent.
+           * This replaces polling for pending conversations.
+           */
+          const conv = data.conversation as ConversationUI;
+          if (!conv) return;
+          
+          set((state) => {
+            // Check if pending or accepted based on current user's membership
+            const currentUserId = useAuthStore.getState().user?.id;
+            const myMember = conv.members.find(m => m.userId === currentUserId);
+            const isPending = myMember && !myMember.isAccepted;
+            
+            if (isPending) {
+              // Update or add to pendingConversations
+              const existing = state.pendingConversations.findIndex(c => c.id === conv.id);
+              if (existing >= 0) {
+                const updated = [...state.pendingConversations];
+                updated[existing] = conv;
+                return { pendingConversations: updated };
+              } else {
+                return { pendingConversations: [conv, ...state.pendingConversations] };
+              }
+            } else {
+              // Update or add to accepted conversations
+              const existing = state.conversations.findIndex(c => c.id === conv.id);
+              if (existing >= 0) {
+                const updated = [...state.conversations];
+                updated[existing] = conv;
+                return { conversations: updated };
+              } else {
+                return { conversations: [conv, ...state.conversations] };
+              }
+            }
+          });
         }
       };
     },
