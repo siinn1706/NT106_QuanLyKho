@@ -51,6 +51,7 @@ interface NotificationsState {
   markRead: (id: string) => void;
   markAllRead: (module?: NotificationModule) => void;
   dismiss: (id: string, until?: string) => void;
+  deleteNotification: (id: string) => void;
   setLastSeen: (module: NotificationModule, timestamp?: string) => void;
   updateConfig: (config: Partial<NotificationConfig>) => void;
   startPolling: () => void;
@@ -305,6 +306,29 @@ export const useNotificationsStore = create<NotificationsState>()(
           notifications: get().notifications.map(n => 
             n.id === id ? { ...n, dismissedUntil: dismissUntil } : n
           ),
+        });
+      },
+      
+      deleteNotification: (id: string) => {
+        const { readMap, dismissedUntilMap } = get();
+        
+        // Remove notification from list
+        const filteredNotifications = get().notifications.filter(n => n.id !== id);
+        
+        // Remove from read/dismiss maps
+        const newReadMap = { ...readMap };
+        const newDismissedMap = { ...dismissedUntilMap };
+        delete newReadMap[id];
+        delete newDismissedMap[id];
+        
+        // Recompute counts
+        const counts = computeCounts(filteredNotifications, newReadMap, newDismissedMap);
+        
+        set({
+          notifications: filteredNotifications,
+          readMap: newReadMap,
+          dismissedUntilMap: newDismissedMap,
+          counts,
         });
       },
       

@@ -15,7 +15,7 @@ export default function ChatWidget() {
   const [open, setOpen] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [activeId, setActiveId] = useState("bot");
+  const [activeId, setActiveId] = useState<string | null>(null);
   const [minimizedChats, setMinimizedChats] = useState<MinimizedChat[]>([]);
   const [botAvatar, setBotAvatar] = useState<string | null>(null);
   const isDarkMode = useThemeStore((state) => state.isDarkMode);
@@ -46,6 +46,8 @@ export default function ChatWidget() {
   };
 
   const handleMinimize = () => {
+    if (!activeId) return; // Không minimize nếu chưa chọn chat
+    
     const chatName = conversationNames[activeId] || activeId;
     const existingIndex = minimizedChats.findIndex(c => c.id === activeId);
     
@@ -156,24 +158,42 @@ export default function ChatWidget() {
             height: "min(500px, calc(100vh - 140px))",
           }}
         >
-          {/* Avatar button khi sidebar collapsed */}
-          {sidebarCollapsed && botAvatar && (
+          {/* Button mở rộng sidebar khi collapsed */}
+          {sidebarCollapsed && (
             <div className="absolute top-3 left-3 z-50">
               <button
                 onClick={() => {
-                  console.log('🔵 Avatar clicked - expanding sidebar');
+                  console.log('🔵 Expand button clicked - expanding sidebar');
                   setSidebarCollapsed(false);
                 }}
-                className="w-12 h-12 rounded-full overflow-hidden shadow-lg hover:scale-110 transition-all duration-200 border-2 border-blue-500 bg-white"
+                className={`w-12 h-12 rounded-full shadow-lg hover:scale-110 transition-all duration-200 flex items-center justify-center ${
+                  activeId 
+                    ? "overflow-hidden border-2 border-blue-500 bg-white" 
+                    : isDarkMode 
+                      ? "liquid-glass-ui-dark text-white" 
+                      : "liquid-glass-ui text-gray-700"
+                }`}
                 title="Mở danh sách chat"
               >
-                <img 
-                  src={botAvatar} 
-                  alt="Chatbot" 
-                  className="w-full h-full object-cover"
-                  onLoad={() => console.log('✅ Avatar collapsed button loaded')}
-                  onError={() => console.error('❌ Avatar collapsed button failed')}
-                />
+                {activeId ? (
+                  // Hiển thị avatar của người đang chat
+                  activeId === "bot" && botAvatar ? (
+                    <img 
+                      src={botAvatar} 
+                      alt="Chatbot" 
+                      className="w-full h-full object-cover"
+                      onLoad={() => console.log('✅ Avatar collapsed button loaded')}
+                      onError={() => console.error('❌ Avatar collapsed button failed')}
+                    />
+                  ) : (
+                    <span className="text-xl font-bold bg-gradient-to-br from-primary to-purple-600 bg-clip-text text-transparent">
+                      {conversationNames[activeId]?.charAt(0).toUpperCase() || "U"}
+                    </span>
+                  )
+                ) : (
+                  // Hiển thị icon 3 gạch ngang khi chưa chọn người chat
+                  <Icon name="bars" size="lg" />
+                )}
               </button>
             </div>
           )}
@@ -186,7 +206,19 @@ export default function ChatWidget() {
             />
           )}
           <div className="flex-1 min-w-0 flex flex-col relative overflow-hidden">
-            <ChatRoom conversationId={activeId} sidebarCollapsed={sidebarCollapsed} onExpandSidebar={() => setSidebarCollapsed(false)} />
+            {activeId ? (
+              <ChatRoom conversationId={activeId} sidebarCollapsed={sidebarCollapsed} onExpandSidebar={() => setSidebarCollapsed(false)} />
+            ) : (
+              <div className={`flex-1 flex flex-col items-center justify-center gap-4 ${
+                isDarkMode ? "text-zinc-400" : "text-zinc-500"
+              }`}>
+                <Icon name="comment-dots" size="4x" className="opacity-30" />
+                <div className="text-center">
+                  <p className="text-lg font-medium mb-1">Chọn một cuộc trò chuyện</p>
+                  <p className="text-sm opacity-70">Chọn từ danh sách bên trái để bắt đầu chat</p>
+                </div>
+              </div>
+            )}
           </div>
           <div className="absolute top-3 right-3 flex gap-2 z-50">
             <button
