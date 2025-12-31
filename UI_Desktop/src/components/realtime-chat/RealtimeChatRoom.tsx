@@ -4,16 +4,18 @@
  * Similar to ChatRoom but uses rt_chat_store instead of chat_store.
  */
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useThemeStore } from "../../theme/themeStore";
 import { useRTChatStore, MessageUI } from "../../state/rt_chat_store";
 import { useAuthStore } from "../../state/auth_store";
 import { rtWSClient } from "../../services/rt_ws_client";
 import ChatBackground from "../chat/ChatBackground";
 import DateSeparator from "../chat/DateSeparator";
+import ChatDatePicker from "../chat/ChatDatePicker";
 import MessageBubble from "../chat/MessageBubble";
 import TypingIndicator from "../chat/TypingIndicator";
 import Icon from "../ui/Icon";
+import { resolveMediaUrl, getInitials } from "../../utils/mediaUrl";
 
 function getDateKey(isoString: string): string {
   const d = new Date(isoString);
@@ -39,8 +41,12 @@ export default function RealtimeChatRoom({ conversationId, sidebarCollapsed, onE
   
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showScrollButton, setShowScrollButton] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const dateRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const typingTimeoutRef = useRef<number | null>(null);
   const isDarkMode = useThemeStore(state => state.isDarkMode);
   
@@ -65,9 +71,40 @@ export default function RealtimeChatRoom({ conversationId, sidebarCollapsed, onE
     return groups;
   }, [messages]);
   
+  const availableDates = useMemo(() => {
+    return messagesGroupedByDate.map(g => g.date);
+  }, [messagesGroupedByDate]);
+  
+  const scrollToDate = useCallback((date: Date) => {
+    const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    const el = dateRefs.current[dateKey];
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setShowDatePicker(false);
+    }
+  }, []);
+  
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages.length]);
+  
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+      setShowScrollButton(!isNearBottom);
+    };
+    
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, []);
+  
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, []);
   
   useEffect(() => {
     if (messages.length > 0 && currentUser) {
@@ -128,11 +165,26 @@ export default function RealtimeChatRoom({ conversationId, sidebarCollapsed, onE
   
   const otherMember = conversation?.members.find(m => m.userId !== currentUser?.id);
   const isOtherTyping = otherMember && typing[otherMember.userId];
+  const otherAvatarUrl = resolveMediaUrl(otherMember?.userAvatarUrl);
+  const otherName = otherMember?.userDisplayName || otherMember?.userEmail || "User";
+  
+  // Auto-scroll when typing indicator appears if user is near bottom
+  useEffect(() => {
+    if (isOtherTyping) {
+      const container = messagesContainerRef.current;
+      if (!container) return;
+      
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+      
+      if (isNearBottom) {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  }, [isOtherTyping]);
   
   return (
-    <div className="flex-1 flex flex-col relative overflow-hidden">
-      <ChatBackground />
-      
+    <ChatBackground className="flex-1 flex flex-col relative overflow-hidden">
       <div className={`flex items-center gap-3 px-5 py-3 border-b shrink-0 z-20 ${
         isDarkMode ? "bg-zinc-900/80 border-zinc-700" : "bg-white/80 border-zinc-300"
       } backdrop-blur-md`}>
@@ -149,38 +201,50 @@ export default function RealtimeChatRoom({ conversationId, sidebarCollapsed, onE
           </button>
         )}
         
-        {otherMember?.userAvatarUrl ? (
-          <img src={otherMember.userAvatarUrl} alt="" className="w-10 h-10 rounded-full object-cover" />
-        ) : (
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold">
-            {otherMember?.userDisplayName?.charAt(0).toUpperCase() || "U"}
-          </div>
-        )}
+        {otherAvatarUrl ? (
+          <img
+            src={otherAvatarUrl}
+            alt=""
+            className="w-10 h-10 rounded-full object-cover"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+              const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+              if (fallback) fallback.style.display = 'flex';
+            }}
+          />
+        ) : null}
+        <div
+          className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold"
+          style={{ display: otherAvatarUrl ? 'none' : 'flex' }}
+        >
+          {getInitials(otherName)}
+        </div>
         
         <div className="flex-1">
-          <div className="font-semibold">{otherMember?.userDisplayName || otherMember?.userEmail || "User"}</div>
+          <div className="font-semibold">{otherName}</div>
           {isOtherTyping && (
             <div className="text-xs text-blue-500">Đang soạn tin...</div>
           )}
         </div>
       </div>
       
-      <div className="flex-1 overflow-y-auto p-5 space-y-4 z-10">
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-5 z-10 relative">
         {messagesGroupedByDate.map((group) => (
-          <div key={group.dateKey}>
-            <DateSeparator date={group.date} />
-            {group.messages.map((msg) => (
+          <div key={group.dateKey} ref={(el) => (dateRefs.current[group.dateKey] = el)}>
+            <DateSeparator date={group.date} onClick={() => setShowDatePicker(true)} />
+            {group.messages.map((msg, idx) => (
               <MessageBubble
                 key={msg.id}
                 messageId={msg.id}
                 text={msg.content}
                 time={new Date(msg.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
                 mine={msg.senderId === currentUser?.id}
-                isLastInGroup={true}
+                isLastInGroup={idx === group.messages.length - 1 || group.messages[idx + 1]?.senderId !== msg.senderId}
                 replyTo={null}
                 initialReactions={[]}
                 onReactionChange={() => {}}
                 onReply={() => {}}
+                status={msg.status}
               />
             ))}
           </div>
@@ -190,6 +254,29 @@ export default function RealtimeChatRoom({ conversationId, sidebarCollapsed, onE
         
         <div ref={messagesEndRef} />
       </div>
+      
+      {showScrollButton && (
+        <button
+          onClick={scrollToBottom}
+          className={`absolute bottom-24 right-8 z-30 w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-110 ${
+            isDarkMode
+              ? "bg-zinc-800 border border-zinc-700 text-white"
+              : "bg-white border border-zinc-300 text-gray-700"
+          }`}
+          title="Cuộn xuống tin nhắn mới nhất"
+        >
+          <Icon name="chevron-down" size="md" />
+        </button>
+      )}
+      
+      {showDatePicker && (
+        <ChatDatePicker
+          isOpen={showDatePicker}
+          availableDates={availableDates}
+          onSelectDate={scrollToDate}
+          onClose={() => setShowDatePicker(false)}
+        />
+      )}
       
       <form
         onSubmit={handleSend}
@@ -205,7 +292,7 @@ export default function RealtimeChatRoom({ conversationId, sidebarCollapsed, onE
           placeholder="Nhập tin nhắn..."
           className={`flex-1 px-4 py-2.5 rounded-full outline-none transition-all duration-200 ${
             isDarkMode
-              ? "liquid-glass-ui-dark text-white placeholder-zinc-500"
+              ? "bg-zinc-700 text-zinc-100 placeholder-zinc-400 border border-zinc-600"
               : "liquid-glass-ui text-gray-800 placeholder-zinc-400"
           }`}
         />
@@ -224,6 +311,6 @@ export default function RealtimeChatRoom({ conversationId, sidebarCollapsed, onE
           <Icon name="paper-plane" size="sm" />
         </button>
       </form>
-    </div>
+    </ChatBackground>
   );
 }
