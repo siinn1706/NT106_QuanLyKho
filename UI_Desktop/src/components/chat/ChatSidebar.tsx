@@ -14,7 +14,7 @@ type ConversationSummary = {
 
 export default function ChatSidebar({ onSelect, activeId, onToggle }:{
   onSelect: (id: string)=>void;
-  activeId: string;
+  activeId: string | null;
   onToggle?: () => void;
 }) {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);

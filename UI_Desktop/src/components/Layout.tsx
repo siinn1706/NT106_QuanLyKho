@@ -11,7 +11,9 @@ import NotificationsPanel from './NotificationsPanel';
 import { apiLogout, BASE_URL } from '../app/api_client';
 import Icon from './ui/Icon';
 import { useKeyboardShortcuts, commonShortcuts } from '../hooks/useKeyboardShortcuts';
-import { useNotificationBadges, useNotifications } from '../hooks/useNotificationBadges';
+import { useNotificationBadges } from '../hooks/useNotificationBadges';
+import { useNavigationTracking } from '../hooks/useNavigationTracking';
+
 interface LayoutProps {
   children: ReactNode;
 }
@@ -22,7 +24,8 @@ interface MenuItem {
   icon: string;
   path: string;
   badge?: number;
-  subItems?: { id: string; label: string; path: string; }[];
+  showDotOnly?: boolean;
+  subItems?: { id: string; label: string; path: string; badge?: number; }[];
 }
 
 export default function Layout({ children }: LayoutProps) {
@@ -30,7 +33,6 @@ export default function Layout({ children }: LayoutProps) {
   const { isDarkMode, toggleDarkMode } = useThemeStore();
   const { user, logout } = useAuthStore();
   const { warehouses, activeWarehouseId } = useCompanyStore();
-  const { unreadCount } = useNotifications();
   const activeWarehouse = warehouses.find(wh => wh.id === activeWarehouseId);
   const navigate = useNavigate();
   const location = useLocation();
@@ -39,36 +41,63 @@ export default function Layout({ children }: LayoutProps) {
   const [expandedSections, setExpandedSections] = useState<string[]>(['items']);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   
-  // Get badge counts from store
   const badges = useNotificationBadges();
+  
+  useNavigationTracking();
 
   const menuItems: MenuItem[] = [
-    { id: 'home', label: 'Trang chủ', icon: 'home', path: '/dashboard' },
+    { 
+      id: 'home', 
+      label: 'Trang chủ', 
+      icon: 'home', 
+      path: '/dashboard',
+      badge: badges.home
+    },
     { 
       id: 'items', 
       label: 'Hàng hoá', 
       icon: 'box', 
       path: '/items',
+      badge: badges.items,
+      showDotOnly: true,
       subItems: [
         { id: 'item-list', label: 'Danh sách hàng', path: '/items' },
         { id: 'item-tracking', label: 'Theo dõi hàng', path: '/items/tracking' },
-        { id: 'item-alerts', label: 'Cảnh báo tồn kho', path: '/items/alerts' }
+        { id: 'item-alerts', label: 'Cảnh báo tồn kho', path: '/items/alerts', badge: badges.itemsAlerts }
       ]
     },
     { 
       id: 'stock', 
       label: 'Nhập/Xuất kho', 
       icon: 'exchange', 
-      path: '/stock', 
-      badge: 14,
+      path: '/stock',
+      badge: 0,
       subItems: [
-        { id: 'stock-in', label: 'Nhập kho', path: '/stock/in' },
-        { id: 'stock-out', label: 'Xuất kho', path: '/stock/out' }
+        { id: 'stock-in', label: 'Nhập kho', path: '/stock/in', badge: 0 },
+        { id: 'stock-out', label: 'Xuất kho', path: '/stock/out', badge: 0 }
       ]
     },
-    { id: 'suppliers', label: 'Nhà cung cấp', icon: 'building', path: '/suppliers' },
-    { id: 'warehouses', label: 'Kho hàng', icon: 'warehouse', path: '/warehouses' },
-    { id: 'reports', label: 'Báo cáo', icon: 'chart', path: '/reports' },
+    { 
+      id: 'suppliers', 
+      label: 'Nhà cung cấp', 
+      icon: 'building', 
+      path: '/suppliers',
+      badge: badges.suppliers
+    },
+    { 
+      id: 'warehouses', 
+      label: 'Kho hàng', 
+      icon: 'warehouse', 
+      path: '/warehouses',
+      badge: badges.warehouses
+    },
+    { 
+      id: 'reports', 
+      label: 'Báo cáo', 
+      icon: 'chart', 
+      path: '/reports',
+      badge: badges.reports
+    },
   ];
 
   const toggleSection = (sectionId: string) => {
@@ -190,9 +219,13 @@ export default function Layout({ children }: LayoutProps) {
                 >
                   <Icon name={item.icon === 'home' ? 'home' : item.icon === 'box' ? 'box' : item.icon === 'exchange' ? 'exchange' : item.icon === 'building' ? 'building' : item.icon === 'warehouse' ? 'warehouse' : item.icon === 'chart' ? 'chart-bar' : item.icon} size={isSidebarCollapsed ? 'lg' : 'md'} className="flex-shrink-0" />
                   {isSidebarCollapsed && item.badge !== undefined && item.badge > 0 && (
-                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-[var(--danger)] text-white text-xs font-bold rounded-full flex items-center justify-center shadow-sm">
-                      {item.badge > 9 ? '9+' : item.badge}
-                    </span>
+                    item.showDotOnly ? (
+                      <span className="absolute top-1 right-1 w-2 h-2 bg-[var(--danger)] rounded-full shadow-sm"></span>
+                    ) : (
+                      <span className="absolute -top-1 -right-1 w-5 h-5 bg-[var(--danger)] text-white text-xs font-bold rounded-full flex items-center justify-center shadow-sm">
+                        {item.badge > 9 ? '9+' : item.badge}
+                      </span>
+                    )
                   )}
                   {!isSidebarCollapsed && (
                     <>
@@ -200,9 +233,13 @@ export default function Layout({ children }: LayoutProps) {
                         {item.label}
                       </span>
                       {item.badge !== undefined && item.badge > 0 && (
-                        <span className="bg-[var(--danger)] text-white text-xs px-2 py-0.5 rounded-full flex-shrink-0 min-w-[20px] text-center">
-                          {item.badge > 99 ? '99+' : item.badge}
-                        </span>
+                        item.showDotOnly ? (
+                          <span className="w-2 h-2 bg-[var(--danger)] rounded-full flex-shrink-0"></span>
+                        ) : (
+                          <span className="bg-[var(--danger)] text-white text-xs px-2 py-0.5 rounded-full flex-shrink-0 min-w-[20px] text-center">
+                            {item.badge > 99 ? '99+' : item.badge}
+                          </span>
+                        )
                       )}
                       {hasSubItems && (
                         <Icon name="chevron-left" size="sm" className={`flex-shrink-0 transition-transform duration-200 ${
@@ -219,13 +256,18 @@ export default function Layout({ children }: LayoutProps) {
                       <button
                         key={subItem.id}
                         onClick={() => navigate(subItem.path)}
-                        className={`w-full text-left px-4 py-2.5 rounded-[var(--radius-md)] text-sm transition-colors duration-150 ${
+                        className={`w-full flex items-center gap-2 text-left px-4 py-2.5 rounded-[var(--radius-md)] text-sm transition-colors duration-150 ${
                           location.pathname === subItem.path
                             ? 'bg-[var(--primary-light)] text-[var(--primary)] font-medium'
                             : 'hover:bg-[var(--surface-2)] text-[var(--text-2)]'
                         }`}
                       >
-                        {subItem.label}
+                        <span className="flex-1">{subItem.label}</span>
+                        {subItem.badge !== undefined && subItem.badge > 0 && (
+                          <span className="bg-[var(--danger)] text-white text-xs px-2 py-0.5 rounded-full flex-shrink-0 min-w-[20px] text-center">
+                            {subItem.badge > 99 ? '99+' : subItem.badge}
+                          </span>
+                        )}
                       </button>
                     ))}
                   </div>

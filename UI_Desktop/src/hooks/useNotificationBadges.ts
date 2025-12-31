@@ -37,6 +37,7 @@ export function useNotifications() {
   const markRead = useNotificationsStore((state) => state.markRead);
   const markAllRead = useNotificationsStore((state) => state.markAllRead);
   const dismiss = useNotificationsStore((state) => state.dismiss);
+  const deleteNotification = useNotificationsStore((state) => state.deleteNotification);
   const setLastSeen = useNotificationsStore((state) => state.setLastSeen);
   const refresh = useNotificationsStore((state) => state.refresh);
   const isLoading = useNotificationsStore((state) => state.isLoading);
@@ -54,6 +55,7 @@ export function useNotifications() {
     markRead,
     markAllRead,
     dismiss,
+    deleteNotification,
     setLastSeen,
     refresh,
     isLoading,
