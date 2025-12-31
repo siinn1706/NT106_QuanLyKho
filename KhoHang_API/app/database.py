@@ -250,6 +250,74 @@ class ChatbotConfigModel(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
+
+# =============================================================
+# REALTIME CHAT MODELS (USER-TO-USER)
+# =============================================================
+
+class RTConversationModel(Base):
+    """Realtime chat conversations (direct, group, module-related)"""
+    __tablename__ = "rt_conversations"
+    
+    id = Column(String, primary_key=True)  # UUID
+    type = Column(String, nullable=False, index=True)  # 'direct', 'group', 'module'
+    title = Column(String, nullable=True)
+    related_entity_type = Column(String, nullable=True)  # 'stock_in', 'stock_out', 'item', 'warehouse'
+    related_entity_id = Column(String, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    
+    members = relationship("RTConversationMemberModel", back_populates="conversation", cascade="all, delete-orphan")
+    messages = relationship("RTMessageModel", back_populates="conversation", cascade="all, delete-orphan")
+
+
+class RTConversationMemberModel(Base):
+    """Members of realtime conversations"""
+    __tablename__ = "rt_conversation_members"
+    
+    conversation_id = Column(String, ForeignKey("rt_conversations.id"), primary_key=True)
+    user_id = Column(String, ForeignKey("users.id"), primary_key=True)
+    role = Column(String, default="member")  # 'member', 'admin'
+    joined_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    is_accepted = Column(Boolean, default=False)  # True = accepted, False = pending/spam
+    
+    conversation = relationship("RTConversationModel", back_populates="members")
+    user = relationship("UserModel")
+
+
+class RTMessageModel(Base):
+    """Realtime chat messages"""
+    __tablename__ = "rt_messages"
+    
+    id = Column(String, primary_key=True)  # serverMessageId (UUID)
+    conversation_id = Column(String, ForeignKey("rt_conversations.id"), nullable=False, index=True)
+    sender_id = Column(String, ForeignKey("users.id"), nullable=False)
+    client_message_id = Column(String, nullable=False)  # For idempotency
+    content = Column(Text, nullable=False)
+    content_type = Column(String, default="text")  # 'text', 'image', 'file', 'system'
+    attachments_json = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    edited_at = Column(DateTime, nullable=True)
+    deleted_at = Column(DateTime, nullable=True)
+    
+    conversation = relationship("RTConversationModel", back_populates="messages")
+    sender = relationship("UserModel")
+    receipts = relationship("RTMessageReceiptModel", back_populates="message", cascade="all, delete-orphan")
+
+
+class RTMessageReceiptModel(Base):
+    """Message delivery and read receipts"""
+    __tablename__ = "rt_message_receipts"
+    
+    message_id = Column(String, ForeignKey("rt_messages.id"), primary_key=True)
+    user_id = Column(String, ForeignKey("users.id"), primary_key=True)
+    delivered_at = Column(DateTime, nullable=True)
+    read_at = Column(DateTime, nullable=True)
+    
+    message = relationship("RTMessageModel", back_populates="receipts")
+    user = relationship("UserModel")
+
+
 def get_db():
     db = SessionLocal()
     try:
@@ -269,13 +337,25 @@ def ensure_stock_transaction_columns(engine):
             if "actor_user_id" not in existing_cols:
                 conn.execute(text("ALTER TABLE stock_transactions ADD COLUMN actor_user_id TEXT"))
     except Exception as e:
-        # Avoid crashing app if migration fails; log the warning instead
         print(f"[WARN] Could not migrate stock_transactions columns: {e}")
+
+
+def ensure_rt_message_unique_constraint(engine):
+    """Ensure unique constraint on (sender_id, client_message_id) for idempotency."""
+    try:
+        with engine.begin() as conn:
+            conn.execute(text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_rt_messages_sender_client "
+                "ON rt_messages(sender_id, client_message_id)"
+            ))
+    except Exception as e:
+        print(f"[WARN] Could not create rt_messages unique index: {e}")
 
 
 def init_db():
     Base.metadata.create_all(bind=engine)
     ensure_stock_transaction_columns(engine)
+    ensure_rt_message_unique_constraint(engine)
     print(f"Database initialized at {DATABASE_URL}")
 
 init_db()
