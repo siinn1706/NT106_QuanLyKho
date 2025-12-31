@@ -9,6 +9,7 @@ import { useRTChatStore } from "../../state/rt_chat_store";
 import { BASE_URL } from "../../app/api_client";
 import { useAuthStore } from "../../state/auth_store";
 import Icon from "../ui/Icon";
+import { resolveMediaUrl, getInitials } from "../../utils/mediaUrl";
 
 interface UserSearchResult {
   id: string;
@@ -170,7 +171,7 @@ export default function NewChatModal({ onClose, onSuccess }: {
               placeholder="Nhập email..."
               className={`w-full px-4 py-2.5 rounded-2xl outline-none transition-all duration-200 ${
                 isDarkMode
-                  ? "liquid-glass-ui-dark text-white placeholder-zinc-500"
+                  ? "bg-zinc-700 text-zinc-100 placeholder-zinc-400 border border-zinc-600"
                   : "liquid-glass-ui text-gray-800 placeholder-zinc-400"
               }`}
             />
@@ -196,13 +197,24 @@ export default function NewChatModal({ onClose, onSuccess }: {
                   : "liquid-glass-ui border-zinc-300"
               }`}
             >
-              {result.avatar_url ? (
-                <img src={result.avatar_url} alt="" className="w-12 h-12 rounded-full object-cover" />
-              ) : (
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
-                  {result.display_name?.charAt(0).toUpperCase() || result.email.charAt(0).toUpperCase()}
-                </div>
-              )}
+              {resolveMediaUrl(result.avatar_url) ? (
+                <img
+                  src={resolveMediaUrl(result.avatar_url)!}
+                  alt=""
+                  className="w-12 h-12 rounded-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                    if (fallback) fallback.style.display = 'flex';
+                  }}
+                />
+              ) : null}
+              <div
+                className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg"
+                style={{ display: resolveMediaUrl(result.avatar_url) ? 'none' : 'flex' }}
+              >
+                {getInitials(result.display_name || result.username)}
+              </div>
               
               <div className="flex-1 min-w-0">
                 <div className="font-semibold truncate">{result.display_name || result.username}</div>

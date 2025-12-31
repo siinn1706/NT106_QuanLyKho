@@ -262,15 +262,34 @@ export const useRTChatStore = create<RTChatState>()(
             status: 'pending'
           };
           
-          set((state) => ({
-            messagesByConv: {
-              ...state.messagesByConv,
-              [conversationId]: [
-                ...(state.messagesByConv[conversationId] || []),
-                optimisticMsg
-              ]
-            }
-          }));
+          set((state) => {
+            const updatedConversations = state.conversations.map(conv => {
+              if (conv.id === conversationId) {
+                return {
+                  ...conv,
+                  lastMessage: {
+                    id: clientMessageId,
+                    content,
+                    senderId: currentUser.id,
+                    createdAt: createdAtClient
+                  },
+                  updatedAt: createdAtClient
+                };
+              }
+              return conv;
+            }).sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+            
+            return {
+              conversations: updatedConversations,
+              messagesByConv: {
+                ...state.messagesByConv,
+                [conversationId]: [
+                  ...(state.messagesByConv[conversationId] || []),
+                  optimisticMsg
+                ]
+              }
+            };
+          });
           
           const wsStatus = rtWSClient.getStatus();
           console.log('[RT-Chat] WebSocket status:', wsStatus);

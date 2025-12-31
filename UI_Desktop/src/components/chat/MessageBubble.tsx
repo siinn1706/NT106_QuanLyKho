@@ -21,6 +21,7 @@ export default function MessageBubble({
   onReply,
   initialReactions = [],
   onReactionChange,
+  status,
 }: {
   messageId: string;
   text: string;
@@ -29,8 +30,9 @@ export default function MessageBubble({
   isLastInGroup?: boolean;
   replyTo?: ReplyInfo | null;
   onReply?: () => void;
-  initialReactions?: string[]; // Reactions từ server/store
-  onReactionChange?: (messageId: string, reactions: string[]) => void; // Callback khi reactions thay đổi
+  initialReactions?: string[];
+  onReactionChange?: (messageId: string, reactions: string[]) => void;
+  status?: 'pending' | 'sent' | 'delivered' | 'read';
 }) {
   const [showAction, setShowAction] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -68,7 +70,7 @@ export default function MessageBubble({
   
   return (
     <div 
-      className={`flex flex-col ${mine ? "items-end" : "items-start"} ${displayReaction ? "mb-3" : ""}`}
+      className={`flex flex-col ${mine ? "items-end" : "items-start"} mb-0.5`}
       onMouseEnter={() => setShowAction(true)} 
       onMouseLeave={() => { setShowAction(false); setShowEmojiPicker(false); }}
     >
@@ -220,11 +222,19 @@ export default function MessageBubble({
 
       {/* Hàng dưới: thời gian, nằm trái/phải theo phía, chỉ cho tin cuối nhóm */}
       {isLastInGroup && (
-        <span
-          className={`text-xs mt-1 ${isDarkMode ? "text-zinc-400" : "text-zinc-500"}`}
-        >
-          {time}
-        </span>
+        <div className={`flex items-center gap-1.5 mt-1 ${mine ? 'flex-row-reverse' : 'flex-row'}`}>
+          <span className={`text-xs ${isDarkMode ? "text-zinc-300" : "text-zinc-600"}`}>
+            {time}
+          </span>
+          {mine && status && (
+            <span className={`text-xs ${isDarkMode ? "text-zinc-400" : "text-zinc-500"}`}>
+              {status === 'pending' && 'Đang gửi'}
+              {status === 'sent' && 'Đã gửi'}
+              {status === 'delivered' && 'Đã nhận'}
+              {status === 'read' && 'Đã xem'}
+            </span>
+          )}
+        </div>
       )}
     </div>
   );

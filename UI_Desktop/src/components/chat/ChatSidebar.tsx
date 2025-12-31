@@ -3,8 +3,10 @@ import { useThemeStore } from '../../theme/themeStore';
 import { useRTChatStore } from '../../state/rt_chat_store';
 import { useAuthStore } from '../../state/auth_store';
 import NewChatModal from '../realtime-chat/NewChatModal';
+import PendingConversationPreviewModal from '../realtime-chat/PendingConversationPreviewModal';
 import Icon from '../ui/Icon';
 import { BASE_URL } from '../../app/api_client';
+import { resolveMediaUrl, getInitials } from '../../utils/mediaUrl';
 
 type ConversationSummary = {
   id: string;
@@ -22,13 +24,14 @@ export default function ChatSidebar({ onSelect, activeId, onToggle }:{
 }) {
   const [botAvatar, setBotAvatar] = useState<string>("/bot-avatar.png");
   const [showNewChatModal, setShowNewChatModal] = useState(false);
+  const [previewPendingId, setPreviewPendingId] = useState<string | null>(null);
   const isDarkMode = useThemeStore((state) => state.isDarkMode);
   const currentUser = useAuthStore((state) => state.user);
+  const token = useAuthStore((state) => state.token);
   const rtConversations = useRTChatStore((state) => state.conversations);
   const pendingConversations = useRTChatStore((state) => state.pendingConversations);
   const loadConversations = useRTChatStore((state) => state.loadConversations);
   const loadPendingConversations = useRTChatStore((state) => state.loadPendingConversations);
-  const acceptConversation = useRTChatStore((state) => state.acceptConversation);
 
   // Load bot avatar từ API
   useEffect(() => {
@@ -45,11 +48,12 @@ export default function ChatSidebar({ onSelect, activeId, onToggle }:{
       .catch(err => console.error('Error loading bot avatar:', err));
   }, []);
 
-  // Load pending conversations once on mount
   useEffect(() => {
-    loadPendingConversations();
-    // No polling needed - conv:upsert event will push updates automatically
-  }, [loadPendingConversations]);
+    if (currentUser && token) {
+      loadConversations();
+      loadPendingConversations();
+    }
+  }, [currentUser, token, loadConversations, loadPendingConversations]);
 
   return (
     <aside className={`w-80 shrink-0 flex flex-col border-r overflow-hidden ${
@@ -140,42 +144,44 @@ export default function ChatSidebar({ onSelect, activeId, onToggle }:{
             </div>
             {pendingConversations.map((conv) => {
               const otherMember = conv.members.find(m => m.userId !== currentUser?.id);
-              const avatar = otherMember?.userAvatarUrl;
+              const avatarUrl = resolveMediaUrl(otherMember?.userAvatarUrl);
               const name = otherMember?.userDisplayName || otherMember?.userEmail || "User";
               const preview = conv.lastMessage?.content || "Tin nhắn mới";
               
               return (
-                <div
+                <button
                   key={conv.id}
-                  className={`w-full flex items-center p-3 gap-3 border-b ${
-                    isDarkMode ? "border-zinc-800" : "border-zinc-200"
+                  onClick={() => setPreviewPendingId(conv.id)}
+                  className={`w-full flex items-center p-3 gap-3 border-b transition ${
+                    isDarkMode ? "border-zinc-800 hover:bg-zinc-800" : "border-zinc-200 hover:bg-zinc-100"
                   }`}
                 >
-                  {avatar ? (
-                    <img src={avatar} alt="" className="w-10 h-10 rounded-full object-cover" />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-white font-bold">
-                      {name.charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
+                  {avatarUrl ? (
+                    <img
+                      src={avatarUrl}
+                      alt=""
+                      className="w-10 h-10 rounded-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                        if (fallback) fallback.style.display = 'flex';
+                      }}
+                    />
+                  ) : null}
+                  <div
+                    className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-white font-bold"
+                    style={{ display: avatarUrl ? 'none' : 'flex' }}
+                  >
+                    {getInitials(name)}
+                  </div>
+                  <div className="flex-1 min-w-0 text-left">
                     <div className="font-medium truncate">{name}</div>
                     <div className={`text-xs truncate ${
                       isDarkMode ? "text-zinc-400" : "text-zinc-600"
                     }`}>{preview}</div>
                   </div>
-                  <button
-                    onClick={() => acceptConversation(conv.id)}
-                    className={`px-3 py-1 text-xs rounded-md font-medium transition ${
-                      isDarkMode
-                        ? "bg-green-600 hover:bg-green-700 text-white"
-                        : "bg-green-500 hover:bg-green-600 text-white"
-                    }`}
-                    title="Chấp nhận"
-                  >
-                    Chấp nhận
-                  </button>
-                </div>
+                  <Icon name="chevron-right" size="sm" className="text-zinc-500" />
+                </button>
               );
             })}
           </div>
@@ -185,7 +191,7 @@ export default function ChatSidebar({ onSelect, activeId, onToggle }:{
         {rtConversations.map((conv) => {
           const isActive = activeId === conv.id;
           const otherMember = conv.members.find(m => m.userId !== currentUser?.id);
-          const avatar = otherMember?.userAvatarUrl;
+          const avatarUrl = resolveMediaUrl(otherMember?.userAvatarUrl);
           const name = otherMember?.userDisplayName || otherMember?.userEmail || "User";
           const preview = conv.lastMessage?.content || "Bắt đầu cuộc trò chuyện...";
           
@@ -199,13 +205,24 @@ export default function ChatSidebar({ onSelect, activeId, onToggle }:{
               }`}
               onClick={() => onSelect(conv.id)}
             >
-              {avatar ? (
-                <img src={avatar} alt="" className="w-12 h-12 rounded-full object-cover" />
-              ) : (
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
-                  {name.charAt(0).toUpperCase()}
-                </div>
-              )}
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt=""
+                  className="w-12 h-12 rounded-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                    if (fallback) fallback.style.display = 'flex';
+                  }}
+                />
+              ) : null}
+              <div
+                className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg"
+                style={{ display: avatarUrl ? 'none' : 'flex' }}
+              >
+                {getInitials(name)}
+              </div>
               <div className="flex-1 text-left truncate">
                 <div className="font-bold text-lg truncate">{name}</div>
                 <div className={`text-sm truncate ${
@@ -219,6 +236,25 @@ export default function ChatSidebar({ onSelect, activeId, onToggle }:{
           );
         })}
       </div>
+
+      {previewPendingId && (() => {
+        const conv = pendingConversations.find(c => c.id === previewPendingId);
+        if (!conv) return null;
+        const otherMember = conv.members.find(m => m.userId !== currentUser?.id);
+        return (
+          <PendingConversationPreviewModal
+            conversationId={conv.id}
+            conversationTitle={otherMember?.userDisplayName || otherMember?.userEmail || "User"}
+            otherMemberAvatar={otherMember?.userAvatarUrl}
+            otherMemberName={otherMember?.userDisplayName || otherMember?.userEmail || "User"}
+            onClose={() => setPreviewPendingId(null)}
+            onAcceptSuccess={(id) => {
+              setPreviewPendingId(null);
+              onSelect(id);
+            }}
+          />
+        );
+      })()}
     </aside>
   );
 }

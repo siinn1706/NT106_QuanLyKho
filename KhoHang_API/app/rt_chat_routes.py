@@ -72,8 +72,10 @@ class ConversationDTO(BaseModel):
     created_at: datetime = Field(..., serialization_alias="createdAt")
     updated_at: datetime = Field(..., serialization_alias="updatedAt")
     members: List[ConversationMemberDTO]
-    last_message: Optional[dict] = None
-    unread_count: int = 0
+    last_message: Optional[dict] = Field(None, serialization_alias="lastMessage")
+    unread_count: int = Field(0, serialization_alias="unreadCount")
+    
+    model_config = {"populate_by_name": True}
 
 class MessageReceiptDTO(BaseModel):
     user_id: str = Field(..., serialization_alias="userId")
@@ -211,8 +213,8 @@ def list_conversations(
             last_message={
                 "id": last_msg.id,
                 "content": last_msg.content,
-                "sender_id": last_msg.sender_id,
-                "created_at": last_msg.created_at.isoformat()
+                "senderId": last_msg.sender_id,
+                "createdAt": last_msg.created_at.isoformat()
             } if last_msg else None,
             unread_count=unread
         ))
@@ -294,8 +296,8 @@ def list_pending_conversations(
             last_message={
                 "id": last_msg.id,
                 "content": last_msg.content,
-                "sender_id": last_msg.sender_id,
-                "created_at": last_msg.created_at.isoformat()
+                "senderId": last_msg.sender_id,
+                "createdAt": last_msg.created_at.isoformat()
             } if last_msg else None,
             unread_count=unread
         ))
