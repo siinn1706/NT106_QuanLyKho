@@ -19,6 +19,7 @@ type EventType =
   | 'msg:read'
   | 'typing'
   | 'conv:sync:result'
+  | 'conv:upsert'
   | 'error'
   | 'ping';
 

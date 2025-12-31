@@ -162,14 +162,27 @@ def list_conversations(
                 RTMessageModel.conversation_id == conv.id
             ).order_by(RTMessageReceiptModel.read_at.desc()).first()
             
-            last_read_msg_id = last_read_receipt.message_id if last_read_receipt else None
+            if last_read_receipt:
+                last_read_msg = db.query(RTMessageModel).filter(
+                    RTMessageModel.id == last_read_receipt.message_id
+                ).first()
+                last_read_timestamp = last_read_msg.created_at if last_read_msg else None
+            else:
+                last_read_timestamp = None
             
-            unread = db.query(RTMessageModel).filter(
-                RTMessageModel.conversation_id == conv.id,
-                RTMessageModel.sender_id != current_user["id"],
-                RTMessageModel.deleted_at.is_(None),
-                RTMessageModel.id > (last_read_msg_id or "")
-            ).count()
+            if last_read_timestamp:
+                unread = db.query(RTMessageModel).filter(
+                    RTMessageModel.conversation_id == conv.id,
+                    RTMessageModel.sender_id != current_user["id"],
+                    RTMessageModel.deleted_at.is_(None),
+                    RTMessageModel.created_at > last_read_timestamp
+                ).count()
+            else:
+                unread = db.query(RTMessageModel).filter(
+                    RTMessageModel.conversation_id == conv.id,
+                    RTMessageModel.sender_id != current_user["id"],
+                    RTMessageModel.deleted_at.is_(None)
+                ).count()
         else:
             unread = 0
         
@@ -404,10 +417,14 @@ def get_conversation_messages(
     )
     
     if after:
-        query = query.filter(RTMessageModel.id > after)
+        after_msg = db.query(RTMessageModel).filter(RTMessageModel.id == after).first()
+        if after_msg:
+            query = query.filter(RTMessageModel.created_at > after_msg.created_at)
         query = query.order_by(RTMessageModel.created_at.asc())
     elif before:
-        query = query.filter(RTMessageModel.id < before)
+        before_msg = db.query(RTMessageModel).filter(RTMessageModel.id == before).first()
+        if before_msg:
+            query = query.filter(RTMessageModel.created_at < before_msg.created_at)
         query = query.order_by(RTMessageModel.created_at.desc())
     else:
         query = query.order_by(RTMessageModel.created_at.desc())
