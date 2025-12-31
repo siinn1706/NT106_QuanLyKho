@@ -76,6 +76,8 @@ from .db_helpers import (
 from .auth_routes import router as auth_router
 from .user_routes import router as user_router
 from .chatbot_routes import router as chatbot_router
+from .rt_chat_routes import router as rt_chat_router
+from .rt_chat_ws import websocket_endpoint
 
 DATA_DIR = get_datadir()
 UPLOADS_DIR = DATA_DIR / "uploads"
@@ -99,6 +101,10 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(user_router)
 app.include_router(chatbot_router)
+app.include_router(rt_chat_router)
+
+# WebSocket endpoint for realtime chat
+app.websocket("/ws/rt")(websocket_endpoint)
 
 # -------------------------------------------------
 # ROOT
@@ -1455,7 +1461,7 @@ def get_user_preferences(
 def update_user_preferences(
     update_data: schemas.UserPreferencesUpdate,
     db: Session = Depends(get_db),
-    current_user: AuthUserModel = Depends(require_auth)
+    current_user: dict = Depends(require_auth)
 ):
     """
     API: PUT /user/preferences
@@ -1468,12 +1474,12 @@ def update_user_preferences(
     Notes: Chỉ cần gửi các field cần cập nhật
     """
     prefs = db.query(UserPreferencesModel).filter(
-        UserPreferencesModel.user_id == current_user.id
+        UserPreferencesModel.user_id == current_user["id"]
     ).first()
     
     if not prefs:
         # Tạo mới nếu chưa có
-        prefs = UserPreferencesModel(user_id=current_user.id)
+        prefs = UserPreferencesModel(user_id=current_user["id"])
         db.add(prefs)
     
     if update_data.accent_id is not None:

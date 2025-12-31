@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import ChatSidebar from "./ChatSidebar";
 import ChatRoom from "./ChatRoom";
+import RealtimeChatRoom from "../realtime-chat/RealtimeChatRoom";
 import { useThemeStore } from "../../theme/themeStore";
+import { useRTChatStore } from "../../state/rt_chat_store";
 import Icon from "../ui/Icon";
 import { BASE_URL } from "../../app/api_client";
 
@@ -207,7 +209,11 @@ export default function ChatWidget() {
           )}
           <div className="flex-1 min-w-0 flex flex-col relative overflow-hidden">
             {activeId ? (
-              <ChatRoom conversationId={activeId} sidebarCollapsed={sidebarCollapsed} onExpandSidebar={() => setSidebarCollapsed(false)} />
+              activeId === "bot" ? (
+                <ChatRoom conversationId={activeId} sidebarCollapsed={sidebarCollapsed} onExpandSidebar={() => setSidebarCollapsed(false)} />
+              ) : (
+                <RealtimeChatRoom conversationId={activeId} sidebarCollapsed={sidebarCollapsed} onExpandSidebar={() => setSidebarCollapsed(false)} />
+              )
             ) : (
               <div className={`flex-1 flex flex-col items-center justify-center gap-4 ${
                 isDarkMode ? "text-zinc-400" : "text-zinc-500"

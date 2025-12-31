@@ -6,6 +6,7 @@ requests
 email-validator
 google-genai
 python-multipart
+aiofiles
 # Image processing
 Pillow
 # Export dependencies

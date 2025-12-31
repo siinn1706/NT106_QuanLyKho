@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useThemeStore } from "../../theme/themeStore";
 import ReactMarkdown from "react-markdown";
 import Icon from "../ui/Icon";
@@ -38,9 +38,12 @@ export default function MessageBubble({
   const isDarkMode = useThemeStore((state) => state.isDarkMode);
 
   // Sync reactions khi initialReactions thay đổi (từ server)
+  // Use useMemo to create stable reference for comparison
+  const reactionsKey = useMemo(() => JSON.stringify(initialReactions), [initialReactions.length, initialReactions.join(',')]);
+  
   useEffect(() => {
     setReactions(initialReactions);
-  }, [initialReactions]);
+  }, [reactionsKey]);
 
   const handleReaction = (emoji: string) => {
     let newReactions: string[];
