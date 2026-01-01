@@ -1,6 +1,7 @@
 import { useState, FormEvent, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../state/auth_store';
+import { useThemeStore } from '../../theme/themeStore';
 import { authService } from '../../app/auth_service';
 import Icon from '../../components/ui/Icon';
 import { showToast } from '../../utils/toast';
@@ -8,6 +9,7 @@ import { showToast } from '../../utils/toast';
 export default function Register_Page() {
   const navigate = useNavigate();
   const { login } = useAuthStore();
+  const { isDarkMode, toggleDarkMode } = useThemeStore();
   
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -153,7 +155,20 @@ export default function Register_Page() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[var(--bg)] flex items-center justify-center p-4 relative">
+      {/* Theme toggle - top right */}
+      <button
+        onClick={toggleDarkMode}
+        className={`absolute top-6 right-6 p-3 rounded-[var(--radius-xl)] border backdrop-blur-md transition-all duration-150 ${
+          isDarkMode
+            ? 'border-white/20 bg-white/10 hover:bg-white/15'
+            : 'border-black/10 bg-white/80 hover:bg-white/90'
+        }`}
+        title={isDarkMode ? 'Chế độ sáng' : 'Chế độ tối'}
+      >
+        <Icon name={isDarkMode ? 'sun' : 'moon'} size="md" />
+      </button>
+
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-20 h-20 mb-4 bg-white/5 rounded-2xl p-2 border border-white/10">

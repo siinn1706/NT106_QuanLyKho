@@ -503,6 +503,72 @@ def accept_conversation(
     return {"success": True}
 
 
+class RejectConversationRequest(BaseModel):
+    delete_history: bool = Field(False, serialization_alias="deleteHistory")
+    
+    model_config = {"populate_by_name": True}
+
+
+@router.post("/conversations/{conversation_id}/reject", response_model=dict)
+def reject_conversation(
+    conversation_id: str,
+    request: RejectConversationRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    API: POST /rt/conversations/{id}/reject
+    Purpose: Reject a pending conversation with optional history deletion
+    Request (JSON): { "delete_history": true/false }
+    Response (JSON) [200]: { success: true }
+    Response Errors:
+    - 401: { "detail": "Unauthorized" }
+    - 404: { "detail": "Conversation not found" }
+    - 500: { "detail": "Internal Server Error" }
+    Notes: Removes user's membership; if delete_history=true, also deletes all messages and conversation
+    """
+    # Check if conversation exists and user is a member
+    member = db.query(RTConversationMemberModel).filter(
+        RTConversationMemberModel.conversation_id == conversation_id,
+        RTConversationMemberModel.user_id == current_user["id"]
+    ).first()
+    
+    if not member:
+        raise HTTPException(404, "Conversation not found or you are not a member")
+    
+    if request.delete_history:
+        # Delete all messages in this conversation
+        db.query(RTMessageModel).filter(
+            RTMessageModel.conversation_id == conversation_id
+        ).delete()
+        
+        # Delete all receipts
+        db.query(RTMessageReceiptModel).filter(
+            RTMessageReceiptModel.message_id.in_(
+                db.query(RTMessageModel.id).filter(
+                    RTMessageModel.conversation_id == conversation_id
+                )
+            )
+        ).delete(synchronize_session=False)
+        
+        # Delete all members
+        db.query(RTConversationMemberModel).filter(
+            RTConversationMemberModel.conversation_id == conversation_id
+        ).delete()
+        
+        # Delete conversation itself
+        db.query(RTConversationModel).filter(
+            RTConversationModel.id == conversation_id
+        ).delete()
+    else:
+        # Just remove user's membership
+        db.delete(member)
+    
+    db.commit()
+    
+    return {"success": True}
+
+
 @router.post("/files", response_model=FileUploadResponse)
 async def upload_file(
     file: UploadFile = File(...),
