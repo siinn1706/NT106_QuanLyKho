@@ -12,20 +12,12 @@ import sys
 
 # --- SỬA ĐỔI QUAN TRỌNG: LƯU DB VÀO THƯ MỤC CỐ ĐỊNH ---
 def get_datadir() -> Path:
-    """Lấy đường dẫn lưu dữ liệu bền vững (AppData/Roaming/NT106_QuanLyKho)"""
-    home = Path.home()
-    app_name = "NT106_QuanLyKho"
-
-    if sys.platform == "win32":
-        base_path = Path(os.getenv("APPDATA", home / "AppData" / "Roaming"))
-    elif sys.platform == "darwin":
-        base_path = home / "Library" / "Application Support"
-    else:
-        base_path = home / ".local" / "share"
-    
-    full_path = base_path / app_name
-    full_path.mkdir(parents=True, exist_ok=True)
-    return full_path
+    """Lấy đường dẫn lưu dữ liệu trong project directory (KhoHang_API/data)"""
+    # Use project directory instead of AppData for easier development
+    project_root = Path(__file__).parent.parent  # KhoHang_API folder
+    data_dir = project_root / "data"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    return data_dir
 
 # Thiết lập đường dẫn file DB cố định
 DATA_DIR = get_datadir()

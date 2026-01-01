@@ -47,7 +47,7 @@ export default function ProductCodeInput({
   const [highlightIndex, setHighlightIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const searchTimeoutRef = useRef<number | null>(null);
 
   // Tìm kiếm gợi ý khi nhập (debounced, async)
   useEffect(() => {

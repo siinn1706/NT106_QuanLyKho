@@ -87,7 +87,7 @@ function mapToSearchResults(response: GlobalSearchResponse): SearchResult[] {
 export function useGlobalSearch() {
   const [isSearching, setIsSearching] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceTimerRef = useRef<number | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Cleanup on unmount

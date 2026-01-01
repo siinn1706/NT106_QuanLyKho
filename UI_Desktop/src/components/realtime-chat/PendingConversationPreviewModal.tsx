@@ -87,11 +87,11 @@ export default function PendingConversationPreviewModal({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fadeIn"
       onClick={onClose}
     >
       <div
-        className={`w-full max-w-2xl h-[600px] rounded-3xl shadow-ios-lg border flex flex-col overflow-hidden ${
+        className={`w-full max-w-2xl h-[400px] rounded-3xl shadow-2xl border flex flex-col overflow-hidden ${
           isDarkMode ? "bg-zinc-900 border-zinc-700" : "bg-white border-zinc-300"
         }`}
         onClick={(e) => e.stopPropagation()}
@@ -135,7 +135,8 @@ export default function PendingConversationPreviewModal({
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* Container với padding top/bottom đủ để không bị cắt tin nhắn */}
+        <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
           {isLoading && (
             <div className="flex justify-center items-center h-full">
               <Icon name="spinner" size="md" className="animate-spin text-zinc-500" />
@@ -157,9 +158,10 @@ export default function PendingConversationPreviewModal({
             messages.map((msg, idx) => (
               <MessageBubble
                 key={msg.id}
-                content={msg.content}
-                isMine={msg.senderId === currentUser?.id}
-                timestamp={msg.createdAt}
+                messageId={msg.id}
+                text={msg.content}
+                mine={msg.senderId === currentUser?.id}
+                time={msg.createdAt}
                 senderName={msg.senderDisplayName || msg.senderEmail || "User"}
                 senderAvatar={resolveMediaUrl(msg.senderAvatarUrl) || undefined}
                 isLastInGroup={

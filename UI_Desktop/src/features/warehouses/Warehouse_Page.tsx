@@ -67,7 +67,7 @@ export default function Warehouse_Page() {
   const [userSearchResults, setUserSearchResults] = useState<UserSearchResult[]>([]);
   const [activeManagerIndex, setActiveManagerIndex] = useState<number | null>(null);
   const [isSearchingUsers, setIsSearchingUsers] = useState(false);
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const searchTimeoutRef = useRef<number | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

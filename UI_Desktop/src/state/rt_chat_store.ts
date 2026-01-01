@@ -9,6 +9,7 @@ import { persist } from 'zustand/middleware';
 import { rtWSClient } from '../services/rt_ws_client';
 import { BASE_URL } from '../app/api_client';
 import { useAuthStore } from './auth_store';
+import type { Attachment, ContentType } from '../types/attachment';
 
 export interface MessageReceipt {
   userId: string;
@@ -22,8 +23,8 @@ export interface MessageUI {
   senderId: string;
   clientMessageId: string;
   content: string;
-  contentType: 'text' | 'image' | 'file' | 'system';
-  attachments?: any[];
+  contentType: ContentType;
+  attachments?: Attachment[];
   createdAt: string;
   editedAt?: string;
   deletedAt?: string;
@@ -76,12 +77,13 @@ interface RTChatState {
   setWSStatus: (status: 'connecting' | 'open' | 'closed') => void;
   loadConversations: () => Promise<void>;
   loadPendingConversations: () => Promise<void>;  // NEW
-  acceptConversation: (conversationId: string) => Promise<void>;  // NEW  joinConversation: (conversationId: string) => void;
+  acceptConversation: (conversationId: string) => Promise<void>;  // NEW
+  joinConversation: (conversationId: string) => void;
   sendMessage: (conversationId: string, content: string, contentType?: MessageUI['contentType'], attachments?: any[]) => void;
   markRead: (conversationId: string, lastReadMessageId: string) => void;
   syncConversation: (conversationId: string, afterMessageId?: string) => void;
   createDirectConversation: (email: string) => Promise<string>;
-  uploadFile: (file: File) => Promise<any>;
+  uploadFile: (file: File) => Promise<Attachment>;
   
   handleServerHello: (data: any) => void;
   handleMsgAck: (data: any) => void;
@@ -377,7 +379,7 @@ export const useRTChatStore = create<RTChatState>()(
           return data.conversation_id;
         },
         
-        uploadFile: async (file: File): Promise<any> => {
+        uploadFile: async (file: File): Promise<Attachment> => {
           /**
            * API: POST /rt/files
            * Purpose: Upload file for chat
@@ -385,6 +387,10 @@ export const useRTChatStore = create<RTChatState>()(
            * Response (JSON) [200]: { file_id, url, name, size, mime_type }
            */
           const token = useAuthStore.getState().token;
+          if (!token) {
+            throw new Error('No authentication token');
+          }
+          
           const formData = new FormData();
           formData.append('file', file);
           
@@ -396,12 +402,19 @@ export const useRTChatStore = create<RTChatState>()(
             body: formData
           });
           
+          if (response.status === 401) {
+            // Token expired or invalid - logout user
+            console.error('[RT-Chat] Upload failed: 401 Unauthorized, logging out...');
+            useAuthStore.getState().logout();
+            throw new Error('Session expired. Please login again.');
+          }
+          
           if (!response.ok) {
-            const error = await response.json();
+            const error = await response.json().catch(() => ({ detail: 'Upload failed' }));
             throw new Error(error.detail || 'Failed to upload file');
           }
           
-          return await response.json();
+          return await response.json() as Attachment;
         },
         
         handleServerHello: (data) => {

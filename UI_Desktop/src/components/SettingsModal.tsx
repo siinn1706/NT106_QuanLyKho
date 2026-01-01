@@ -55,7 +55,7 @@ export default function SettingsModal({ isOpen, onClose, initialTab = 'general' 
   const [showWarehouseForm, setShowWarehouseForm] = useState(false);
   
   // Manager form states
-  const [managerForm, setManagerForm] = useState<WarehouseManager>({ name: '', position: '' });
+  const [managerForm, setManagerForm] = useState<WarehouseManager>({ email: '', position: '' });
   const [editingManagerIndex, setEditingManagerIndex] = useState<number | null>(null);
 
   // Passkey states
@@ -193,7 +193,7 @@ export default function SettingsModal({ isOpen, onClose, initialTab = 'general' 
     });
     setEditingWarehouseId(null);
     setShowWarehouseForm(false);
-    setManagerForm({ name: '', position: '' });
+    setManagerForm({ email: '', position: '' });
     setEditingManagerIndex(null);
   };
 
@@ -203,8 +203,8 @@ export default function SettingsModal({ isOpen, onClose, initialTab = 'general' 
   
   // Manager handlers
   const handleAddManager = () => {
-    if (!managerForm.name.trim() || !managerForm.position.trim()) {
-      showToast.info('Vui lòng nhập tên và chức vụ!');
+    if (!managerForm.email.trim() || !managerForm.position.trim()) {
+      showToast.info('Vui lòng nhập email và chức vụ!');
       return;
     }
     
@@ -222,7 +222,7 @@ export default function SettingsModal({ isOpen, onClose, initialTab = 'general' 
       }));
     }
     
-    setManagerForm({ name: '', position: '' });
+    setManagerForm({ email: '', position: '' });
   };
   
   const handleEditManager = (index: number) => {
@@ -930,16 +930,16 @@ export default function SettingsModal({ isOpen, onClose, initialTab = 'general' 
                         {/* Manager Form */}
                         <div className="flex gap-2 mb-3">
                           <input
-                            type="text"
-                            value={managerForm.name}
-                            onChange={(e) => setManagerForm((prev) => ({ ...prev, name: e.target.value }))}
-                            placeholder="Tên người quản lý"
+                            type="email"
+                            value={managerForm.email}
+                            onChange={(e) => setManagerForm((prev: any) => ({ ...prev, email: e.target.value }))}
+                            placeholder="Email người quản lý"
                             className="flex-1 px-3 py-2 rounded-lg border bg-[var(--surface-1)] border-[var(--border)] focus:border-[var(--primary)] outline-none text-sm"
                           />
                           <input
                             type="text"
                             value={managerForm.position}
-                            onChange={(e) => setManagerForm((prev) => ({ ...prev, position: e.target.value }))}
+                            onChange={(e) => setManagerForm((prev: any) => ({ ...prev, position: e.target.value }))}
                             placeholder="Chức vụ"
                             className="flex-1 px-3 py-2 rounded-lg border bg-[var(--surface-1)] border-[var(--border)] focus:border-[var(--primary)] outline-none text-sm"
                           />
@@ -958,7 +958,7 @@ export default function SettingsModal({ isOpen, onClose, initialTab = 'general' 
                               <div key={idx} className="flex items-center gap-2 p-2 rounded-lg bg-[var(--surface-3)] border border-[var(--border)]">
                                 <Icon name="user" size="sm" className="text-[var(--text-2)]" />
                                 <div className="flex-1">
-                                  <p className="text-sm font-medium">{mgr.name}</p>
+                                  <p className="text-sm font-medium">{mgr.email}</p>
                                   <p className="text-xs text-[var(--text-2)]">{mgr.position}</p>
                                 </div>
                                 <button
@@ -1049,7 +1049,7 @@ export default function SettingsModal({ isOpen, onClose, initialTab = 'general' 
                                   <p className="text-xs text-[var(--text-2)] font-medium">Quản lý:</p>
                                   {wh.managers.map((mgr, idx) => (
                                     <p key={idx} className="text-xs text-[var(--text-2)] ml-2">
-                                      • {mgr.name} - {mgr.position}
+                                      • {mgr.email} - {mgr.position}
                                     </p>
                                   ))}
                                 </div>

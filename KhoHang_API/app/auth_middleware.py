@@ -62,6 +62,7 @@ def get_current_user(
     # Get user from database
     user = db.query(UserModel).filter(UserModel.id == user_id).first()
     if not user:
+        print(f"[Auth] User not found: user_id={user_id}, token payload={payload}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found"

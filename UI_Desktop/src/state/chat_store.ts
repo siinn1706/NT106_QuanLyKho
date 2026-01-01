@@ -6,6 +6,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type { ContentType, Attachment } from '../types/attachment';
 
 export type ReplyInfo = {
   id: string;
@@ -19,8 +20,10 @@ export type Message = {
   sender: "user" | "agent" | "bot";
   text: string;
   createdAt: string;
-  replyTo?: ReplyInfo | null; // Tin nhắn đang trả lời
-  reactions?: string[]; // Emoji reactions: ["👍", "❤️", ...]
+  replyTo?: ReplyInfo | null;
+  reactions?: string[];
+  contentType?: ContentType;
+  attachments?: Attachment[];
 };
 
 interface ChatStore {

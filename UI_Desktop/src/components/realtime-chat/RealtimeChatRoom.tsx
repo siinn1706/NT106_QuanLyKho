@@ -9,6 +9,9 @@ import { useThemeStore } from "../../theme/themeStore";
 import { useRTChatStore, MessageUI } from "../../state/rt_chat_store";
 import { useAuthStore } from "../../state/auth_store";
 import { rtWSClient } from "../../services/rt_ws_client";
+import { AttachmentPicker, AttachmentPreview } from "../chat/AttachmentPicker";
+import { isImageMimeType, type Attachment, type UploadProgress } from "../../types/attachment";
+import { showError } from "../../utils/toast";
 import ChatBackground from "../chat/ChatBackground";
 import DateSeparator from "../chat/DateSeparator";
 import ChatDatePicker from "../chat/ChatDatePicker";
@@ -38,11 +41,15 @@ export default function RealtimeChatRoom({ conversationId, sidebarCollapsed, onE
   const typing = useRTChatStore(state => state.typingByConv[conversationId] || {});
   const sendMessage = useRTChatStore(state => state.sendMessage);
   const markRead = useRTChatStore(state => state.markRead);
+  const uploadFile = useRTChatStore(state => state.uploadFile);
   
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showScrollButton, setShowScrollButton] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<Map<string, UploadProgress>>(new Map());
+  const [uploadedAttachments, setUploadedAttachments] = useState<Attachment[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -115,12 +122,59 @@ export default function RealtimeChatRoom({ conversationId, sidebarCollapsed, onE
     }
   }, [messages, conversationId, currentUser, markRead]);
   
+  const handleFilesSelected = async (files: File[]) => {
+    setSelectedFiles(prev => [...prev, ...files]);
+    
+    for (const file of files) {
+      const progressMap = new Map(uploadProgress);
+      progressMap.set(file.name, { file, progress: 0, status: 'uploading' });
+      setUploadProgress(progressMap);
+      
+      try {
+        const result = await uploadFile(file);
+        
+        const progressMapDone = new Map(uploadProgress);
+        progressMapDone.set(file.name, { file, progress: 100, status: 'completed', result });
+        setUploadProgress(progressMapDone);
+        
+        setUploadedAttachments(prev => [...prev, result]);
+      } catch (error: any) {
+        const progressMapError = new Map(uploadProgress);
+        progressMapError.set(file.name, { file, progress: 0, status: 'error', error: error.message });
+        setUploadProgress(progressMapError);
+        
+        showError(`Lỗi upload ${file.name}: ${error.message}`);
+      }
+    }
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+    const file = selectedFiles[index];
+    if (file) {
+      setUploadProgress(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(file.name);
+        return newMap;
+      });
+      setUploadedAttachments(prev => prev.filter(att => att.name !== file.name));
+    }
+  };
+  
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputValue.trim()) return;
+    if (!inputValue.trim() && uploadedAttachments.length === 0) return;
     
-    sendMessage(conversationId, inputValue.trim());
+    const currentAttachments = [...uploadedAttachments];
+    const contentType = currentAttachments.length > 0
+      ? (currentAttachments.every(att => isImageMimeType(att.mime_type)) ? 'image' : 'file')
+      : 'text';
+    
+    sendMessage(conversationId, inputValue.trim(), contentType as any, currentAttachments.length > 0 ? currentAttachments : undefined);
     setInputValue("");
+    setSelectedFiles([]);
+    setUploadedAttachments([]);
+    setUploadProgress(new Map());
     
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
@@ -245,6 +299,8 @@ export default function RealtimeChatRoom({ conversationId, sidebarCollapsed, onE
                 onReactionChange={() => {}}
                 onReply={() => {}}
                 status={msg.status}
+                contentType={msg.contentType}
+                attachments={msg.attachments}
               />
             ))}
           </div>
@@ -280,36 +336,46 @@ export default function RealtimeChatRoom({ conversationId, sidebarCollapsed, onE
       
       <form
         onSubmit={handleSend}
-        className={`flex items-center gap-3 p-4 border-t shrink-0 z-20 ${
+        className={`flex flex-col gap-2 border-t shrink-0 z-20 ${
           isDarkMode ? "bg-zinc-900/80 border-zinc-700" : "bg-white/80 border-zinc-300"
         } backdrop-blur-md`}
       >
-        <input
-          ref={inputRef}
-          type="text"
-          value={inputValue}
-          onChange={handleInputChange}
-          placeholder="Nhập tin nhắn..."
-          className={`flex-1 px-4 py-2.5 rounded-full outline-none transition-all duration-200 ${
-            isDarkMode
-              ? "bg-zinc-700 text-zinc-100 placeholder-zinc-400 border border-zinc-600"
-              : "liquid-glass-ui text-gray-800 placeholder-zinc-400"
-          }`}
-        />
+        {selectedFiles.length > 0 && (
+          <div className="px-4 pt-2">
+            <AttachmentPreview
+              files={selectedFiles}
+              uploadProgress={uploadProgress}
+              onRemove={handleRemoveFile}
+            />
+          </div>
+        )}
         
-        <button
-          type="submit"
-          disabled={!inputValue.trim()}
-          className={`rounded-full w-10 h-10 flex items-center justify-center transition-all duration-200 hover:scale-105 ${
-            inputValue.trim()
-              ? "bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-lg"
-              : isDarkMode
-                ? "liquid-glass-ui-dark text-zinc-600"
-                : "liquid-glass-ui text-zinc-400"
-          }`}
-        >
-          <Icon name="paper-plane" size="sm" />
-        </button>
+        <div className="flex items-center gap-3 p-4">
+          <AttachmentPicker onFilesSelected={handleFilesSelected} />
+          <input
+            ref={inputRef}
+            type="text"
+            value={inputValue}
+            onChange={handleInputChange}
+            placeholder="Nhập tin nhắn..."
+            className={`flex-1 px-4 py-2.5 rounded-full outline-none transition-all duration-200 ${
+              isDarkMode
+                ? "bg-zinc-700 text-zinc-100 placeholder-zinc-400 border border-zinc-600"
+                : "liquid-glass-ui text-gray-800 placeholder-zinc-400"
+            }`}
+          />
+          <button
+            type="submit"
+            className={`p-3 rounded-full transition-all duration-200 hover:scale-105 shadow-lg ${
+              isDarkMode
+                ? "bg-blue-600 hover:bg-blue-700 text-white"
+                : "liquid-glass-ui-primary text-white"
+            }`}
+            disabled={!inputValue.trim() && uploadedAttachments.length === 0}
+          >
+            <Icon name="send" size="md" />
+          </button>
+        </div>
       </form>
     </ChatBackground>
   );

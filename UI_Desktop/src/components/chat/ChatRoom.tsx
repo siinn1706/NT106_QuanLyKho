@@ -4,10 +4,13 @@ import TypingIndicator from "./TypingIndicator";
 import ChatBackground from "./ChatBackground";
 import DateSeparator from "./DateSeparator";
 import ChatDatePicker from "./ChatDatePicker";
+import { AttachmentPicker, AttachmentPreview } from "./AttachmentPicker";
 import { useThemeStore } from "../../theme/themeStore";
 import { useChatStore, Message } from "../../state/chat_store";
 import { useChatSync } from "../../hooks/useChatSync";
-import { apiChat } from "../../app/api_client";
+import { apiChat, apiUploadChatbotFile } from "../../app/api_client";
+import { isImageMimeType, type Attachment, type UploadProgress } from "../../types/attachment";
+import { showError } from "../../utils/toast";
 import Icon from "../ui/Icon";
 
 // Helper: Lấy date key từ ISO string (YYYY-MM-DD)
@@ -40,6 +43,9 @@ export default function ChatRoom({ conversationId, sidebarCollapsed, onExpandSid
   const [isTyping, setIsTyping] = useState(false);
   const [replyingTo, setReplyingTo] = useState<{ id: string; text: string; sender: string } | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<Map<string, UploadProgress>>(new Map());
+  const [uploadedAttachments, setUploadedAttachments] = useState<Attachment[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -117,38 +123,86 @@ export default function ChatRoom({ conversationId, sidebarCollapsed, onExpandSid
     saveReactions(messageId, reactions);
   };
 
+  const handleFilesSelected = async (files: File[]) => {
+    setSelectedFiles(prev => [...prev, ...files]);
+    
+    for (const file of files) {
+      const progressMap = new Map(uploadProgress);
+      progressMap.set(file.name, { file, progress: 0, status: 'uploading' });
+      setUploadProgress(progressMap);
+      
+      try {
+        const result = await apiUploadChatbotFile(file);
+        
+        const progressMapDone = new Map(uploadProgress);
+        progressMapDone.set(file.name, { file, progress: 100, status: 'completed', result });
+        setUploadProgress(progressMapDone);
+        
+        setUploadedAttachments(prev => [...prev, result]);
+      } catch (error: any) {
+        const progressMapError = new Map(uploadProgress);
+        progressMapError.set(file.name, { file, progress: 0, status: 'error', error: error.message });
+        setUploadProgress(progressMapError);
+        
+        showError(`Lỗi upload ${file.name}: ${error.message}`);
+      }
+    }
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+    const file = selectedFiles[index];
+    if (file) {
+      setUploadProgress(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(file.name);
+        return newMap;
+      });
+      setUploadedAttachments(prev => prev.filter(att => att.name !== file.name));
+    }
+  };
+
   const handleSend = async () => {
-    if (!inputValue.trim()) return;
+    if (!inputValue.trim() && uploadedAttachments.length === 0) return;
     
-    // Lưu reply info trước khi clear
     const currentReply = replyingTo ? { ...replyingTo } : null;
+    const currentAttachments = [...uploadedAttachments];
     
-    // Tạo user message với timestamp unique
+    const contentType = currentAttachments.length > 0
+      ? (currentAttachments.every(att => isImageMimeType(att.mime_type)) ? 'image' : 'file')
+      : 'text';
+    
     const userMsg: Message = {
       id: `msg_${conversationId}_${Date.now()}_user`,
       conversationId,
       sender: "user",
       text: inputValue,
       createdAt: new Date().toISOString(),
-      replyTo: currentReply, // Lưu thông tin reply
+      replyTo: currentReply,
+      contentType,
+      attachments: currentAttachments.length > 0 ? currentAttachments : undefined,
     };
     
-    // Lưu vào store (UI sẽ tự động cập nhật vì messages là reactive)
     addMessage(userMsg);
-    
-    // Sync lên server (nếu đã đăng nhập)
     saveMessage(userMsg);
     
     const userText = inputValue;
     setInputValue("");
-    setReplyingTo(null); // Clear reply sau khi gửi
+    setReplyingTo(null);
+    setSelectedFiles([]);
+    setUploadedAttachments([]);
+    setUploadProgress(new Map());
 
-    // Hiển thị typing indicator
     setIsTyping(true);
 
-    // Gọi BE -> Gemini
     try {
-      const res = await apiChat({ prompt: userText, system_instruction: "Bạn là trợ lý kho N3T, trả lời ngắn gọn." });
+      let promptWithFiles = userText;
+      if (currentAttachments.length > 0) {
+        const fileList = currentAttachments.map(att => `- ${att.name} (${att.mime_type})`).join('\n');
+        promptWithFiles = `${userText}\n\n[User đã gửi ${currentAttachments.length} file(s):\n${fileList}]`;
+      }
+      
+      const res = await apiChat({ prompt: promptWithFiles, system_instruction: "Bạn là trợ lý kho N3T, trả lời ngắn gọn." });
       const botMsg: Message = {
         id: `msg_${conversationId}_${Date.now()}_bot`,
         conversationId,
@@ -281,6 +335,8 @@ export default function ChatRoom({ conversationId, sidebarCollapsed, onExpandSid
                   replyTo={m.replyTo}
                   initialReactions={m.reactions || []}
                   onReactionChange={handleReactionChange}
+                  contentType={m.contentType}
+                  attachments={m.attachments}
                   onReply={() => {
                     setReplyingTo({
                       id: m.id,
@@ -341,38 +397,49 @@ export default function ChatRoom({ conversationId, sidebarCollapsed, onExpandSid
         )}
         
         {/* Input row */}
-        <div className="flex items-center gap-3 p-4">
-        <button className={`p-2.5 rounded-full transition-all duration-150 hover:scale-105 ${
-          isDarkMode ? "text-zinc-400 hover:bg-zinc-800/50" : "text-gray-600 hover:bg-gray-200/50"
-        }`} title="Gửi file"><Icon name="paperclip" size="md" /></button>
-        <button className={`p-2.5 rounded-full transition-all duration-150 hover:scale-105 ${
-          isDarkMode ? "text-zinc-400 hover:bg-zinc-800/50" : "text-gray-600 hover:bg-gray-200/50"
-        }`} title="Ghi âm"><Icon name="microphone" size="md" /></button>
-        <input
-          ref={inputRef}
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          type="text"
-          placeholder="Nhập tin nhắn..."
-          className={`flex-1 px-4 py-2.5 rounded-[24px] focus:outline-none focus:ring-1 focus:ring-[var(--primary)]/30 transition-all hover:scale-[1.02] hover:-translate-y-0.5 ${
-            isDarkMode
-              ? "bg-zinc-800/80 border border-white/10 text-white placeholder-zinc-500 focus:border-[var(--primary)]/50"
-              : "bg-white/90 border border-black/10 text-gray-900 placeholder-gray-400 focus:border-[var(--primary)]/50"
-          }`}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault(); handleSend();
-            }
-          }}
-        />
-        <button 
-          className="text-white p-3 rounded-full hover:scale-105 transition-all duration-150 shadow-ios-lg liquid-glass-hover" 
-          style={{ backgroundColor: 'var(--primary)' }}
-          onClick={handleSend} 
-          title="Gửi"
-        >
-          <Icon name="send" size="md" />
-        </button>
+        <div className="flex flex-col gap-2">
+          {/* Attachment preview */}
+          {selectedFiles.length > 0 && (
+            <div className="px-4 pt-2">
+              <AttachmentPreview
+                files={selectedFiles}
+                uploadProgress={uploadProgress}
+                onRemove={handleRemoveFile}
+              />
+            </div>
+          )}
+          
+          <div className="flex items-center gap-3 p-4">
+            <AttachmentPicker onFilesSelected={handleFilesSelected} />
+            <button className={`p-2.5 rounded-full transition-all duration-150 hover:scale-105 ${
+              isDarkMode ? "text-zinc-400 hover:bg-zinc-800/50" : "text-gray-600 hover:bg-gray-200/50"
+            }`} title="Ghi âm" style={{ display: 'none' }}><Icon name="microphone" size="md" /></button>
+            <input
+              ref={inputRef}
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              type="text"
+              placeholder="Nhập tin nhắn..."
+              className={`flex-1 px-4 py-2.5 rounded-[24px] focus:outline-none focus:ring-1 focus:ring-[var(--primary)]/30 transition-all hover:scale-[1.02] hover:-translate-y-0.5 ${
+                isDarkMode
+                  ? "bg-zinc-800/80 border border-white/10 text-white placeholder-zinc-500 focus:border-[var(--primary)]/50"
+                  : "bg-white/90 border border-black/10 text-gray-900 placeholder-gray-400 focus:border-[var(--primary)]/50"
+              }`}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault(); handleSend();
+                }
+              }}
+            />
+            <button 
+              className="text-white p-3 rounded-full hover:scale-105 transition-all duration-150 shadow-ios-lg liquid-glass-hover" 
+              style={{ backgroundColor: 'var(--primary)' }}
+              onClick={handleSend} 
+              title="Gửi"
+            >
+              <Icon name="send" size="md" />
+            </button>
+          </div>
         </div>
       </div>
     </ChatBackground>

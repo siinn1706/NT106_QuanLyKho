@@ -7,6 +7,8 @@ interface PasskeyModalProps {
   onConfirm: (passkey: string) => void;
   title?: string;
   message?: string;
+  description?: string; // Allow both message and description for flexibility
+  loading?: boolean;
 }
 
 export default function PasskeyModal({ 
@@ -14,8 +16,11 @@ export default function PasskeyModal({
   onClose, 
   onConfirm, 
   title = "Xác thực Passkey",
-  message = "Vui lòng nhập mã Passkey 6 chữ số để tiếp tục"
+  message,
+  description,
+  loading,
 }: PasskeyModalProps) {
+  const displayMessage = message || description || "Vui lòng nhập mã Passkey 6 chữ số để tiếp tục";
   const [passkey, setPasskey] = useState(['', '', '', '', '', '']);
   const [error, setError] = useState('');
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -94,7 +99,7 @@ export default function PasskeyModal({
             </div>
             <div>
               <h3 className="font-bold text-lg">{title}</h3>
-              <p className="text-sm text-[var(--text-2)]">{message}</p>
+              <p className="text-sm text-[var(--text-2)]">{displayMessage}</p>
             </div>
           </div>
         </div>
