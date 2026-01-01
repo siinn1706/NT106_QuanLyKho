@@ -50,6 +50,7 @@ export default function RealtimeChatRoom({ conversationId, sidebarCollapsed, onE
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploadProgress, setUploadProgress] = useState<Map<string, UploadProgress>>(new Map());
   const [uploadedAttachments, setUploadedAttachments] = useState<Attachment[]>([]);
+  const [replyingTo, setReplyingTo] = useState<MessageUI | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -170,11 +171,21 @@ export default function RealtimeChatRoom({ conversationId, sidebarCollapsed, onE
       ? (currentAttachments.every(att => isImageMimeType(att.mime_type)) ? 'image' : 'file')
       : 'text';
     
+    // TODO: Backend needs to support reply_to_id in payload
+    // For now, we'll add it to attachments metadata when backend ready
+    const messagePayload = {
+      content: inputValue.trim(),
+      contentType: contentType as any,
+      attachments: currentAttachments.length > 0 ? currentAttachments : undefined,
+      replyToId: replyingTo?.id
+    };
+    
     sendMessage(conversationId, inputValue.trim(), contentType as any, currentAttachments.length > 0 ? currentAttachments : undefined);
     setInputValue("");
     setSelectedFiles([]);
     setUploadedAttachments([]);
     setUploadProgress(new Map());
+    setReplyingTo(null);
     
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
@@ -189,6 +200,15 @@ export default function RealtimeChatRoom({ conversationId, sidebarCollapsed, onE
     setIsTyping(false);
     
     inputRef.current?.focus();
+  };
+
+  const handleReply = (message: MessageUI) => {
+    setReplyingTo(message);
+    inputRef.current?.focus();
+  };
+
+  const handleCancelReply = () => {
+    setReplyingTo(null);
   };
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -290,6 +310,7 @@ export default function RealtimeChatRoom({ conversationId, sidebarCollapsed, onE
               <MessageBubble
                 key={msg.id}
                 messageId={msg.id}
+                conversationId={conversationId}
                 text={msg.content}
                 time={new Date(msg.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
                 mine={msg.senderId === currentUser?.id}
@@ -297,10 +318,14 @@ export default function RealtimeChatRoom({ conversationId, sidebarCollapsed, onE
                 replyTo={null}
                 initialReactions={[]}
                 onReactionChange={() => {}}
-                onReply={() => {}}
+                onReply={() => handleReply(msg)}
                 status={msg.status}
                 contentType={msg.contentType}
                 attachments={msg.attachments}
+                senderName={msg.senderDisplayName || msg.senderEmail}
+                senderAvatar={msg.senderAvatarUrl}
+                editedAt={msg.editedAt}
+                deletedAt={msg.deletedAt}
               />
             ))}
           </div>
@@ -340,6 +365,40 @@ export default function RealtimeChatRoom({ conversationId, sidebarCollapsed, onE
           isDarkMode ? "bg-zinc-900/80 border-zinc-700" : "bg-white/80 border-zinc-300"
         } backdrop-blur-md`}
       >
+        {/* Reply preview */}
+        {replyingTo && (
+          <div className={`mx-4 mt-3 px-4 py-3 rounded-[var(--radius-xl)] border backdrop-blur-sm flex items-start gap-3 ${
+            isDarkMode
+              ? 'border-white/20 bg-white/10'
+              : 'border-black/10 bg-black/5'
+          }`}>
+            <Icon name="reply" size="sm" className={isDarkMode ? 'text-zinc-400' : 'text-zinc-500'} />
+            <div className="flex-1 min-w-0">
+              <div className={`text-xs font-medium mb-1 ${
+                isDarkMode ? 'text-zinc-300' : 'text-zinc-600'
+              }`}>
+                Trả lời {replyingTo.senderId === currentUser?.id ? 'chính mình' : (replyingTo.senderDisplayName || replyingTo.senderEmail || 'User')}
+              </div>
+              <div className={`text-sm line-clamp-2 ${
+                isDarkMode ? 'text-zinc-400' : 'text-zinc-700'
+              }`}>
+                {replyingTo.content}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleCancelReply}
+              className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center transition-colors ${
+                isDarkMode
+                  ? 'hover:bg-white/10'
+                  : 'hover:bg-black/5'
+              }`}
+            >
+              <Icon name="close" size="xs" />
+            </button>
+          </div>
+        )}
+        
         {selectedFiles.length > 0 && (
           <div className="px-4 pt-2">
             <AttachmentPreview

@@ -1,6 +1,7 @@
 import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../state/auth_store';
+import { useThemeStore } from '../../theme/themeStore';
 import { authService } from '../../app/auth_service';
 import Icon from '../../components/ui/Icon';
 import Button from '../../components/ui/Button';
@@ -9,6 +10,7 @@ import { showToast } from '../../utils/toast';
 export default function Login_Page() {
   const navigate = useNavigate();
   const { login } = useAuthStore();
+  const { isDarkMode, toggleDarkMode } = useThemeStore();
   
   const [usernameOrEmail, setUsernameOrEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -51,7 +53,20 @@ export default function Login_Page() {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--bg)] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[var(--bg)] flex items-center justify-center p-4 relative">
+      {/* Theme toggle - top right */}
+      <button
+        onClick={toggleDarkMode}
+        className={`absolute top-6 right-6 p-3 rounded-[var(--radius-xl)] border backdrop-blur-md transition-all duration-150 ${
+          isDarkMode
+            ? 'border-white/20 bg-white/10 hover:bg-white/15'
+            : 'border-black/10 bg-white/80 hover:bg-white/90'
+        }`}
+        title={isDarkMode ? 'Chế độ sáng' : 'Chế độ tối'}
+      >
+        <Icon name={isDarkMode ? 'sun' : 'moon'} size="md" />
+      </button>
+
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-20 h-20 mb-4 liquid-glass rounded-2xl p-2 border border-[var(--glass-btn-border)]">

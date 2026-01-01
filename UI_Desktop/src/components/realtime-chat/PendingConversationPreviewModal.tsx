@@ -4,8 +4,10 @@ import { useRTChatStore, MessageUI } from "../../state/rt_chat_store";
 import { useAuthStore } from "../../state/auth_store";
 import { BASE_URL } from "../../app/api_client";
 import Icon from "../ui/Icon";
+import ConfirmDialog from "../ui/ConfirmDialog";
 import { resolveMediaUrl, getInitials } from "../../utils/mediaUrl";
 import MessageBubble from "../chat/MessageBubble";
+import { showToast } from "../../utils/toast";
 
 interface Props {
   conversationId: string;
@@ -27,10 +29,14 @@ export default function PendingConversationPreviewModal({
   const [messages, setMessages] = useState<MessageUI[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAccepting, setIsAccepting] = useState(false);
+  const [isRejecting, setIsRejecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showRejectConfirm, setShowRejectConfirm] = useState(false);
+  const [showDeleteHistoryConfirm, setShowDeleteHistoryConfirm] = useState(false);
   const isDarkMode = useThemeStore((state) => state.isDarkMode);
   const currentUser = useAuthStore((state) => state.user);
   const acceptConversation = useRTChatStore((state) => state.acceptConversation);
+  const rejectConversation = useRTChatStore((state) => state.rejectConversation);
   const loadConversations = useRTChatStore((state) => state.loadConversations);
 
   useEffect(() => {
@@ -73,13 +79,43 @@ export default function PendingConversationPreviewModal({
     try {
       await acceptConversation(conversationId);
       await loadConversations();
+      showToast.success('Đã chấp nhận cuộc trò chuyện');
       onAcceptSuccess(conversationId);
       onClose();
     } catch (e: any) {
       console.error("[PendingPreview] Accept error:", e);
       setError(e.message || "Không thể chấp nhận cuộc trò chuyện");
+      showToast.error('Không thể chấp nhận cuộc trò chuyện');
     } finally {
       setIsAccepting(false);
+    }
+  };
+
+  const handleReject = () => {
+    setShowRejectConfirm(true);
+  };
+
+  const handleConfirmReject = async () => {
+    setShowRejectConfirm(false);
+    setShowDeleteHistoryConfirm(true);
+  };
+
+  const handleDeleteHistory = async (deleteHistory: boolean) => {
+    setIsRejecting(true);
+    setShowDeleteHistoryConfirm(false);
+    setError(null);
+
+    try {
+      await rejectConversation(conversationId, deleteHistory);
+      await loadConversations();
+      showToast.success('Đã từ chối cuộc trò chuyện');
+      onClose();
+    } catch (e: any) {
+      console.error("[PendingPreview] Reject error:", e);
+      setError(e.message || "Không thể từ chối cuộc trò chuyện");
+      showToast.error('Không thể từ chối cuộc trò chuyện');
+    } finally {
+      setIsRejecting(false);
     }
   };
 
@@ -178,20 +214,33 @@ export default function PendingConversationPreviewModal({
           }`}
         >
           <button
-            onClick={onClose}
-            className={`flex-1 px-6 py-3 rounded-full font-semibold transition-all duration-200 hover:scale-105 ${
+            onClick={handleReject}
+            disabled={isRejecting || isAccepting}
+            className={`flex-1 px-6 py-3 rounded-[var(--radius-xl)] font-semibold border transition-all duration-150 ${
               isDarkMode
-                ? "liquid-glass-ui-dark text-white"
-                : "liquid-glass-ui text-gray-700"
-            }`}
+                ? "border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20 active:bg-red-500/15"
+                : "border-red-500/20 bg-red-50 text-red-600 hover:bg-red-100 active:bg-red-50"
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
           >
-            Đóng
+            {isRejecting ? (
+              <>
+                <Icon name="spinner" size="sm" className="animate-spin inline-block mr-2" />
+                Đang xử lý...
+              </>
+            ) : (
+              "Từ chối"
+            )}
           </button>
 
           <button
             onClick={handleAccept}
-            disabled={isAccepting}
-            className="flex-1 px-6 py-3 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 text-white font-semibold shadow-lg hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+            disabled={isAccepting || isRejecting}
+            className="flex-1 px-6 py-3 rounded-[var(--radius-xl)] font-semibold transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{
+              backgroundColor: 'var(--success)',
+              color: 'var(--text-inverse)',
+              border: isDarkMode ? '1px solid rgba(255, 255, 255, 0.15)' : '1px solid rgba(0, 0, 0, 0.05)',
+            }}
           >
             {isAccepting ? (
               <>
@@ -204,6 +253,31 @@ export default function PendingConversationPreviewModal({
           </button>
         </div>
       </div>
+
+      {/* Confirmation dialogs */}
+      <ConfirmDialog
+        isOpen={showRejectConfirm}
+        title="Từ chối cuộc trò chuyện?"
+        message={`Bạn có chắc muốn từ chối cuộc trò chuyện với ${otherMemberName}?`}
+        confirmLabel="Từ chối"
+        cancelLabel="Huỷ"
+        variant="danger"
+        onConfirm={handleConfirmReject}
+        onCancel={() => setShowRejectConfirm(false)}
+        isDarkMode={isDarkMode}
+      />
+
+      <ConfirmDialog
+        isOpen={showDeleteHistoryConfirm}
+        title="Xoá lịch sử tin nhắn?"
+        message="Bạn có muốn xoá toàn bộ lịch sử tin nhắn của cuộc trò chuyện này không?"
+        confirmLabel="Xoá lịch sử"
+        cancelLabel="Giữ lại"
+        variant="warning"
+        onConfirm={() => handleDeleteHistory(true)}
+        onCancel={() => handleDeleteHistory(false)}
+        isDarkMode={isDarkMode}
+      />
     </div>
   );
 }

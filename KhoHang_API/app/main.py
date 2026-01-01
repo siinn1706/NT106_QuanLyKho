@@ -1440,13 +1440,13 @@ def get_user_preferences(
     }
     """
     prefs = db.query(UserPreferencesModel).filter(
-        UserPreferencesModel.user_id == current_user.id
+        UserPreferencesModel.user_id == current_user["id"]
     ).first()
     
     if not prefs:
         # Tạo preferences mặc định nếu chưa có
         prefs = UserPreferencesModel(
-            user_id=current_user.id,
+            user_id=current_user["id"],
             accent_id="blue",
             light_mode_gradient_id="default",
             light_mode_pattern_id=None,

@@ -505,6 +505,214 @@ async def handle_typing(websocket: WebSocket, user_id: str, data: dict, db: Sess
     }, exclude_ws=websocket)
 
 
+async def handle_msg_edit(websocket: WebSocket, user_id: str, data: dict, db: Session):
+    """
+    Handle msg:edit event.
+    Expected data: { conversationId, messageId, content }
+    """
+    conversation_id = data.get("conversationId")
+    message_id = data.get("messageId")
+    new_content = data.get("content", "")
+    req_id = data.get("_reqId")
+    
+    if not all([conversation_id, message_id, new_content]):
+        await manager.send_to_socket(websocket, {
+            "type": "error",
+            "reqId": req_id,
+            "data": {"code": "INVALID_REQUEST", "message": "conversationId, messageId, and content required"}
+        })
+        return
+    
+    # Validate content length
+    if len(new_content) > 4000:
+        await manager.send_to_socket(websocket, {
+            "type": "error",
+            "reqId": req_id,
+            "data": {"code": "INVALID_REQUEST", "message": "Content too long (max 4000 chars)"}
+        })
+        return
+    
+    # Check if message exists and user is the sender
+    msg = db.query(RTMessageModel).filter(
+        RTMessageModel.id == message_id,
+        RTMessageModel.conversation_id == conversation_id
+    ).first()
+    
+    if not msg:
+        await manager.send_to_socket(websocket, {
+            "type": "error",
+            "reqId": req_id,
+            "data": {"code": "NOT_FOUND", "message": "Message not found"}
+        })
+        return
+    
+    if msg.sender_id != user_id:
+        await manager.send_to_socket(websocket, {
+            "type": "error",
+            "reqId": req_id,
+            "data": {"code": "FORBIDDEN", "message": "Can only edit your own messages"}
+        })
+        return
+    
+    if msg.deleted_at:
+        await manager.send_to_socket(websocket, {
+            "type": "error",
+            "reqId": req_id,
+            "data": {"code": "FORBIDDEN", "message": "Cannot edit deleted message"}
+        })
+        return
+    
+    # Update message
+    msg.content = new_content
+    msg.edited_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(msg)
+    
+    # Load sender info
+    sender = db.query(UserModel).filter(UserModel.id == user_id).first()
+    
+    # Build updated message DTO
+    message_dto = {
+        "id": msg.id,
+        "conversationId": msg.conversation_id,
+        "senderId": msg.sender_id,
+        "clientMessageId": msg.client_message_id,
+        "content": msg.content,
+        "contentType": msg.content_type,
+        "attachments": msg.attachments_json,
+        "createdAt": msg.created_at.isoformat(),
+        "editedAt": msg.edited_at.isoformat(),
+        "deletedAt": None,
+        "senderEmail": sender.email if sender else None,
+        "senderDisplayName": sender.display_name if sender else None,
+        "senderAvatarUrl": sender.avatar_url if sender else None
+    }
+    
+    # Send ACK to sender
+    await manager.send_to_socket(websocket, {
+        "type": "msg:edit:ack",
+        "reqId": req_id,
+        "data": {
+            "conversationId": conversation_id,
+            "messageId": message_id,
+            "editedAt": msg.edited_at.isoformat()
+        }
+    })
+    
+    # Broadcast msg:edit to all members
+    members = db.query(RTConversationMemberModel).filter(
+        RTConversationMemberModel.conversation_id == conversation_id
+    ).all()
+    
+    for member in members:
+        await manager.send_to_user(member.user_id, {
+            "type": "msg:edit",
+            "data": {"message": message_dto}
+        })
+
+
+async def handle_msg_delete(websocket: WebSocket, user_id: str, data: dict, db: Session):
+    """
+    Handle msg:delete event.
+    Expected data: { conversationId, messageId, deleteForEveryone }
+    """
+    conversation_id = data.get("conversationId")
+    message_id = data.get("messageId")
+    delete_for_everyone = data.get("deleteForEveryone", False)
+    req_id = data.get("_reqId")
+    
+    if not all([conversation_id, message_id]):
+        await manager.send_to_socket(websocket, {
+            "type": "error",
+            "reqId": req_id,
+            "data": {"code": "INVALID_REQUEST", "message": "conversationId and messageId required"}
+        })
+        return
+    
+    # Check if message exists
+    msg = db.query(RTMessageModel).filter(
+        RTMessageModel.id == message_id,
+        RTMessageModel.conversation_id == conversation_id
+    ).first()
+    
+    if not msg:
+        await manager.send_to_socket(websocket, {
+            "type": "error",
+            "reqId": req_id,
+            "data": {"code": "NOT_FOUND", "message": "Message not found"}
+        })
+        return
+    
+    if delete_for_everyone:
+        # Only sender can delete for everyone
+        if msg.sender_id != user_id:
+            await manager.send_to_socket(websocket, {
+                "type": "error",
+                "reqId": req_id,
+                "data": {"code": "FORBIDDEN", "message": "Can only delete your own messages for everyone"}
+            })
+            return
+        
+        # Soft delete: mark deleted_at and replace content
+        msg.deleted_at = datetime.now(timezone.utc)
+        msg.content = "Tin nhắn đã bị thu hồi"
+        db.commit()
+        db.refresh(msg)
+        
+        # Load sender info
+        sender = db.query(UserModel).filter(UserModel.id == user_id).first()
+        
+        # Build updated message DTO
+        message_dto = {
+            "id": msg.id,
+            "conversationId": msg.conversation_id,
+            "senderId": msg.sender_id,
+            "clientMessageId": msg.client_message_id,
+            "content": msg.content,
+            "contentType": msg.content_type,
+            "attachments": msg.attachments_json,
+            "createdAt": msg.created_at.isoformat(),
+            "editedAt": msg.edited_at.isoformat() if msg.edited_at else None,
+            "deletedAt": msg.deleted_at.isoformat(),
+            "senderEmail": sender.email if sender else None,
+            "senderDisplayName": sender.display_name if sender else None,
+            "senderAvatarUrl": sender.avatar_url if sender else None
+        }
+        
+        # Send ACK to sender
+        await manager.send_to_socket(websocket, {
+            "type": "msg:delete:ack",
+            "reqId": req_id,
+            "data": {
+                "conversationId": conversation_id,
+                "messageId": message_id,
+                "deletedAt": msg.deleted_at.isoformat()
+            }
+        })
+        
+        # Broadcast msg:delete to all members
+        members = db.query(RTConversationMemberModel).filter(
+            RTConversationMemberModel.conversation_id == conversation_id
+        ).all()
+        
+        for member in members:
+            await manager.send_to_user(member.user_id, {
+                "type": "msg:delete",
+                "data": {"message": message_dto}
+            })
+    else:
+        # Delete for me only - just send ACK (client handles locally)
+        await manager.send_to_socket(websocket, {
+            "type": "msg:delete:ack",
+            "reqId": req_id,
+            "data": {
+                "conversationId": conversation_id,
+                "messageId": message_id,
+                "deleteForEveryone": False
+            }
+        })
+
+
 async def handle_conv_sync(websocket: WebSocket, user_id: str, data: dict, db: Session, req_id: str = None):
     """
     Handle conv:sync event.
@@ -639,6 +847,14 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(...)):
                         # Pass reqId for acknowledgment
                         event_data["_reqId"] = req_id
                         await handle_msg_send(websocket, user_id, event_data, db)
+                    elif event_type == "msg:edit":
+                        # NEW: Handle message edit
+                        event_data["_reqId"] = req_id
+                        await handle_msg_edit(websocket, user_id, event_data, db)
+                    elif event_type == "msg:delete":
+                        # NEW: Handle message delete
+                        event_data["_reqId"] = req_id
+                        await handle_msg_delete(websocket, user_id, event_data, db)
                     elif event_type == "msg:read":
                         await handle_msg_read(websocket, user_id, event_data, db)
                     elif event_type == "typing":

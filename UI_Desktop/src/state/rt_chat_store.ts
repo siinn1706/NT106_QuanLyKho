@@ -73,13 +73,21 @@ interface RTChatState {
   presenceByUser: Record<string, PresenceInfo>;
   lastReadByConv: Record<string, string>;
   lastSyncByConv: Record<string, string>;
+  pinnedMessagesByConv: Record<string, string[]>;
   
   setWSStatus: (status: 'connecting' | 'open' | 'closed') => void;
   loadConversations: () => Promise<void>;
   loadPendingConversations: () => Promise<void>;  // NEW
   acceptConversation: (conversationId: string) => Promise<void>;  // NEW
+  rejectConversation: (conversationId: string, deleteHistory?: boolean) => Promise<void>;  // NEW
   joinConversation: (conversationId: string) => void;
   sendMessage: (conversationId: string, content: string, contentType?: MessageUI['contentType'], attachments?: any[]) => void;
+  editMessage: (conversationId: string, messageId: string, newContent: string) => void;
+  deleteMessage: (conversationId: string, messageId: string, deleteForEveryone: boolean) => void;
+  hideMessage: (conversationId: string, messageId: string) => void;
+  pinMessage: (conversationId: string, messageId: string) => void;
+  unpinMessage: (conversationId: string, messageId: string) => void;
+  reportMessage: (conversationId: string, messageId: string, reason: string) => void;
   markRead: (conversationId: string, lastReadMessageId: string) => void;
   syncConversation: (conversationId: string, afterMessageId?: string) => void;
   createDirectConversation: (email: string) => Promise<string>;
@@ -88,11 +96,14 @@ interface RTChatState {
   handleServerHello: (data: any) => void;
   handleMsgAck: (data: any) => void;
   handleMsgNew: (data: any) => void;
+  handleMsgEdit: (data: any) => void;
+  handleMsgDelete: (data: any) => void;
   handleMsgDelivered: (data: any) => void;
   handleMsgRead: (data: any) => void;
   handleTyping: (data: any) => void;
   handleConvSyncResult: (data: any) => void;
   handleConvUpsert: (data: any) => void;
+  handleConvRejected: (data: any) => void;  // NEW
   handleError: (data: any) => void;
 }
 
@@ -104,11 +115,14 @@ export const useRTChatStore = create<RTChatState>()(
         rtWSClient.on('server:hello', (msg) => get().handleServerHello(msg.data));
         rtWSClient.on('msg:ack', (msg) => get().handleMsgAck(msg.data));
         rtWSClient.on('msg:new', (msg) => get().handleMsgNew(msg.data));
+        rtWSClient.on('msg:edit', (msg) => get().handleMsgEdit(msg.data));
+        rtWSClient.on('msg:delete', (msg) => get().handleMsgDelete(msg.data));
         rtWSClient.on('msg:delivered', (msg) => get().handleMsgDelivered(msg.data));
         rtWSClient.on('msg:read', (msg) => get().handleMsgRead(msg.data));
         rtWSClient.on('typing', (msg) => get().handleTyping(msg.data));
         rtWSClient.on('conv:sync:result', (msg) => get().handleConvSyncResult(msg.data));
         rtWSClient.on('conv:upsert', (msg) => get().handleConvUpsert(msg.data));
+        rtWSClient.on('conv:rejected', (msg) => get().handleConvRejected(msg.data));
         rtWSClient.on('error', (msg) => get().handleError(msg.data));
       };
       
@@ -134,6 +148,7 @@ export const useRTChatStore = create<RTChatState>()(
         presenceByUser: {},
         lastReadByConv: {},
         lastSyncByConv: {},
+        pinnedMessagesByConv: {},
         
         setWSStatus: (status) => set({ wsStatus: status }),
         
@@ -224,6 +239,55 @@ export const useRTChatStore = create<RTChatState>()(
             console.error('[RT-Chat] Failed to accept conversation:', e);
           }
         },
+
+        rejectConversation: async (conversationId: string, deleteHistory: boolean = false) => {
+          /**
+           * API: POST /rt/conversations/{id}/reject
+           * Purpose: Reject pending conversation and optionally delete history
+           * Request (JSON): { delete_history: boolean }
+           * Response (JSON) [200]: { success: true }
+           * Response Errors:
+           * - 400: { "detail": "Conversation not found" }
+           * - 401: { "detail": "Unauthorized" }
+           * - 500: { "detail": "Internal Server Error" }
+           * Notes: Sends WebSocket conv:rejected to other party
+           */
+          try {
+            const token = useAuthStore.getState().token;
+            const response = await fetch(`${BASE_URL}/rt/conversations/${conversationId}/reject`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ delete_history: deleteHistory })
+            });
+            
+            if (!response.ok) {
+              const error = await response.json().catch(() => ({ detail: 'Failed to reject conversation' }));
+              throw new Error(error.detail);
+            }
+            
+            // Remove conversation from pending list
+            const pending = get().pendingConversations;
+            set({
+              pendingConversations: pending.filter(c => c.id !== conversationId)
+            });
+
+            // Also remove messages if deleting history
+            if (deleteHistory) {
+              set((state) => {
+                const { [conversationId]: removed, ...rest } = state.messagesByConv;
+                return { messagesByConv: rest };
+              });
+            }
+
+            console.log('[RT-Chat] Conversation rejected:', conversationId, 'deleteHistory:', deleteHistory);
+          } catch (e) {
+            console.error('[RT-Chat] Failed to reject conversation:', e);
+            throw e;
+          }
+        },
         
         joinConversation: (conversationId: string) => {
           rtWSClient.send({
@@ -232,9 +296,24 @@ export const useRTChatStore = create<RTChatState>()(
             data: { conversationId }
           });
           
-          if (!get().messagesByConv[conversationId]) {
-            get().syncConversation(conversationId);
-          }
+          // Reset unread count when joining conversation
+          set((state) => ({
+            conversations: state.conversations.map(conv =>
+              conv.id === conversationId ? { ...conv, unreadCount: 0 } : conv
+            )
+          }));
+          
+          // Always sync to get latest messages
+          get().syncConversation(conversationId);
+          
+          // Mark last message as read if exists (after sync completes)
+          setTimeout(() => {
+            const messages = get().messagesByConv[conversationId];
+            if (messages && messages.length > 0) {
+              const lastMsg = messages[messages.length - 1];
+              get().markRead(conversationId, lastMsg.id);
+            }
+          }, 500);
         },
         
         sendMessage: (conversationId, content, contentType = 'text', attachments) => {
@@ -308,6 +387,136 @@ export const useRTChatStore = create<RTChatState>()(
               createdAtClient
             }
           });
+        },
+        
+        editMessage: (conversationId, messageId, newContent) => {
+          /**
+           * API: WebSocket msg:edit
+           * Purpose: Edit message content (only own messages)
+           * Request (JSON): { conversationId, messageId, content }
+           * Response (JSON): WS event msg:edit with updated message
+           * Notes: Server sets edited_at timestamp
+           */
+          // Optimistic update
+          set((state) => {
+            const messages = state.messagesByConv[conversationId] || [];
+            const updatedMessages = messages.map(msg =>
+              msg.id === messageId
+                ? { ...msg, content: newContent, editedAt: new Date().toISOString() }
+                : msg
+            );
+
+            return {
+              messagesByConv: {
+                ...state.messagesByConv,
+                [conversationId]: updatedMessages
+              }
+            };
+          });
+
+          // Send WebSocket event
+          rtWSClient.send({
+            type: 'msg:edit',
+            reqId: `edit-${Date.now()}`,
+            data: {
+              conversationId,
+              messageId,
+              content: newContent
+            }
+          });
+        },
+
+        deleteMessage: (conversationId, messageId, deleteForEveryone) => {
+          /**
+           * API: WebSocket msg:delete
+           * Purpose: Delete message for everyone or set deleted_at
+           * Request (JSON): { conversationId, messageId, deleteForEveryone }
+           * Response (JSON): WS event msg:delete broadcasted to all members
+           * Notes: If deleteForEveryone=false, only local hide (see hideMessage)
+           */
+          if (!deleteForEveryone) {
+            // Local hide only
+            get().hideMessage(conversationId, messageId);
+            return;
+          }
+
+          // Optimistic update - mark as deleted
+          set((state) => {
+            const messages = state.messagesByConv[conversationId] || [];
+            const updatedMessages = messages.map(msg =>
+              msg.id === messageId
+                ? { ...msg, deletedAt: new Date().toISOString(), content: 'Tin nhắn đã bị thu hồi' }
+                : msg
+            );
+
+            return {
+              messagesByConv: {
+                ...state.messagesByConv,
+                [conversationId]: updatedMessages
+              }
+            };
+          });
+
+          // Send WebSocket event
+          rtWSClient.send({
+            type: 'msg:delete',
+            reqId: `delete-${Date.now()}`,
+            data: {
+              conversationId,
+              messageId,
+              deleteForEveryone: true
+            }
+          });
+        },
+
+        hideMessage: (conversationId, messageId) => {
+          // Hide message locally only (store in state, not sent to server)
+          set((state) => {
+            const messages = state.messagesByConv[conversationId] || [];
+            const updatedMessages = messages.filter(msg => msg.id !== messageId);
+
+            return {
+              messagesByConv: {
+                ...state.messagesByConv,
+                [conversationId]: updatedMessages
+              }
+            };
+          });
+
+          // Persist hidden message IDs in localStorage
+          const hiddenKey = `rt-hidden-${conversationId}`;
+          const existing = JSON.parse(localStorage.getItem(hiddenKey) || '[]');
+          localStorage.setItem(hiddenKey, JSON.stringify([...existing, messageId]));
+        },
+        
+        pinMessage: (conversationId, messageId) => {
+          set((state) => {
+            const currentPinned = state.pinnedMessagesByConv[conversationId] || [];
+            if (currentPinned.includes(messageId)) return state;
+            return {
+              pinnedMessagesByConv: {
+                ...state.pinnedMessagesByConv,
+                [conversationId]: [...currentPinned, messageId],
+              },
+            };
+          });
+        },
+        
+        unpinMessage: (conversationId, messageId) => {
+          set((state) => {
+            const currentPinned = state.pinnedMessagesByConv[conversationId] || [];
+            return {
+              pinnedMessagesByConv: {
+                ...state.pinnedMessagesByConv,
+                [conversationId]: currentPinned.filter(id => id !== messageId),
+              },
+            };
+          });
+        },
+        
+        reportMessage: (conversationId, messageId, reason) => {
+          console.log('[RTChat] Reporting message:', messageId, 'Reason:', reason);
+          alert(`Đã báo cáo tin nhắn: ${reason}`);
         },
         
         markRead: (conversationId, lastReadMessageId) => {
@@ -488,6 +697,60 @@ export const useRTChatStore = create<RTChatState>()(
           });
           set({ conversations: updatedConversations });
         },
+
+        handleMsgEdit: (data) => {
+          /**
+           * Handle msg:edit event from server
+           * data: { message: { id, conversationId, content, editedAt, ... } }
+           */
+          const message = data.message;
+          if (!message) return;
+          
+          const { id, conversationId, content, editedAt } = message;
+          
+          set((state) => {
+            const messages = state.messagesByConv[conversationId] || [];
+            const updatedMessages = messages.map(msg =>
+              msg.id === id
+                ? { ...msg, content, editedAt }
+                : msg
+            );
+
+            return {
+              messagesByConv: {
+                ...state.messagesByConv,
+                [conversationId]: updatedMessages
+              }
+            };
+          });
+        },
+
+        handleMsgDelete: (data) => {
+          /**
+           * Handle msg:delete event from server
+           * data: { message: { id, conversationId, deletedAt, ... } }
+           */
+          const message = data.message;
+          if (!message) return;
+          
+          const { id, conversationId, deletedAt } = message;
+          
+          set((state) => {
+            const messages = state.messagesByConv[conversationId] || [];
+            const updatedMessages = messages.map(msg =>
+              msg.id === id
+                ? { ...msg, deletedAt, content: 'Tin nhắn đã bị thu hồi' }
+                : msg
+            );
+
+            return {
+              messagesByConv: {
+                ...state.messagesByConv,
+                [conversationId]: updatedMessages
+              }
+            };
+          });
+        },
         
         handleMsgDelivered: (data) => {
           const { conversationId, messageId, userId, deliveredAt } = data;
@@ -656,6 +919,30 @@ export const useRTChatStore = create<RTChatState>()(
               }
             }
           });
+        },
+
+        handleConvRejected: (data) => {
+          /**
+           * Handle conv:rejected event from server.
+           * Sender receives notification that their conversation request was rejected.
+           * data: { conversationId: string, rejectedBy: string }
+           */
+          const { conversationId, rejectedBy } = data;
+          console.log('[RT-Chat] Conversation rejected:', conversationId, 'by:', rejectedBy);
+
+          // Remove conversation from accepted list (if it was there)
+          set((state) => ({
+            conversations: state.conversations.filter(c => c.id !== conversationId),
+            pendingConversations: state.pendingConversations.filter(c => c.id !== conversationId)
+          }));
+
+          // Show notification to user (handled by UI layer with toast)
+          // Store rejection info for UI to display delete option
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('rt:conversation:rejected', { 
+              detail: { conversationId, rejectedBy } 
+            }));
+          }
         }
       };
     },
