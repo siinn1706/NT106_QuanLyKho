@@ -4,14 +4,25 @@ import ChatRoom from "./ChatRoom";
 import RealtimeChatRoom from "../realtime-chat/RealtimeChatRoom";
 import { useThemeStore } from "../../theme/themeStore";
 import { useRTChatStore } from "../../state/rt_chat_store";
+import { useAuthStore } from "../../state/auth_store";
 import Icon from "../ui/Icon";
 import { BASE_URL } from "../../app/api_client";
+import { resolveMediaUrl, getInitials } from "../../utils/mediaUrl";
 
 type MinimizedChat = {
   id: string;
   name: string;
   avatar?: string;
 };
+
+type DockState = {
+  edge: 'right' | 'bottom';
+  offset: number;
+};
+
+const STORAGE_KEY = 'chat-widget-dock-state';
+const EDGE_SNAP_THRESHOLD = 80;
+const DRAG_THRESHOLD = 8;
 
 export default function ChatWidget() {
   const [open, setOpen] = useState(false);
@@ -20,7 +31,19 @@ export default function ChatWidget() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [minimizedChats, setMinimizedChats] = useState<MinimizedChat[]>([]);
   const [botAvatar, setBotAvatar] = useState<string | null>(null);
+  const [dockState, setDockState] = useState<DockState>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      return saved ? JSON.parse(saved) : { edge: 'right', offset: 100 };
+    } catch {
+      return { edge: 'right', offset: 100 };
+    }
+  });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
   const isDarkMode = useThemeStore((state) => state.isDarkMode);
+  const currentUser = useAuthStore(state => state.user);
+  const conversations = useRTChatStore(state => state.conversations);
 
   // Load bot avatar từ API
   useEffect(() => {
@@ -48,18 +71,27 @@ export default function ChatWidget() {
   };
 
   const handleMinimize = () => {
-    if (!activeId) return; // Không minimize nếu chưa chọn chat
+    if (!activeId) return;
     
-    const chatName = conversationNames[activeId] || activeId;
-    const existingIndex = minimizedChats.findIndex(c => c.id === activeId);
+    let chatName = conversationNames[activeId] || activeId;
+    let avatar: string | undefined = undefined;
     
-    // Lấy avatar cho chat đang minimize
-    let avatar = undefined;
-    if (activeId === "bot" && botAvatar) {
-      avatar = botAvatar;
+    if (activeId === "bot") {
+      chatName = "Chatbot AI";
+      avatar = botAvatar || undefined;
+    } else {
+      const conversation = conversations.find(c => c.id === activeId);
+      if (conversation && currentUser) {
+        const otherMember = conversation.members.find(m => m.userId !== currentUser.id);
+        if (otherMember) {
+          chatName = otherMember.userDisplayName || otherMember.userEmail || "User";
+          avatar = otherMember.userAvatarUrl ? resolveMediaUrl(otherMember.userAvatarUrl) || undefined : undefined;
+        }
+      }
     }
     
-    // Nếu chưa có trong danh sách minimized
+    const existingIndex = minimizedChats.findIndex(c => c.id === activeId);
+    
     if (existingIndex === -1 && minimizedChats.length < 3) {
       setMinimizedChats([...minimizedChats, { 
         id: activeId, 
@@ -85,15 +117,91 @@ export default function ChatWidget() {
     setMinimizedChats(minimizedChats.filter(c => c.id !== chatId));
   };
 
+  const handlePointerDown = (e: React.PointerEvent) => {
+    e.preventDefault();
+    setDragStart({ x: e.clientX, y: e.clientY });
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!dragStart) return;
+
+    const deltaX = Math.abs(e.clientX - dragStart.x);
+    const deltaY = Math.abs(e.clientY - dragStart.y);
+
+    if (!isDragging && (deltaX > DRAG_THRESHOLD || deltaY > DRAG_THRESHOLD)) {
+      setIsDragging(true);
+    }
+
+    if (!isDragging) return;
+
+    const distanceFromBottom = window.innerHeight - e.clientY;
+    const shouldSnapToBottom = distanceFromBottom < EDGE_SNAP_THRESHOLD;
+
+    if (shouldSnapToBottom) {
+      const newOffset = Math.max(24, Math.min(e.clientX, window.innerWidth - 200));
+      setDockState({ edge: 'bottom', offset: newOffset });
+    } else {
+      const newOffset = Math.max(24, Math.min(e.clientY, window.innerHeight - 200));
+      setDockState({ edge: 'right', offset: newOffset });
+    }
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    
+    if (isDragging) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(dockState));
+      } catch {}
+      setIsDragging(false);
+      setDragStart(null);
+    } else {
+      setDragStart(null);
+    }
+  };
+
+  const handleClick = (e: React.MouseEvent, chatId: string) => {
+    if (!isDragging) {
+      handleRestoreChat(chatId);
+    }
+  };
+
+  const getDockStyle = (): React.CSSProperties => {
+    if (dockState.edge === 'right') {
+      return {
+        position: 'fixed',
+        right: '24px',
+        top: `${dockState.offset}px`,
+        flexDirection: 'column-reverse',
+        gap: '12px',
+      };
+    } else {
+      return {
+        position: 'fixed',
+        bottom: '24px',
+        left: `${dockState.offset}px`,
+        flexDirection: 'row',
+        gap: '12px',
+      };
+    }
+  };
+
   return (
     <>
-      {/* Minimized chats - hiển thị dưới dạng avatar tròn, trên nút chat chính */}
+      {/* Minimized chats - hiển thị dưới dạng avatar tròn, draggable dock */}
       {!open && minimizedChats.length > 0 && (
-        <div className="fixed bottom-24 right-6 z-50 flex flex-col-reverse gap-3">
+        <div 
+          className={`z-50 flex ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+          style={getDockStyle()}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+        >
           {minimizedChats.map((chat) => (
             <div key={chat.id} className="relative group">
               <button
-                onClick={() => handleRestoreChat(chat.id)}
+                onClick={(e) => handleClick(e as any, chat.id)}
                 className={`relative w-14 h-14 rounded-full shadow-ios flex items-center justify-center hover:scale-105 transition-all duration-200 overflow-hidden border-2 ${
                   chat.avatar ? "border-blue-500" : ""
                 } ${
@@ -218,7 +326,7 @@ export default function ChatWidget() {
               <div className={`flex-1 flex flex-col items-center justify-center gap-4 ${
                 isDarkMode ? "text-zinc-400" : "text-zinc-500"
               }`}>
-                <Icon name="comment-dots" size="4x" className="opacity-30" />
+                <Icon name="comment-dots" size="xl" className="opacity-30" />
                 <div className="text-center">
                   <p className="text-lg font-medium mb-1">Chọn một cuộc trò chuyện</p>
                   <p className="text-sm opacity-70">Chọn từ danh sách bên trái để bắt đầu chat</p>

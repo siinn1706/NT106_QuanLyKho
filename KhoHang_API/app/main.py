@@ -85,6 +85,20 @@ UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 LOGO_DIR = UPLOADS_DIR / "logos"
 LOGO_DIR.mkdir(parents=True, exist_ok=True)
 
+# Ensure all upload subdirectories exist
+RT_FILES_DIR = UPLOADS_DIR / "rt_files"
+RT_FILES_DIR.mkdir(parents=True, exist_ok=True)
+CHAT_FILES_DIR = UPLOADS_DIR / "chat_files"
+CHAT_FILES_DIR.mkdir(parents=True, exist_ok=True)
+CHATBOT_AVATAR_DIR = UPLOADS_DIR / "chatbot"
+CHATBOT_AVATAR_DIR.mkdir(parents=True, exist_ok=True)
+
+print(f"[Startup] DATA_DIR: {DATA_DIR}")
+print(f"[Startup] UPLOADS_DIR: {UPLOADS_DIR}")
+print(f"[Startup] RT_FILES_DIR: {RT_FILES_DIR} (exists: {RT_FILES_DIR.exists()})")
+print(f"[Startup] CHAT_FILES_DIR: {CHAT_FILES_DIR} (exists: {CHAT_FILES_DIR.exists()})")
+print(f"[Startup] Directories created successfully")
+
 app = FastAPI(title="N3T KhoHang API", version="0.1.0")
 
 app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
@@ -112,6 +126,21 @@ app.websocket("/ws/rt")(websocket_endpoint)
 @app.get("/")
 def root():
     return {"message": "N3T KhoHang API is running with JWT Auth"}
+
+@app.get("/debug/paths")
+def debug_paths():
+    """Debug endpoint to check upload directories"""
+    return {
+        "DATA_DIR": str(DATA_DIR),
+        "UPLOADS_DIR": str(UPLOADS_DIR),
+        "UPLOADS_DIR_exists": UPLOADS_DIR.exists(),
+        "rt_files": str(UPLOADS_DIR / "rt_files"),
+        "rt_files_exists": (UPLOADS_DIR / "rt_files").exists(),
+        "chat_files": str(UPLOADS_DIR / "chat_files"),
+        "chat_files_exists": (UPLOADS_DIR / "chat_files").exists(),
+        "rt_files_count": len(list((UPLOADS_DIR / "rt_files").glob("*"))) if (UPLOADS_DIR / "rt_files").exists() else 0,
+        "chat_files_count": len(list((UPLOADS_DIR / "chat_files").glob("*"))) if (UPLOADS_DIR / "chat_files").exists() else 0,
+    }
 
 # -------------------------------------------------
 # OLD AUTH ROUTES (DEPRECATED - KEPT FOR REFERENCE)

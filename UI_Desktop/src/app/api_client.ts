@@ -318,11 +318,46 @@ export async function apiChat(req: AIChatRequest): Promise<AIChatResponse> {
       }
     } catch {}
     
-    const error = new Error(msg);
-    (error as any).status = res.status;
-    (error as any).retryAfter = retryAfter;
-    throw error;
+    throw new Error(msg);
   }
+  return res.json();
+}
+
+export async function apiUploadChatbotFile(file: File): Promise<{ file_id: string; url: string; name: string; size: number; mime_type: string }> {
+  /**
+   * API: POST /api/chatbot/files
+   * Purpose: Upload file attachment for chatbot
+   * Request (JSON): multipart/form-data with 'file' field
+   * Response (JSON) [200]: { file_id, url, name, size, mime_type }
+   * Response Errors:
+   * - 400: { "detail": "Invalid file type or size" }
+   * - 401: { "detail": "Unauthorized" }
+   * - 413: { "detail": "File too large" }
+   * - 500: { "detail": "Internal Server Error" }
+   * Notes: Max 10MB, allowed exts: png/jpg/jpeg/gif/webp/pdf/doc/docx/xls/xlsx/txt/zip/rar
+   */
+  const headers = await getAuthHeaders();
+  delete (headers as any)['Content-Type'];
+  
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  const res = await fetch(`${BASE_URL}/api/chatbot/files`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+  
+  if (res.status === 401) {
+    // Token expired - handled by global auth interceptor
+    throw new Error('Session expired. Please login again.');
+  }
+  
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: 'Upload failed' }));
+    throw new Error(error.detail || 'Failed to upload file');
+  }
+  
   return res.json();
 }
 
@@ -379,6 +414,27 @@ export async function apiLogout(): Promise<void> {
     method: 'POST',
   });
   if (!res.ok) throw new Error("Đăng xuất thất bại");
+}
+
+export async function apiForgotPassword(email: string): Promise<void> {
+  /**
+   * API: POST /auth/forgot-password
+   * Purpose: Request password reset email
+   * Request (JSON): { email }
+   * Response (JSON) [200]: { message: "Reset email sent" }
+   * Response Errors:
+   * - 404: { "detail": "Email not found" }
+   * - 500: { "detail": "Failed to send email" }
+   */
+  const res = await fetch(`${BASE_URL}/auth/forgot-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.detail || "Failed to send reset email");
+  }
 }
 
 // === API OTP Verification ===
@@ -950,11 +1006,19 @@ export interface SupplierSearchResult {
   tax_id: string;
 }
 
+export interface WarehouseSearchResult {
+  id: number;
+  code: string;
+  name: string;
+  address: string;
+}
+
 export interface StockInSearchResult {
   id: string;
   warehouse_code: string;
   supplier: string;
   date: string;
+  total_quantity: number;
 }
 
 export interface StockOutSearchResult {
@@ -962,11 +1026,13 @@ export interface StockOutSearchResult {
   warehouse_code: string;
   recipient: string;
   date: string;
+  purpose: string;
 }
 
 export interface GlobalSearchResponse {
   items: ItemSearchResult[];
   suppliers: SupplierSearchResult[];
+  warehouses?: WarehouseSearchResult[];
   stock_in: StockInSearchResult[];
   stock_out: StockOutSearchResult[];
 }

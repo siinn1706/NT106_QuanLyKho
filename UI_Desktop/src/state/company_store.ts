@@ -20,6 +20,9 @@ import {
   type WarehouseManager,
 } from '../app/api_client';
 
+// Re-export WarehouseManager for external use
+export type { WarehouseManager };
+
 // ===== TYPES =====
 
 export interface CompanyInfo {

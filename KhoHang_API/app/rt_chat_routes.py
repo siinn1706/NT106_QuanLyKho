@@ -542,6 +542,8 @@ async def upload_file(
                 raise HTTPException(413, "File too large (max 10MB)")
             await f.write(chunk)
     
+    print(f"[RT Upload] File saved: {file_path} (exists: {file_path.exists()})")
+    
     url = f"/uploads/rt_files/{safe_filename}"
     
     return FileUploadResponse(
