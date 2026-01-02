@@ -74,13 +74,14 @@ interface RTChatState {
   lastReadByConv: Record<string, string>;
   lastSyncByConv: Record<string, string>;
   pinnedMessagesByConv: Record<string, string[]>;
+  hiddenMessagesByConv: Record<string, string[]>;
   
   setWSStatus: (status: 'connecting' | 'open' | 'closed') => void;
   loadConversations: () => Promise<void>;
   loadPendingConversations: () => Promise<void>;  // NEW
   acceptConversation: (conversationId: string) => Promise<void>;  // NEW
   rejectConversation: (conversationId: string, deleteHistory?: boolean) => Promise<void>;  // NEW
-  joinConversation: (conversationId: string) => void;
+  joinConversation: (conversationId: string) => Promise<void>;
   sendMessage: (conversationId: string, content: string, contentType?: MessageUI['contentType'], attachments?: any[]) => void;
   editMessage: (conversationId: string, messageId: string, newContent: string) => void;
   deleteMessage: (conversationId: string, messageId: string, deleteForEveryone: boolean) => void;
@@ -149,6 +150,7 @@ export const useRTChatStore = create<RTChatState>()(
         lastReadByConv: {},
         lastSyncByConv: {},
         pinnedMessagesByConv: {},
+        hiddenMessagesByConv: {},
         
         setWSStatus: (status) => set({ wsStatus: status }),
         
@@ -173,7 +175,7 @@ export const useRTChatStore = create<RTChatState>()(
             set({ conversations: data });
             
             for (const conv of data) {
-              get().joinConversation(conv.id);
+              await get().joinConversation(conv.id);
             }
           } catch (e) {
             console.error('[RT-Chat] Failed to load conversations:', e);
@@ -233,7 +235,7 @@ export const useRTChatStore = create<RTChatState>()(
               });
               
               // Join the conversation via WebSocket
-              get().joinConversation(conversationId);
+              await get().joinConversation(conversationId);
             }
           } catch (e) {
             console.error('[RT-Chat] Failed to accept conversation:', e);
@@ -289,7 +291,65 @@ export const useRTChatStore = create<RTChatState>()(
           }
         },
         
-        joinConversation: (conversationId: string) => {
+        joinConversation: async (conversationId: string) => {
+          // Hydrate history from REST API if cache is empty (fix F5 history loss)
+          const currentMessages = get().messagesByConv[conversationId];
+          const hasCache = currentMessages && currentMessages.length > 0;
+          
+          if (!hasCache) {
+            try {
+              /**
+               * API: GET /rt/conversations/{conversationId}/messages?limit=50
+               * Purpose: Load recent messages for conversation history hydration
+               * Request (JSON): null (query params only)
+               * Response (JSON) [200]: {
+               *   messages: [{ id, conversationId, senderId, content, contentType, attachments, createdAt, editedAt, deletedAt, senderEmail, senderDisplayName, senderAvatarUrl, receipts }],
+               *   has_more: boolean
+               * }
+               * Response Errors:
+               * - 401: { "detail": "Unauthorized" }
+               * - 403: { "detail": "Not a member" }
+               * - 404: { "detail": "Conversation not found" }
+               * Notes: Returns messages in desc order by default (newest first), need to reverse for UI
+               */
+              const token = useAuthStore.getState().token;
+              const response = await fetch(`${BASE_URL}/rt/conversations/${conversationId}/messages?limit=50`, {
+                headers: {
+                  'Authorization': `Bearer ${token}`
+                }
+              });
+              
+              if (response.ok) {
+                const data = await response.json();
+                const messages: MessageUI[] = data.messages || [];
+                
+                // Messages come in desc order (newest first), reverse for chronological display
+                const sortedMessages = messages.reverse();
+                
+                // Filter out hidden messages
+                const hiddenIds = get().hiddenMessagesByConv[conversationId] || [];
+                const visibleMessages = sortedMessages.filter(msg => !hiddenIds.includes(msg.id));
+                
+                // Populate cache
+                set((state) => ({
+                  messagesByConv: {
+                    ...state.messagesByConv,
+                    [conversationId]: visibleMessages
+                  },
+                  // Update lastSync to last message id so incremental sync works
+                  lastSyncByConv: visibleMessages.length > 0
+                    ? { ...state.lastSyncByConv, [conversationId]: visibleMessages[visibleMessages.length - 1].id }
+                    : state.lastSyncByConv
+                }));
+                
+                console.log(`[RT-Chat] Hydrated ${visibleMessages.length} messages for conversation ${conversationId}`);
+              }
+            } catch (e) {
+              console.error('[RT-Chat] Failed to hydrate history:', e);
+            }
+          }
+          
+          // Send WS join
           rtWSClient.send({
             type: 'conv:join',
             reqId: `join-${Date.now()}`,
@@ -303,7 +363,7 @@ export const useRTChatStore = create<RTChatState>()(
             )
           }));
           
-          // Always sync to get latest messages
+          // Sync to get any new messages (incremental from lastSync)
           get().syncConversation(conversationId);
           
           // Mark last message as read if exists (after sync completes)
@@ -470,23 +530,27 @@ export const useRTChatStore = create<RTChatState>()(
         },
 
         hideMessage: (conversationId, messageId) => {
-          // Hide message locally only (store in state, not sent to server)
+          // Hide message locally only (remove from messagesByConv and track in hiddenMessagesByConv)
           set((state) => {
             const messages = state.messagesByConv[conversationId] || [];
             const updatedMessages = messages.filter(msg => msg.id !== messageId);
+            
+            const hiddenMessages = state.hiddenMessagesByConv[conversationId] || [];
+            const updatedHidden = hiddenMessages.includes(messageId) 
+              ? hiddenMessages 
+              : [...hiddenMessages, messageId];
 
             return {
               messagesByConv: {
                 ...state.messagesByConv,
                 [conversationId]: updatedMessages
+              },
+              hiddenMessagesByConv: {
+                ...state.hiddenMessagesByConv,
+                [conversationId]: updatedHidden
               }
             };
           });
-
-          // Persist hidden message IDs in localStorage
-          const hiddenKey = `rt-hidden-${conversationId}`;
-          const existing = JSON.parse(localStorage.getItem(hiddenKey) || '[]');
-          localStorage.setItem(hiddenKey, JSON.stringify([...existing, messageId]));
         },
         
         pinMessage: (conversationId, messageId) => {
@@ -852,9 +916,13 @@ export const useRTChatStore = create<RTChatState>()(
           
           set((state) => {
             const existing = state.messagesByConv[conversationId] || [];
+            const hiddenIds = state.hiddenMessagesByConv[conversationId] || [];
             const merged = [...existing];
             
             for (const msg of messages) {
+              // Skip hidden messages
+              if (hiddenIds.includes(msg.id)) continue;
+              
               if (!merged.find(m => m.id === msg.id)) {
                 merged.push(msg);
               }
@@ -950,7 +1018,8 @@ export const useRTChatStore = create<RTChatState>()(
       name: 'rt-chat-storage',
       partialize: (state) => ({
         lastReadByConv: state.lastReadByConv,
-        lastSyncByConv: state.lastSyncByConv
+        lastSyncByConv: state.lastSyncByConv,
+        hiddenMessagesByConv: state.hiddenMessagesByConv
       })
     }
   )
