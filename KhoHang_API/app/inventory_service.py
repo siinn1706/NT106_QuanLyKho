@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from . import schemas
 from .database import ItemModel, StockTransactionModel, StockInRecordModel, StockOutRecordModel
+from .rt_chat_ws import manager
 
 
 def _get_attr(data, field: str, default=None):
@@ -50,7 +51,7 @@ def _materialize_item_payload(db_item: ItemModel, quantity: int, unit: str, pric
     }
 
 
-def create_stock_in_record(db: Session, data: schemas.StockInBatchCreate, record_id: str, current_user: Optional[dict]) -> StockInRecordModel:
+async def create_stock_in_record(db: Session, data: schemas.StockInBatchCreate, record_id: str, current_user: Optional[dict]) -> StockInRecordModel:
     """Create stock-in voucher, update inventory, and log transactions atomically."""
     now = datetime.now(timezone.utc)
     actor_id = current_user.get("id") if current_user else None
@@ -97,13 +98,14 @@ def create_stock_in_record(db: Session, data: schemas.StockInBatchCreate, record
         db.add(record)
         db.commit()
         db.refresh(record)
+        await manager.broadcast_system_event("inventory:updated", {"type": "stock_in", "record_id": record_id})
         return record
     except Exception:
         db.rollback()
         raise
 
 
-def create_stock_out_record(db: Session, data: schemas.StockOutBatchCreate, record_id: str, current_user: Optional[dict]) -> StockOutRecordModel:
+async def create_stock_out_record(db: Session, data: schemas.StockOutBatchCreate, record_id: str, current_user: Optional[dict]) -> StockOutRecordModel:
     """Create stock-out voucher, validate availability, update inventory, and log transactions."""
     now = datetime.now(timezone.utc)
     actor_id = current_user.get("id") if current_user else None
@@ -159,13 +161,14 @@ def create_stock_out_record(db: Session, data: schemas.StockOutBatchCreate, reco
         db.add(record)
         db.commit()
         db.refresh(record)
+        await manager.broadcast_system_event("inventory:updated", {"type": "stock_out", "record_id": record_id})
         return record
     except Exception:
         db.rollback()
         raise
 
 
-def cancel_stock_in_record(db: Session, record: StockInRecordModel, actor_user_id: Optional[str]) -> StockInRecordModel:
+async def cancel_stock_in_record(db: Session, record: StockInRecordModel, actor_user_id: Optional[str]) -> StockInRecordModel:
     """Rollback inventory for a stock-in voucher and mark it cancelled."""
     if record.status == "cancelled":
         return record
@@ -206,13 +209,14 @@ def cancel_stock_in_record(db: Session, record: StockInRecordModel, actor_user_i
         db.add(record)
         db.commit()
         db.refresh(record)
+        await manager.broadcast_system_event("inventory:updated", {"type": "cancel_stock_in", "record_id": record.id})
         return record
     except Exception:
         db.rollback()
         raise
 
 
-def cancel_stock_out_record(db: Session, record: StockOutRecordModel, actor_user_id: Optional[str]) -> StockOutRecordModel:
+async def cancel_stock_out_record(db: Session, record: StockOutRecordModel, actor_user_id: Optional[str]) -> StockOutRecordModel:
     """Rollback inventory for a stock-out voucher and mark it cancelled (restock)."""
     if record.status == "cancelled":
         return record
@@ -247,6 +251,7 @@ def cancel_stock_out_record(db: Session, record: StockOutRecordModel, actor_user
         db.add(record)
         db.commit()
         db.refresh(record)
+        await manager.broadcast_system_event("inventory:updated", {"type": "cancel_stock_out", "record_id": record.id})
         return record
     except Exception:
         db.rollback()

@@ -24,6 +24,7 @@ type EventType =
   | 'typing'
   | 'conv:sync:result'
   | 'conv:upsert'
+  | 'inventory:updated'
   | 'error'
   | 'ping';
 

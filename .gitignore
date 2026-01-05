@@ -52,8 +52,3 @@ src-tauri/gen/
 .Trashes
 ehthumbs.db
 Thumbs.db
-
-*.md
-UI_Desktop/src-tauri/gen/schemas/desktop-schema.json
-UI_Desktop/src-tauri/gen/schemas/windows-schema.json
-UI_Desktop/src-tauri/Cargo.toml
