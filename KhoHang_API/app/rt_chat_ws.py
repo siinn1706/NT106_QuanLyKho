@@ -125,6 +125,28 @@ class ConnectionManager:
             print(f"[WS] Error sending to socket: {e}")
             self.disconnect(websocket)
     
+    async def broadcast_system_event(self, event_type: str, data: dict):
+        """Broadcast system event to all connected WebSocket clients."""
+        message = {
+            "type": event_type,
+            "data": data
+        }
+        data_json = json.dumps(message)
+        dead_sockets = []
+        
+        # Iterate through all user connections
+        for user_id, connections in self.user_connections.items():
+            for ws in connections:
+                try:
+                    await ws.send_text(data_json)
+                except Exception as e:
+                    print(f"[WS] Error broadcasting to user {user_id}: {e}")
+                    dead_sockets.append(ws)
+        
+        # Clean up dead sockets
+        for ws in dead_sockets:
+            self.disconnect(ws)
+    
     def check_rate_limit_send(self, user_id: str, limit: int = 5, window: int = 1) -> bool:
         """Check if user exceeded send rate limit (5 msg/s)."""
         now = time()

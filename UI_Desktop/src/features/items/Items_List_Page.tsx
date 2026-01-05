@@ -6,6 +6,7 @@ import CustomSelect from '../../components/ui/CustomSelect';
 import DatePicker from '../../components/ui/DatePicker';
 import PasskeyModal from '../../components/ui/PasskeyModal';
 import { showToast } from '../../utils/toast';
+import { rtWSClient } from '../../services/rt_ws_client';
 
 const CATEGORIES = [
   'Điện tử',
@@ -117,6 +118,20 @@ export default function Items_List_Page() {
       setLoading(false);
     }
   };
+
+  // Listen for inventory updates via WebSocket
+  useEffect(() => {
+    const handleReload = () => {
+      console.log('[Items] Inventory updated, reloading items...');
+      loadItems();
+    };
+
+    rtWSClient.on('inventory:updated', handleReload);
+
+    return () => {
+      rtWSClient.off('inventory:updated', handleReload);
+    };
+  }, []);
 
   const validateForm = (): boolean => {
     const errors: Partial<ItemFormData> = {};

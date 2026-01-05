@@ -666,19 +666,19 @@ def get_stock_in_record(record_id: str, db: Session = Depends(get_db)):
 
 
 @app.post("/stock/in", response_model=schemas.StockInRecord, status_code=201)
-def create_stock_in(
+async def create_stock_in(
     data: schemas.StockInBatchCreate, 
     db: Session = Depends(get_db),
     current_user: dict = Depends(require_auth)
 ):
     # Any authenticated user can create stock-in records
     record_id = _next_stock_in_id(data.warehouse_code, data.date, db)
-    db_record = create_stock_in_record(db, data, record_id, current_user)
+    db_record = await create_stock_in_record(db, data, record_id, current_user)
     return stock_in_record_model_to_schema(db_record)
 
 
 @app.delete("/stock/in/{record_id}", response_model=schemas.StockInRecord)
-def delete_stock_in(
+async def delete_stock_in(
     record_id: str, 
     db: Session = Depends(get_db),
     current_user: dict = Depends(require_passkey)
@@ -688,7 +688,7 @@ def delete_stock_in(
     if not record:
         raise HTTPException(status_code=404, detail="Không tìm thấy phiếu nhập kho")
 
-    cancelled = cancel_stock_in_record(db, record, current_user.get("id") if current_user else None)
+    cancelled = await cancel_stock_in_record(db, record, current_user.get("id") if current_user else None)
     return stock_in_record_model_to_schema(cancelled)
 
 
@@ -770,19 +770,19 @@ def get_stock_out_record(record_id: str, db: Session = Depends(get_db)):
 
 
 @app.post("/stock/out", response_model=schemas.StockOutRecord, status_code=201)
-def create_stock_out(
+async def create_stock_out(
     data: schemas.StockOutBatchCreate, 
     db: Session = Depends(get_db),
     current_user: dict = Depends(require_auth)
 ):
     # Any authenticated user can create stock-out records
     record_id = _next_stock_out_id(data.warehouse_code, data.date, db)
-    db_record = create_stock_out_record(db, data, record_id, current_user)
+    db_record = await create_stock_out_record(db, data, record_id, current_user)
     return stock_out_record_model_to_schema(db_record)
 
 
 @app.delete("/stock/out/{record_id}", response_model=schemas.StockOutRecord)
-def delete_stock_out(
+async def delete_stock_out(
     record_id: str, 
     db: Session = Depends(get_db),
     current_user: dict = Depends(require_passkey)
@@ -792,7 +792,7 @@ def delete_stock_out(
     if not record:
         raise HTTPException(status_code=404, detail="Không tìm thấy phiếu xuất kho")
 
-    cancelled = cancel_stock_out_record(db, record, current_user.get("id") if current_user else None)
+    cancelled = await cancel_stock_out_record(db, record, current_user.get("id") if current_user else None)
     return stock_out_record_model_to_schema(cancelled)
 
 
