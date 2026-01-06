@@ -4,6 +4,7 @@ import shutil
 from pathlib import Path
 import uuid
 import io
+import asyncio
 from datetime import datetime, timezone
 
 from fastapi import FastAPI, HTTPException, status, File, UploadFile, Depends, Query, Header
@@ -14,6 +15,7 @@ import requests
 from PIL import Image
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError, OperationalError
 
 from . import schemas
 from .config import GEMINI_API_KEY  # Removed FIREBASE imports
@@ -638,11 +640,22 @@ def _next_stock_in_id(warehouse_code: str, date_str: str, db: Session) -> str:
     month_year_key = date_obj.strftime("%m%y")
     prefix = f"{warehouse_code}_PN_{month_year_key}_"
     
-    count = db.query(func.count(StockInRecordModel.id)).filter(
+    # Tìm mã phiếu có số thứ tự lớn nhất
+    max_record = db.query(StockInRecordModel.id).filter(
         StockInRecordModel.id.like(f"{prefix}%")
-    ).scalar() or 0
+    ).order_by(StockInRecordModel.id.desc()).first()
     
-    return f"{prefix}{count + 1:04d}"
+    if max_record:
+        # Parse số thứ tự từ id (ví dụ: WH01_PN_0124_0001 -> 1)
+        try:
+            last_sequence = int(max_record[0].replace(prefix, ''))
+            next_sequence = last_sequence + 1
+        except (ValueError, AttributeError):
+            next_sequence = 1
+    else:
+        next_sequence = 1
+    
+    return f"{prefix}{next_sequence:04d}"
 
 
 @app.get("/stock/in", response_model=schemas.PaginatedStockInRecords | List[schemas.StockInRecord])
@@ -706,9 +719,27 @@ async def create_stock_in(
     current_user: dict = Depends(require_auth)
 ):
     # Any authenticated user can create stock-in records
-    record_id = _next_stock_in_id(data.warehouse_code, data.date, db)
-    db_record = await create_stock_in_record(db, data, record_id, current_user)
-    return stock_in_record_model_to_schema(db_record)
+    max_retries = 5
+    for attempt in range(max_retries):
+        try:
+            record_id = _next_stock_in_id(data.warehouse_code, data.date, db)
+            db_record = await create_stock_in_record(db, data, record_id, current_user)
+            return stock_in_record_model_to_schema(db_record)
+        except (IntegrityError, OperationalError) as e:
+            db.rollback()
+            if attempt == max_retries - 1:
+                # Lần thử cuối cùng vẫn lỗi, raise exception
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Không thể tạo phiếu nhập sau {max_retries} lần thử. Vui lòng thử lại."
+                )
+            # Tạm dừng với độ trễ tăng dần: 0.1s, 0.2s, 0.3s, 0.4s
+            delay = (attempt + 1) * 0.1
+            await asyncio.sleep(delay)
+            continue
+        except Exception as e:
+            # Các lỗi khác không phải IntegrityError/OperationalError thì raise ngay
+            raise
 
 
 @app.delete("/stock/in/{record_id}", response_model=schemas.StockInRecord)
@@ -739,11 +770,22 @@ def _next_stock_out_id(warehouse_code: str, date_str: str, db: Session) -> str:
     month_year_key = date_obj.strftime("%m%y")
     prefix = f"{warehouse_code}_PX_{month_year_key}_"
     
-    count = db.query(func.count(StockOutRecordModel.id)).filter(
+    # Tìm mã phiếu có số thứ tự lớn nhất
+    max_record = db.query(StockOutRecordModel.id).filter(
         StockOutRecordModel.id.like(f"{prefix}%")
-    ).scalar() or 0
+    ).order_by(StockOutRecordModel.id.desc()).first()
     
-    return f"{prefix}{count + 1:04d}"
+    if max_record:
+        # Parse số thứ tự từ id (ví dụ: WH01_PX_0124_0001 -> 1)
+        try:
+            last_sequence = int(max_record[0].replace(prefix, ''))
+            next_sequence = last_sequence + 1
+        except (ValueError, AttributeError):
+            next_sequence = 1
+    else:
+        next_sequence = 1
+    
+    return f"{prefix}{next_sequence:04d}"
 
 
 @app.get("/stock/out", response_model=schemas.PaginatedStockOutRecords | List[schemas.StockOutRecord])
@@ -810,9 +852,27 @@ async def create_stock_out(
     current_user: dict = Depends(require_auth)
 ):
     # Any authenticated user can create stock-out records
-    record_id = _next_stock_out_id(data.warehouse_code, data.date, db)
-    db_record = await create_stock_out_record(db, data, record_id, current_user)
-    return stock_out_record_model_to_schema(db_record)
+    max_retries = 5
+    for attempt in range(max_retries):
+        try:
+            record_id = _next_stock_out_id(data.warehouse_code, data.date, db)
+            db_record = await create_stock_out_record(db, data, record_id, current_user)
+            return stock_out_record_model_to_schema(db_record)
+        except (IntegrityError, OperationalError) as e:
+            db.rollback()
+            if attempt == max_retries - 1:
+                # Lần thử cuối cùng vẫn lỗi, raise exception
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Không thể tạo phiếu xuất sau {max_retries} lần thử. Vui lòng thử lại."
+                )
+            # Tạm dừng với độ trễ tăng dần: 0.1s, 0.2s, 0.3s, 0.4s
+            delay = (attempt + 1) * 0.1
+            await asyncio.sleep(delay)
+            continue
+        except Exception as e:
+            # Các lỗi khác không phải IntegrityError/OperationalError thì raise ngay
+            raise
 
 
 @app.delete("/stock/out/{record_id}", response_model=schemas.StockOutRecord)

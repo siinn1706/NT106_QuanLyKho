@@ -1,7 +1,7 @@
 # app/database.py
 """SQLite database setup with SQLAlchemy"""
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, Text, ForeignKey, JSON, text
@@ -32,6 +32,19 @@ engine = create_engine(
     connect_args={"check_same_thread": False},
     echo=False 
 )
+
+@event.listens_for(engine, "connect")
+def _set_sqlite_pragma(dbapi_connection, connection_record):
+    """
+    dbapi_connection là connection object của DB-API (ví dụ sqlite3.Connection).
+    Thực thi PRAGMA để bật WAL và (tùy chọn) giảm độ trễ ghi.
+    """
+    cursor = dbapi_connection.cursor()
+    # Bật Write-Ahead Logging (WAL) để cho phép đọc/ghi song song
+    cursor.execute("PRAGMA journal_mode=WAL;")
+    # Tùy chọn: giảm mức đồng bộ để cải thiện hiệu năng ghi (mất mát dữ liệu trong trường hợp mất điện hiếm)
+    cursor.execute("PRAGMA synchronous=NORMAL;")
+    cursor.close()
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
