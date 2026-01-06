@@ -537,29 +537,31 @@ def reject_conversation(
         raise HTTPException(404, "Conversation not found or you are not a member")
     
     if request.delete_history:
-        # Delete all messages in this conversation
+        # Get all message IDs first (before deletion)
+        message_ids = [m.id for m in db.query(RTMessageModel.id).filter(
+            RTMessageModel.conversation_id == conversation_id
+        ).all()]
+        
+        # Delete receipts FIRST (using the message_ids list)
+        if message_ids:
+            db.query(RTMessageReceiptModel).filter(
+                RTMessageReceiptModel.message_id.in_(message_ids)
+            ).delete(synchronize_session=False)
+        
+        # Now safe to delete all messages
         db.query(RTMessageModel).filter(
             RTMessageModel.conversation_id == conversation_id
-        ).delete()
-        
-        # Delete all receipts
-        db.query(RTMessageReceiptModel).filter(
-            RTMessageReceiptModel.message_id.in_(
-                db.query(RTMessageModel.id).filter(
-                    RTMessageModel.conversation_id == conversation_id
-                )
-            )
         ).delete(synchronize_session=False)
         
         # Delete all members
         db.query(RTConversationMemberModel).filter(
             RTConversationMemberModel.conversation_id == conversation_id
-        ).delete()
+        ).delete(synchronize_session=False)
         
         # Delete conversation itself
         db.query(RTConversationModel).filter(
             RTConversationModel.id == conversation_id
-        ).delete()
+        ).delete(synchronize_session=False)
     else:
         # Just remove user's membership
         db.delete(member)

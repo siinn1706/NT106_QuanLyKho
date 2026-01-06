@@ -144,6 +144,40 @@ def debug_paths():
         "chat_files_count": len(list((UPLOADS_DIR / "chat_files").glob("*"))) if (UPLOADS_DIR / "chat_files").exists() else 0,
     }
 
+@app.get("/download/{folder}/{filename}")
+async def download_file(folder: str, filename: str):
+    """
+    Force download endpoint with Content-Disposition header.
+    Supports folders: rt_files, chat_files, chatbot, logos, avatars
+    """
+    # Validate folder to prevent directory traversal
+    allowed_folders = ["rt_files", "chat_files", "chatbot", "logos", "avatars"]
+    if folder not in allowed_folders:
+        raise HTTPException(status_code=400, detail="Invalid folder")
+    
+    file_path = UPLOADS_DIR / folder / filename
+    
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    # Read file content
+    with open(file_path, "rb") as f:
+        content = f.read()
+    
+    # Determine media type
+    import mimetypes
+    media_type = mimetypes.guess_type(str(file_path))[0] or "application/octet-stream"
+    
+    # Return with Content-Disposition header to force download
+    return StreamingResponse(
+        io.BytesIO(content),
+        media_type=media_type,
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Access-Control-Expose-Headers": "Content-Disposition"
+        }
+    )
+
 # -------------------------------------------------
 # OLD AUTH ROUTES (DEPRECATED - KEPT FOR REFERENCE)
 # Use /auth/* and /users/* routes instead

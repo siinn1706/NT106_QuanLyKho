@@ -10,6 +10,7 @@ import type { ContentType, Attachment } from "../../types/attachment";
 import { formatFileSize, isImageMimeType } from "../../types/attachment";
 import { resolveMediaUrl } from "../../utils/mediaUrl";
 import { showToast } from "../../utils/toast";
+import { BASE_URL } from "../../app/api_client";
 
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "😡"];
 
@@ -196,6 +197,53 @@ export default function MessageBubble({
     unpinMessage(conversationId, messageId);
     setShowActionsMenu(false);
     showToast.success('Đã bỏ ghim tin nhắn');
+  };
+  
+  const handleDownload = async () => {
+    if (!attachments || attachments.length === 0) return;
+    
+    setShowActionsMenu(false);
+    
+    showToast.success(
+      attachments.length === 1 
+        ? 'Đang tải xuống file...' 
+        : `Đang tải xuống ${attachments.length} files...`
+    );
+    
+    // Download each attachment using dedicated download endpoint
+    for (let i = 0; i < attachments.length; i++) {
+      const attachment = attachments[i];
+      const fileName = attachment.name;
+      
+      try {
+        // Parse URL to get folder and filename
+        // attachment.url format: "/uploads/rt_files/filename.ext" or "/uploads/chat_files/filename.ext"
+        const urlParts = attachment.url.split('/');
+        const folder = urlParts[2]; // rt_files or chat_files
+        const file = urlParts[3]; // filename
+        
+        // Use dedicated download endpoint that forces Content-Disposition
+        const downloadUrl = `${BASE_URL}/download/${folder}/${file}`;
+        
+        // Create link to trigger download
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = fileName;
+        link.style.display = 'none';
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Small delay between downloads if multiple files
+        if (i < attachments.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
+      } catch (error) {
+        console.error('Download error for', fileName, ':', error);
+        showToast.error(`Lỗi tải xuống ${fileName}`);
+      }
+    }
   };
   
   // Lấy reaction đầu tiên để hiển thị (hoặc null)
@@ -450,17 +498,35 @@ export default function MessageBubble({
               <PopoverDivider isDarkMode={isDarkMode} />
             </>
           )}
-          <PopoverItem
-            label="Chuyển tiếp"
-            onClick={handleForward}
-            isDarkMode={isDarkMode}
-          />
-          <PopoverItem
-            label={isPinned ? "Bỏ ghim" : "Ghim"}
-            onClick={isPinned ? handleUnpin : handlePin}
-            isDarkMode={isDarkMode}
-          />
-          {mine && (
+          {conversationId && (
+            <>
+              <PopoverItem
+                label="Chuyển tiếp"
+                onClick={handleForward}
+                isDarkMode={isDarkMode}
+              />
+              {attachments && attachments.length > 0 && (
+                <PopoverItem
+                  label={attachments.length === 1 ? "Tải xuống" : "Tải xuống tất cả"}
+                  onClick={handleDownload}
+                  isDarkMode={isDarkMode}
+                />
+              )}
+              <PopoverItem
+                label={isPinned ? "Bỏ ghim" : "Ghim"}
+                onClick={isPinned ? handleUnpin : handlePin}
+                isDarkMode={isDarkMode}
+              />
+            </>
+          )}
+          {!conversationId && attachments && attachments.length > 0 && (
+            <PopoverItem
+              label={attachments.length === 1 ? "Tải xuống" : "Tải xuống tất cả"}
+              onClick={handleDownload}
+              isDarkMode={isDarkMode}
+            />
+          )}
+          {mine && conversationId && (
             <>
               <PopoverDivider isDarkMode={isDarkMode} />
               <PopoverItem
@@ -471,12 +537,14 @@ export default function MessageBubble({
               />
             </>
           )}
-          <PopoverItem
-            label="Xoá ở tôi"
-            onClick={handleDeleteForMe}
-            variant="danger"
-            isDarkMode={isDarkMode}
-          />
+          {conversationId && (
+            <PopoverItem
+              label="Xoá ở tôi"
+              onClick={handleDeleteForMe}
+              variant="danger"
+              isDarkMode={isDarkMode}
+            />
+          )}
         </Popover>
       </div>
 

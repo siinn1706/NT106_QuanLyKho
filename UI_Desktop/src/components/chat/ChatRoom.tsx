@@ -127,22 +127,28 @@ export default function ChatRoom({ conversationId, sidebarCollapsed, onExpandSid
     setSelectedFiles(prev => [...prev, ...files]);
     
     for (const file of files) {
-      const progressMap = new Map(uploadProgress);
-      progressMap.set(file.name, { file, progress: 0, status: 'uploading' });
-      setUploadProgress(progressMap);
+      setUploadProgress(prev => {
+        const progressMap = new Map(prev);
+        progressMap.set(file.name, { file, progress: 0, status: 'uploading' });
+        return progressMap;
+      });
       
       try {
         const result = await apiUploadChatbotFile(file);
         
-        const progressMapDone = new Map(uploadProgress);
-        progressMapDone.set(file.name, { file, progress: 100, status: 'completed', result });
-        setUploadProgress(progressMapDone);
+        setUploadProgress(prev => {
+          const progressMapDone = new Map(prev);
+          progressMapDone.set(file.name, { file, progress: 100, status: 'completed', result });
+          return progressMapDone;
+        });
         
         setUploadedAttachments(prev => [...prev, result]);
       } catch (error: any) {
-        const progressMapError = new Map(uploadProgress);
-        progressMapError.set(file.name, { file, progress: 0, status: 'error', error: error.message });
-        setUploadProgress(progressMapError);
+        setUploadProgress(prev => {
+          const progressMapError = new Map(prev);
+          progressMapError.set(file.name, { file, progress: 0, status: 'error', error: error.message });
+          return progressMapError;
+        });
         
         showError(`Lỗi upload ${file.name}: ${error.message}`);
       }
