@@ -52,3 +52,8 @@ src-tauri/gen/
 .Trashes
 ehthumbs.db
 Thumbs.db
+*.db
+*.db-wal
+*.db-shm
+*.md
+*.sqlite
