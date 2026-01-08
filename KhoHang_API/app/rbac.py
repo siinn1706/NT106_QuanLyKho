@@ -37,7 +37,14 @@ def require_role(allowed_roles: List[str]):
                 )
             
             user_role = user.get("role", "staff")
-            if user_role not in allowed_roles:
+
+            # Allow access if the user meets or exceeds at least one required role
+            is_authorized = any(
+                has_permission(user_role, role)
+                for role in allowed_roles
+            )
+
+            if not is_authorized:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail=f"Access denied. Required roles: {', '.join(allowed_roles)}"
@@ -56,9 +63,17 @@ def has_permission(user_role: str, required_role: str) -> bool:
 def get_user_role(user_id: str, db: Session) -> Optional[str]:
     """Get user role from database"""
     user = db.query(UserModel).filter(UserModel.id == user_id).first()
-    return user.role if user else None
+    role_value = getattr(user, "role", None) if user else None
+    return role_value if isinstance(role_value, str) else None
 
-def create_or_update_user(user_id: str, email: str, name: Optional[str] = None, role: str = "staff", db: Session = None):
+
+def create_or_update_user(
+    user_id: str,
+    email: str,
+    name: Optional[str] = None,
+    role: str = "staff",
+    db: Optional[Session] = None,
+):
     """Create or update user in database"""
     if db is None:
         return
@@ -67,9 +82,9 @@ def create_or_update_user(user_id: str, email: str, name: Optional[str] = None, 
     if user:
         # Update existing user
         if name:
-            user.name = name
+            setattr(user, "name", name)
         if role:
-            user.role = role
+            setattr(user, "role", role)
     else:
         # Create new user
         user = UserModel(

@@ -5,6 +5,7 @@ from typing import List, Optional
 from sqlalchemy.orm import Session
 
 from . import schemas
+from .enums import PaymentMethod, RecordStatus
 from .database import (
     SupplierModel, ItemModel, StockTransactionModel, WarehouseModel,
     CompanyInfoModel, StockInRecordModel, StockOutRecordModel, UserModel
@@ -142,14 +143,14 @@ def stock_in_record_model_to_schema(model: StockInRecordModel) -> schemas.StockI
         date=model.date,
         note=model.note or "",
         tax_rate=model.tax_rate or 0.0,
-        payment_method=model.payment_method or "tiền_mặt",
+        payment_method=model.payment_method or PaymentMethod.CASH.value,
         payment_bank_account=model.payment_bank_account or "",
         payment_bank_name=model.payment_bank_name or "",
         items=[schemas.StockInItem(**item) if isinstance(item, dict) else item for item in items],
         total_quantity=model.total_quantity or 0,
         total_amount=model.total_amount or 0.0,
         created_at=model.created_at.isoformat() if isinstance(model.created_at, datetime) else model.created_at,
-        status=model.status or "completed",
+        status=model.status or RecordStatus.COMPLETED.value,
     )
 
 
@@ -168,6 +169,6 @@ def stock_out_record_model_to_schema(model: StockOutRecordModel) -> schemas.Stoc
         total_quantity=model.total_quantity or 0,
         total_amount=model.total_amount,
         created_at=model.created_at.isoformat() if isinstance(model.created_at, datetime) else model.created_at,
-        status=model.status or "completed",
+        status=model.status or RecordStatus.COMPLETED.value,
     )
 

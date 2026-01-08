@@ -19,6 +19,7 @@ from sqlalchemy.exc import IntegrityError, OperationalError
 
 from . import schemas
 from .config import GEMINI_API_KEY  # Removed FIREBASE imports
+from .enums import TransactionType, RecordStatus
 from .gemini_client import generate_reply, is_configured as gemini_ready, MODEL_NAME, QuotaExceededError
 from .export_service import VoucherExportRequest, export_to_excel, export_to_pdf
 from .database import (
@@ -467,7 +468,7 @@ def get_monthly_trend(db: Session = Depends(get_db)):
     
     transactions = db.query(StockTransactionModel).filter(
         StockTransactionModel.timestamp >= twelve_months_ago,
-        StockTransactionModel.type == "in"
+        StockTransactionModel.type == TransactionType.IN.value
     ).all()
     
     monthly_data = {month: 0 for month in month_names}
@@ -536,9 +537,9 @@ def create_transaction(
         raise HTTPException(status_code=404, detail="Không tìm thấy hàng hoá")
     
     current_qty = db_item.quantity or 0
-    if tx.type == "in":
+    if tx.type == TransactionType.IN.value:
         new_qty = current_qty + tx.quantity
-    elif tx.type == "out":
+    elif tx.type == TransactionType.OUT.value:
         if current_qty < tx.quantity:
             raise HTTPException(status_code=400, detail="Không đủ tồn kho để xuất")
         new_qty = current_qty - tx.quantity
@@ -672,7 +673,7 @@ def get_stock_in_records(
 ):
     query = db.query(StockInRecordModel)
     if not include_cancelled:
-        query = query.filter(StockInRecordModel.status != "cancelled")
+        query = query.filter(StockInRecordModel.status != RecordStatus.CANCELLED.value)
     if q:
         pattern = f"%{q}%"
         query = query.filter(
@@ -803,7 +804,7 @@ def get_stock_out_records(
 ):
     query = db.query(StockOutRecordModel)
     if not include_cancelled:
-        query = query.filter(StockOutRecordModel.status != "cancelled")
+        query = query.filter(StockOutRecordModel.status != RecordStatus.CANCELLED.value)
     if q:
         pattern = f"%{q}%"
         query = query.filter(

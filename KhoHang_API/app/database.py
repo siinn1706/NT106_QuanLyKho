@@ -10,6 +10,8 @@ from pathlib import Path
 import os
 import sys
 
+from .enums import PaymentMethod, RecordStatus, TransactionType
+
 # --- SỬA ĐỔI QUAN TRỌNG: LƯU DB VÀO THƯ MỤC CỐ ĐỊNH ---
 def get_datadir() -> Path:
     """Lấy đường dẫn lưu dữ liệu trong project directory (KhoHang_API/data)"""
@@ -134,13 +136,13 @@ class StockInRecordModel(Base):
     date = Column(String, nullable=False)
     note = Column(Text, default="")
     tax_rate = Column(Float, default=0.0)
-    payment_method = Column(String, default="tiền_mặt")
+    payment_method = Column(String, default=PaymentMethod.CASH.value)
     payment_bank_account = Column(String, default="")
     payment_bank_name = Column(String, default="")
     items = Column(JSON, nullable=False)
     total_quantity = Column(Integer, default=0)
     total_amount = Column(Float, default=0.0)
-    status = Column(String, default="completed")
+    status = Column(String, default=RecordStatus.COMPLETED.value)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
 
 class StockOutRecordModel(Base):
@@ -152,13 +154,13 @@ class StockOutRecordModel(Base):
     date = Column(String, nullable=False)
     note = Column(Text, default="")
     tax_rate = Column(Float, default=0.0)
-    payment_method = Column(String, default="tiền_mặt")
+    payment_method = Column(String, default=PaymentMethod.CASH.value)
     payment_bank_account = Column(String, default="")
     payment_bank_name = Column(String, default="")
     items = Column(JSON, nullable=False)
     total_quantity = Column(Integer, default=0)
     total_amount = Column(Float, nullable=True)
-    status = Column(String, default="completed")
+    status = Column(String, default=RecordStatus.COMPLETED.value)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
 
 class UserModel(Base):

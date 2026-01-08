@@ -4,6 +4,8 @@ from typing import Optional, List, Any
 
 from pydantic import BaseModel, ConfigDict , EmailStr
 
+from .enums import PaymentMethod, RecordStatus, InventoryStatus
+
 
 class ORMModel(BaseModel):
     # Cho phép Pydantic convert từ SQLAlchemy object
@@ -91,7 +93,7 @@ class WarehouseItemStatus(BaseModel):
     damaged: int = 0  # Hàng hư hỏng
     missing: int = 0  # Hàng thiếu
     min_stock: int = 0  # Mức tồn kho tối thiểu
-    status: str = "normal"  # normal, low_stock, out_of_stock, damaged
+    status: str = InventoryStatus.NORMAL.value  # normal, low_stock, out_of_stock, damaged
 
 
 class WarehouseInventoryStats(BaseModel):
@@ -383,7 +385,7 @@ class StockInBatchCreate(BaseModel):
     date: str
     note: str = ""
     tax_rate: float = 0
-    payment_method: str = "tiền_mặt"  # tiền_mặt, chuyển_khoản, công_nợ
+    payment_method: str = PaymentMethod.CASH.value  # tiền_mặt, chuyển_khoản, công_nợ
     payment_bank_account: str = ""  # Số TK nếu chuyển khoản
     payment_bank_name: str = ""  # Tên ngân hàng nếu chuyển khoản
     items: List[StockInItemCreate]
@@ -405,14 +407,14 @@ class StockInRecord(BaseModel):
     date: str
     note: str
     tax_rate: float = 0
-    payment_method: str = "tiền_mặt"
+    payment_method: str = PaymentMethod.CASH.value
     payment_bank_account: str = ""
     payment_bank_name: str = ""
     items: List[StockInItem]
     total_quantity: int
     total_amount: float
     created_at: str
-    status: str = "completed"
+    status: str = RecordStatus.COMPLETED.value
 
 
 class StockOutItemCreate(BaseModel):
@@ -431,7 +433,7 @@ class StockOutBatchCreate(BaseModel):
     date: str
     note: str = ""
     tax_rate: float = 0
-    payment_method: str = "tiền_mặt"  # tiền_mặt, chuyển_khoản, công_nợ
+    payment_method: str = PaymentMethod.CASH.value  # tiền_mặt, chuyển_khoản, công_nợ
     payment_bank_account: str = ""  # Số TK nếu chuyển khoản
     payment_bank_name: str = ""  # Tên ngân hàng nếu chuyển khoản
     items: List[StockOutItemCreate]
@@ -458,7 +460,7 @@ class StockOutRecord(BaseModel):
     total_quantity: int
     total_amount: float | None = None
     created_at: str
-    status: str = "completed"
+    status: str = RecordStatus.COMPLETED.value
 
 
 # ---------- PAGINATION WRAPPERS (Part 2 - Stock Records) ----------
