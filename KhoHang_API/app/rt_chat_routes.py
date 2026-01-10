@@ -22,7 +22,11 @@ from .database import (
     RTConversationMemberModel,
     RTMessageModel,
     RTMessageReceiptModel,
-    DATA_DIR
+    RTMessageReactionModel,
+    RTPinnedMessageModel,
+    DATA_DIR,
+    ensure_utc,  # Import timezone utility
+    to_utc_iso   # Import ISO string helper
 )
 from .auth_middleware import get_current_user
 from pydantic import BaseModel, EmailStr, Field
@@ -84,6 +88,15 @@ class MessageReceiptDTO(BaseModel):
     
     model_config = {"populate_by_name": True}
 
+
+class MessageReactionDTO(BaseModel):
+    user_id: str = Field(..., serialization_alias="userId")
+    emoji: str
+    created_at: datetime = Field(..., serialization_alias="createdAt")
+    
+    model_config = {"populate_by_name": True}
+
+
 class MessageDTO(BaseModel):
     id: str
     conversation_id: str = Field(..., serialization_alias="conversationId")
@@ -92,6 +105,7 @@ class MessageDTO(BaseModel):
     content: str
     content_type: str = Field(..., serialization_alias="contentType")
     attachments: Optional[list]
+    reply_to_id: Optional[str] = Field(None, serialization_alias="replyToId")  # NEW: Reply reference
     created_at: datetime = Field(..., serialization_alias="createdAt")
     edited_at: Optional[datetime] = Field(None, serialization_alias="editedAt")
     deleted_at: Optional[datetime] = Field(None, serialization_alias="deletedAt")
@@ -99,6 +113,7 @@ class MessageDTO(BaseModel):
     sender_display_name: Optional[str] = Field(None, serialization_alias="senderDisplayName")
     sender_avatar_url: Optional[str] = Field(None, serialization_alias="senderAvatarUrl")
     receipts: Optional[List[MessageReceiptDTO]] = None
+    reactions: Optional[List[MessageReactionDTO]] = None
     
     model_config = {"populate_by_name": True}
 
@@ -207,14 +222,14 @@ def list_conversations(
             title=conv.title,
             related_entity_type=conv.related_entity_type,
             related_entity_id=conv.related_entity_id,
-            created_at=conv.created_at,
-            updated_at=conv.updated_at,
+            created_at=ensure_utc(conv.created_at),
+            updated_at=ensure_utc(conv.updated_at),
             members=members_dto,
             last_message={
                 "id": last_msg.id,
                 "content": last_msg.content,
                 "senderId": last_msg.sender_id,
-                "createdAt": last_msg.created_at.isoformat()
+                "createdAt": to_utc_iso(last_msg.created_at)
             } if last_msg else None,
             unread_count=unread
         ))
@@ -290,14 +305,14 @@ def list_pending_conversations(
             title=conv.title,
             related_entity_type=conv.related_entity_type,
             related_entity_id=conv.related_entity_id,
-            created_at=conv.created_at,
-            updated_at=conv.updated_at,
+            created_at=ensure_utc(conv.created_at),
+            updated_at=ensure_utc(conv.updated_at),
             members=members_dto,
             last_message={
                 "id": last_msg.id,
                 "content": last_msg.content,
                 "senderId": last_msg.sender_id,
-                "createdAt": last_msg.created_at.isoformat()
+                "createdAt": to_utc_iso(last_msg.created_at)
             } if last_msg else None,
             unread_count=unread
         ))
@@ -415,7 +430,8 @@ def get_conversation_messages(
         RTMessageModel.deleted_at.is_(None)
     ).options(
         joinedload(RTMessageModel.sender),
-        joinedload(RTMessageModel.receipts)
+        joinedload(RTMessageModel.receipts),
+        joinedload(RTMessageModel.reactions)
     )
     
     if after:
@@ -450,6 +466,15 @@ def get_conversation_messages(
             for r in msg.receipts
         ]
         
+        reactions_dto = [
+            MessageReactionDTO(
+                user_id=r.user_id,
+                emoji=r.emoji,
+                created_at=r.created_at
+            )
+            for r in (msg.reactions if hasattr(msg, 'reactions') and msg.reactions else [])
+        ]
+        
         result_messages.append(MessageDTO(
             id=msg.id,
             conversation_id=msg.conversation_id,
@@ -458,13 +483,15 @@ def get_conversation_messages(
             content=msg.content,
             content_type=msg.content_type,
             attachments=msg.attachments_json,
-            created_at=msg.created_at,
-            edited_at=msg.edited_at,
-            deleted_at=msg.deleted_at,
+            reply_to_id=msg.reply_to_id,  # NEW: Include reply reference
+            created_at=ensure_utc(msg.created_at),  # FIX: Ensure UTC timezone
+            edited_at=ensure_utc(msg.edited_at),    # FIX: Ensure UTC timezone
+            deleted_at=ensure_utc(msg.deleted_at),  # FIX: Ensure UTC timezone
             sender_email=msg.sender.email if msg.sender else None,
             sender_display_name=msg.sender.display_name if msg.sender else None,
             sender_avatar_url=msg.sender.avatar_url if msg.sender else None,
-            receipts=receipts_dto
+            receipts=receipts_dto,
+            reactions=reactions_dto
         ))
     
     return {"messages": [m.model_dump(by_alias=True) for m in result_messages], "has_more": has_more}
@@ -657,3 +684,336 @@ def lookup_user_by_email(
         "display_name": user.display_name,
         "avatar_url": user.avatar_url
     }
+
+
+# ===============================
+# Reactions API Endpoints
+# ===============================
+
+class ReactionRequest(BaseModel):
+    emoji: str = Field(..., min_length=1, max_length=10)
+
+
+class ReactionResponse(BaseModel):
+    message_id: str
+    user_id: str
+    emoji: str
+    created_at: str
+
+
+@router.post("/messages/{message_id}/reactions", response_model=ReactionResponse)
+def add_reaction_to_message(
+    message_id: str,
+    reaction_req: ReactionRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    API: POST /rt/messages/{message_id}/reactions
+    Purpose: Add emoji reaction to a realtime chat message
+    Request (JSON): { "emoji": "👍" }
+    Response (JSON) [200]: { "message_id": "...", "user_id": "...", "emoji": "👍", "created_at": "2026-01-10T..." }
+    Response Errors:
+    - 400: { "detail": "Invalid emoji" }
+    - 403: { "detail": "Not a conversation member" }
+    - 404: { "detail": "Message not found" }
+    - 409: { "detail": "Reaction already exists" }
+    - 500: { "detail": "Internal Server Error" }
+    Notes: User can add multiple different emojis; duplicate emoji returns 409
+    """
+    # Validate message exists
+    message = db.query(RTMessageModel).filter(RTMessageModel.id == message_id).first()
+    if not message:
+        raise HTTPException(404, "Message not found")
+    
+    # Check user is member of conversation
+    membership = db.query(RTConversationMemberModel).filter(
+        RTConversationMemberModel.conversation_id == message.conversation_id,
+        RTConversationMemberModel.user_id == current_user["id"]
+    ).first()
+    if not membership:
+        raise HTTPException(403, "Not a conversation member")
+    
+    # Check if reaction already exists (duplicate prevention)
+    existing = db.query(RTMessageReactionModel).filter(
+        RTMessageReactionModel.message_id == message_id,
+        RTMessageReactionModel.user_id == current_user["id"],
+        RTMessageReactionModel.emoji == reaction_req.emoji
+    ).first()
+    if existing:
+        raise HTTPException(409, "Reaction already exists")
+    
+    # Create reaction
+    reaction = RTMessageReactionModel(
+        message_id=message_id,
+        user_id=current_user["id"],
+        emoji=reaction_req.emoji,
+        created_at=datetime.now(timezone.utc)
+    )
+    db.add(reaction)
+    db.commit()
+    
+    return {
+        "message_id": message_id,
+        "user_id": current_user["id"],
+        "emoji": reaction_req.emoji,
+        "created_at": to_utc_iso(reaction.created_at)
+    }
+
+
+@router.delete("/messages/{message_id}/reactions/{emoji}")
+def remove_reaction_from_message(
+    message_id: str,
+    emoji: str,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    API: DELETE /rt/messages/{message_id}/reactions/{emoji}
+    Purpose: Remove user's emoji reaction from a message
+    Request (JSON): null
+    Response (JSON) [200]: { "message": "Reaction removed" }
+    Response Errors:
+    - 403: { "detail": "Not a conversation member" }
+    - 404: { "detail": "Message not found" or "Reaction not found" }
+    - 500: { "detail": "Internal Server Error" }
+    Notes: Can only remove own reactions; returns 404 if reaction doesn't exist
+    """
+    # Validate message exists
+    message = db.query(RTMessageModel).filter(RTMessageModel.id == message_id).first()
+    if not message:
+        raise HTTPException(404, "Message not found")
+    
+    # Check user is member of conversation
+    membership = db.query(RTConversationMemberModel).filter(
+        RTConversationMemberModel.conversation_id == message.conversation_id,
+        RTConversationMemberModel.user_id == current_user["id"]
+    ).first()
+    if not membership:
+        raise HTTPException(403, "Not a conversation member")
+    
+    # Find and delete reaction
+    reaction = db.query(RTMessageReactionModel).filter(
+        RTMessageReactionModel.message_id == message_id,
+        RTMessageReactionModel.user_id == current_user["id"],
+        RTMessageReactionModel.emoji == emoji
+    ).first()
+    if not reaction:
+        raise HTTPException(404, "Reaction not found")
+    
+    db.delete(reaction)
+    db.commit()
+    
+    return {"message": "Reaction removed"}
+
+
+@router.get("/messages/{message_id}/reactions", response_model=List[ReactionResponse])
+def get_message_reactions(
+    message_id: str,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    API: GET /rt/messages/{message_id}/reactions
+    Purpose: Get all reactions for a message
+    Request (JSON): null
+    Response (JSON) [200]: [{ "message_id": "...", "user_id": "...", "emoji": "👍", "created_at": "..." }, ...]
+    Response Errors:
+    - 403: { "detail": "Not a conversation member" }
+    - 404: { "detail": "Message not found" }
+    - 500: { "detail": "Internal Server Error" }
+    Notes: Returns array of all reactions with user_id; empty array if no reactions
+    """
+    # Validate message exists
+    message = db.query(RTMessageModel).filter(RTMessageModel.id == message_id).first()
+    if not message:
+        raise HTTPException(404, "Message not found")
+    
+    # Check user is member of conversation
+    membership = db.query(RTConversationMemberModel).filter(
+        RTConversationMemberModel.conversation_id == message.conversation_id,
+        RTConversationMemberModel.user_id == current_user["id"]
+    ).first()
+    if not membership:
+        raise HTTPException(403, "Not a conversation member")
+    
+    # Get all reactions for this message
+    reactions = db.query(RTMessageReactionModel).filter(
+        RTMessageReactionModel.message_id == message_id
+    ).all()
+    
+    return [
+        {
+            "message_id": r.message_id,
+            "user_id": r.user_id,
+            "emoji": r.emoji,
+            "created_at": to_utc_iso(r.created_at)
+        }
+        for r in reactions
+    ]
+
+
+# ========== PINNED MESSAGES ENDPOINTS ==========
+
+class PinnedMessageDTO(BaseModel):
+    """DTO for pinned message response"""
+    message_id: str = Field(..., serialization_alias="messageId")
+    conversation_id: str = Field(..., serialization_alias="conversationId")
+    pinned_by: str = Field(..., serialization_alias="pinnedBy")
+    pinned_at: datetime = Field(..., serialization_alias="pinnedAt")
+    message: Optional[MessageDTO] = None
+    
+    model_config = {"populate_by_name": True}
+
+
+@router.get("/conversations/{conversation_id}/pinned", response_model=List[PinnedMessageDTO], response_model_by_alias=True)
+def get_pinned_messages(
+    conversation_id: str,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    API: GET /rt/conversations/{conversation_id}/pinned
+    Purpose: Get all pinned messages for a conversation
+    Request (JSON): null
+    Response (JSON) [200]: [{ messageId, conversationId, pinnedBy, pinnedAt, message: MessageDTO }]
+    Response Errors:
+    - 403: { "detail": "Not a conversation member" }
+    - 500: { "detail": "Internal Server Error" }
+    Notes: Returns pinned messages ordered by pinnedAt DESC (most recent first)
+    """
+    membership = db.query(RTConversationMemberModel).filter(
+        RTConversationMemberModel.conversation_id == conversation_id,
+        RTConversationMemberModel.user_id == current_user["id"]
+    ).first()
+    if not membership:
+        raise HTTPException(403, "Not a conversation member")
+    
+    pinned = db.query(RTPinnedMessageModel).filter(
+        RTPinnedMessageModel.conversation_id == conversation_id
+    ).options(
+        joinedload(RTPinnedMessageModel.message).joinedload(RTMessageModel.sender)
+    ).order_by(RTPinnedMessageModel.pinned_at.desc()).all()
+    
+    result = []
+    for p in pinned:
+        msg = p.message
+        message_dto = None
+        if msg:
+            message_dto = MessageDTO(
+                id=msg.id,
+                conversation_id=msg.conversation_id,
+                sender_id=msg.sender_id,
+                client_message_id=msg.client_message_id,
+                content=msg.content if not msg.deleted_at else "Tin nhắn đã bị thu hồi",
+                content_type=msg.content_type,
+                attachments=msg.attachments_json,
+                reply_to_id=msg.reply_to_id,
+                created_at=ensure_utc(msg.created_at),
+                edited_at=ensure_utc(msg.edited_at),
+                deleted_at=ensure_utc(msg.deleted_at),
+                sender_email=msg.sender.email if msg.sender else None,
+                sender_display_name=msg.sender.display_name if msg.sender else None,
+                sender_avatar_url=msg.sender.avatar_url if msg.sender else None
+            )
+        
+        result.append(PinnedMessageDTO(
+            message_id=p.message_id,
+            conversation_id=p.conversation_id,
+            pinned_by=p.pinned_by,
+            pinned_at=ensure_utc(p.pinned_at),
+            message=message_dto
+        ))
+    
+    return result
+
+
+@router.post("/conversations/{conversation_id}/pin/{message_id}")
+def pin_message(
+    conversation_id: str,
+    message_id: str,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    API: POST /rt/conversations/{conversation_id}/pin/{message_id}
+    Purpose: Pin a message in a conversation
+    Request (JSON): null
+    Response (JSON) [200]: { success: true, pinnedAt: "..." }
+    Response Errors:
+    - 400: { "detail": "Message already pinned" }
+    - 403: { "detail": "Not a conversation member" }
+    - 404: { "detail": "Message not found" }
+    - 500: { "detail": "Internal Server Error" }
+    Notes: WebSocket event msg:pinned will be broadcast to all members
+    """
+    membership = db.query(RTConversationMemberModel).filter(
+        RTConversationMemberModel.conversation_id == conversation_id,
+        RTConversationMemberModel.user_id == current_user["id"]
+    ).first()
+    if not membership:
+        raise HTTPException(403, "Not a conversation member")
+    
+    message = db.query(RTMessageModel).filter(
+        RTMessageModel.id == message_id,
+        RTMessageModel.conversation_id == conversation_id
+    ).first()
+    if not message:
+        raise HTTPException(404, "Message not found")
+    
+    existing = db.query(RTPinnedMessageModel).filter(
+        RTPinnedMessageModel.conversation_id == conversation_id,
+        RTPinnedMessageModel.message_id == message_id
+    ).first()
+    if existing:
+        raise HTTPException(400, "Message already pinned")
+    
+    pinned_at = datetime.now(timezone.utc)
+    pinned = RTPinnedMessageModel(
+        conversation_id=conversation_id,
+        message_id=message_id,
+        pinned_by=current_user["id"],
+        pinned_at=pinned_at
+    )
+    db.add(pinned)
+    db.commit()
+    
+    return {"success": True, "pinnedAt": to_utc_iso(pinned_at)}
+
+
+@router.delete("/conversations/{conversation_id}/pin/{message_id}")
+def unpin_message(
+    conversation_id: str,
+    message_id: str,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    API: DELETE /rt/conversations/{conversation_id}/pin/{message_id}
+    Purpose: Unpin a message from a conversation
+    Request (JSON): null
+    Response (JSON) [200]: { success: true }
+    Response Errors:
+    - 403: { "detail": "Not a conversation member" }
+    - 404: { "detail": "Pinned message not found" }
+    - 500: { "detail": "Internal Server Error" }
+    Notes: WebSocket event msg:unpinned will be broadcast to all members
+    """
+    membership = db.query(RTConversationMemberModel).filter(
+        RTConversationMemberModel.conversation_id == conversation_id,
+        RTConversationMemberModel.user_id == current_user["id"]
+    ).first()
+    if not membership:
+        raise HTTPException(403, "Not a conversation member")
+    
+    pinned = db.query(RTPinnedMessageModel).filter(
+        RTPinnedMessageModel.conversation_id == conversation_id,
+        RTPinnedMessageModel.message_id == message_id
+    ).first()
+    if not pinned:
+        raise HTTPException(404, "Pinned message not found")
+    
+    db.delete(pinned)
+    db.commit()
+    
+    return {"success": True}

@@ -7,11 +7,13 @@
 import { useState, FormEvent, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../../app/auth_service';
+import { useThemeStore } from '../../theme/themeStore';
 import Icon from '../../components/ui/Icon';
 import { showToast } from '../../utils/toast';
 
 export default function Forgot_Password_Page() {
   const navigate = useNavigate();
+  const { isDarkMode, toggleDarkMode } = useThemeStore();
   
   // Form state
   const [usernameOrEmail, setUsernameOrEmail] = useState('');
@@ -147,15 +149,34 @@ export default function Forgot_Password_Page() {
     }
   };
 
-  const inputClass = "w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-[#007AFF]/30 transition-all hover:scale-[1.02] shadow-ios";
+  const inputClass = `w-full px-4 py-3 rounded-xl focus:outline-none focus:ring-1 focus:ring-[#007AFF]/30 transition-all hover:scale-[1.02] shadow-ios ${
+    isDarkMode 
+      ? 'bg-white/5 border border-white/10 text-white placeholder-zinc-500'
+      : 'bg-zinc-100 border border-zinc-300 text-zinc-900 placeholder-zinc-400'
+  }`;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[var(--bg)] flex items-center justify-center p-4 relative">
+      {/* Theme toggle */}
+      <button
+        onClick={toggleDarkMode}
+        className={`absolute top-6 right-6 p-3 rounded-[var(--radius-xl)] border backdrop-blur-md transition-all duration-150 ${
+          isDarkMode
+            ? 'border-white/20 bg-white/10 hover:bg-white/15'
+            : 'border-black/10 bg-white/80 hover:bg-white/90'
+        }`}
+        title={isDarkMode ? 'Chế độ sáng' : 'Chế độ tối'}
+      >
+        <Icon name={isDarkMode ? 'sun' : 'moon'} size="md" />
+      </button>
+
       <div className="w-full max-w-md">
         {/* Back button */}
         <button
           onClick={() => step === 1 ? navigate('/login') : setStep(1)}
-          className="mb-6 flex items-center gap-2 text-zinc-400 hover:text-white transition-colors"
+          className={`mb-6 flex items-center gap-2 transition-colors ${
+            isDarkMode ? 'text-zinc-400 hover:text-white' : 'text-zinc-500 hover:text-zinc-900'
+          }`}
         >
           <Icon name="arrow-left" size="md" />
           <span>{step === 1 ? 'Quay lại đăng nhập' : 'Quay lại'}</span>
@@ -163,13 +184,15 @@ export default function Forgot_Password_Page() {
 
         {/* Logo & Brand */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 mb-4 bg-white/5 rounded-2xl p-2 border border-white/10">
+          <div className={`inline-flex items-center justify-center w-20 h-20 mb-4 rounded-2xl p-2 border ${
+            isDarkMode ? 'bg-white/5 border-white/10' : 'bg-zinc-100 border-zinc-200'
+          }`}>
             <img src="/src/resources/logo.png" alt="N3T Logo" className="w-full h-full object-contain" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">
+          <h1 className={`text-3xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-zinc-900'}`}>
             {step === 1 ? 'Quên mật khẩu?' : 'Đặt lại mật khẩu'}
           </h1>
-          <p className="text-zinc-400">
+          <p className={isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}>
             {step === 1 
               ? 'Nhập username hoặc email để nhận mã OTP' 
               : 'Nhập mã OTP và mật khẩu mới'}
@@ -177,7 +200,11 @@ export default function Forgot_Password_Page() {
         </div>
 
         {/* Form */}
-        <div className="bg-zinc-900/60 backdrop-blur-xl rounded-[32px] border border-white/10 p-8 shadow-2xl">
+        <div className={`backdrop-blur-xl rounded-[32px] border p-8 shadow-2xl ${
+          isDarkMode 
+            ? 'bg-zinc-900/60 border-white/10' 
+            : 'bg-white/80 border-zinc-200'
+        }`}>
           {error && (
             <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-lg text-sm mb-6 flex items-center gap-2">
               <Icon name="warning" size="sm" />
@@ -189,7 +216,7 @@ export default function Forgot_Password_Page() {
             // Step 1: Request OTP
             <form onSubmit={handleRequestOtp} className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-2 ml-1">
+                <label className={`block text-sm font-medium mb-2 ml-1 ${isDarkMode ? 'text-zinc-300' : 'text-zinc-700'}`}>
                   Username hoặc Email
                 </label>
                 <input
@@ -222,7 +249,7 @@ export default function Forgot_Password_Page() {
             // Step 2: Confirm OTP + New Password
             <form onSubmit={handleConfirmReset} className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-2 ml-1 text-center">
+                <label className={`block text-sm font-medium mb-2 ml-1 text-center ${isDarkMode ? 'text-zinc-300' : 'text-zinc-700'}`}>
                   Mã OTP (đã gửi đến email)
                 </label>
                 <div className="flex gap-2 justify-center mb-2">
@@ -236,7 +263,11 @@ export default function Forgot_Password_Page() {
                       onChange={(e) => handleOtpChange(index, e.target.value)}
                       onKeyDown={(e) => handleOtpKeyDown(index, e)}
                       onPaste={handleOtpPaste}
-                      className="w-12 h-14 text-center text-2xl font-bold bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-[#007AFF]/50 transition-all shadow-lg"
+                      className={`w-12 h-14 text-center text-2xl font-bold rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF]/50 transition-all shadow-lg ${
+                        isDarkMode 
+                          ? 'bg-white/5 border border-white/10 text-white'
+                          : 'bg-zinc-100 border border-zinc-300 text-zinc-900'
+                      }`}
                       disabled={loading}
                     />
                   ))}
@@ -259,7 +290,7 @@ export default function Forgot_Password_Page() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-2 ml-1">
+                <label className={`block text-sm font-medium mb-2 ml-1 ${isDarkMode ? 'text-zinc-300' : 'text-zinc-700'}`}>
                   Mật khẩu mới
                 </label>
                 <div className="relative">
@@ -274,7 +305,9 @@ export default function Forgot_Password_Page() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white transition-colors"
+                    className={`absolute right-4 top-1/2 -translate-y-1/2 transition-colors ${
+                      isDarkMode ? 'text-zinc-400 hover:text-white' : 'text-zinc-500 hover:text-zinc-900'
+                    }`}
                   >
                     <Icon name={showPassword ? 'eye-slash' : 'eye'} size="md" />
                   </button>
@@ -282,7 +315,7 @@ export default function Forgot_Password_Page() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-2 ml-1">
+                <label className={`block text-sm font-medium mb-2 ml-1 ${isDarkMode ? 'text-zinc-300' : 'text-zinc-700'}`}>
                   Xác nhận mật khẩu
                 </label>
                 <div className="relative">
@@ -297,7 +330,9 @@ export default function Forgot_Password_Page() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white transition-colors"
+                    className={`absolute right-4 top-1/2 -translate-y-1/2 transition-colors ${
+                      isDarkMode ? 'text-zinc-400 hover:text-white' : 'text-zinc-500 hover:text-zinc-900'
+                    }`}
                   >
                     <Icon name={showPassword ? 'eye-slash' : 'eye'} size="md" />
                   </button>
@@ -322,7 +357,7 @@ export default function Forgot_Password_Page() {
           )}
         </div>
 
-        <p className="text-center text-zinc-500 text-xs mt-8">
+        <p className={`text-center text-xs mt-8 ${isDarkMode ? 'text-zinc-500' : 'text-zinc-500'}`}>
           © 2025 N3T - Quản lý Kho. All rights reserved.
         </p>
       </div>

@@ -28,7 +28,11 @@ export default function Register_Page() {
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [resendCountdown, setResendCountdown] = useState(0);
 
-  const inputClass = "w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-primary/30 transition-all hover:scale-[1.02] shadow-ios";
+  const inputClass = `w-full px-4 py-3 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary/30 transition-all hover:scale-[1.02] shadow-ios ${
+    isDarkMode 
+      ? 'bg-white/5 border border-white/10 text-white placeholder-zinc-500'
+      : 'bg-zinc-100 border border-zinc-300 text-zinc-900 placeholder-zinc-400'
+  }`;
 
   const checkPasswordStrength = (pwd: string): 'weak' | 'medium' | 'strong' => {
     if (pwd.length < 6) return 'weak';
@@ -171,14 +175,20 @@ export default function Register_Page() {
 
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 mb-4 bg-white/5 rounded-2xl p-2 border border-white/10">
+          <div className={`inline-flex items-center justify-center w-20 h-20 mb-4 rounded-2xl p-2 border ${
+            isDarkMode ? 'bg-white/5 border-white/10' : 'bg-zinc-100 border-zinc-200'
+          }`}>
             <img src="/src/resources/logo.png" alt="N3T Logo" className="w-full h-full object-contain" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">Đăng ký</h1>
-          <p className="text-zinc-400">Tạo tài khoản mới để bắt đầu quản lý kho</p>
+          <h1 className={`text-3xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-zinc-900'}`}>Đăng ký</h1>
+          <p className={isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}>Tạo tài khoản mới để bắt đầu quản lý kho</p>
         </div>
 
-        <div className="bg-zinc-900/60 backdrop-blur-xl rounded-[32px] border border-white/10 p-8 shadow-2xl">
+        <div className={`backdrop-blur-xl rounded-[32px] border p-8 shadow-2xl ${
+          isDarkMode 
+            ? 'bg-zinc-900/60 border-white/10' 
+            : 'bg-white/80 border-zinc-200'
+        }`}>
           <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
               <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-lg text-sm">
@@ -187,7 +197,7 @@ export default function Register_Page() {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-2">Username</label>
+              <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-zinc-300' : 'text-zinc-700'}`}>Username</label>
               <input
                 type="text"
                 value={username}
@@ -199,7 +209,7 @@ export default function Register_Page() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-2">Email</label>
+              <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-zinc-300' : 'text-zinc-700'}`}>Email</label>
               <input
                 type="email"
                 value={email}
@@ -211,7 +221,7 @@ export default function Register_Page() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-2">Tên hiển thị</label>
+              <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-zinc-300' : 'text-zinc-700'}`}>Tên hiển thị</label>
               <input
                 type="text"
                 value={displayName}
@@ -223,7 +233,7 @@ export default function Register_Page() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-2">Mật khẩu</label>
+              <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-zinc-300' : 'text-zinc-700'}`}>Mật khẩu</label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -236,7 +246,9 @@ export default function Register_Page() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white transition-colors"
+                  className={`absolute right-4 top-1/2 -translate-y-1/2 transition-colors ${
+                    isDarkMode ? 'text-zinc-400 hover:text-white' : 'text-zinc-500 hover:text-zinc-900'
+                  }`}
                 >
                   <Icon name={showPassword ? 'eye-slash' : 'eye'} size="md" />
                 </button>
@@ -258,7 +270,7 @@ export default function Register_Page() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-2">Xác nhận mật khẩu</label>
+              <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-zinc-300' : 'text-zinc-700'}`}>Xác nhận mật khẩu</label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -271,7 +283,9 @@ export default function Register_Page() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white transition-colors"
+                  className={`absolute right-4 top-1/2 -translate-y-1/2 transition-colors ${
+                    isDarkMode ? 'text-zinc-400 hover:text-white' : 'text-zinc-500 hover:text-zinc-900'
+                  }`}
                 >
                   <Icon name={showPassword ? 'eye-slash' : 'eye'} size="md" />
                 </button>
@@ -282,9 +296,13 @@ export default function Register_Page() {
               <input
                 type="checkbox"
                 required
-                className="w-4 h-4 mt-1 rounded border-zinc-600 bg-zinc-800 text-primary focus:ring-offset-0 focus:ring-1 focus:ring-primary/50 cursor-pointer"
+                className={`w-4 h-4 mt-1 rounded text-primary focus:ring-offset-0 focus:ring-1 focus:ring-primary/50 cursor-pointer ${
+                  isDarkMode ? 'border-zinc-600 bg-zinc-800' : 'border-zinc-300 bg-white'
+                }`}
               />
-              <span className="text-sm text-zinc-400 group-hover:text-zinc-300 transition-colors">
+              <span className={`text-sm transition-colors ${
+                isDarkMode ? 'text-zinc-400 group-hover:text-zinc-300' : 'text-zinc-600 group-hover:text-zinc-800'
+              }`}>
                 Tôi đồng ý với <button type="button" className="text-[#007AFF] hover:underline">Điều khoản dịch vụ</button> và <button type="button" className="text-[#007AFF] hover:underline">Chính sách bảo mật</button>
               </span>
             </label>
@@ -298,8 +316,8 @@ export default function Register_Page() {
             </button>
           </form>
 
-          <div className="mt-8 text-center border-t border-white/10 pt-6">
-            <p className="text-zinc-400 text-sm">
+          <div className={`mt-8 text-center border-t pt-6 ${isDarkMode ? 'border-white/10' : 'border-zinc-200'}`}>
+            <p className={`text-sm ${isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
               Đã có tài khoản?{' '}
               <button
                 onClick={() => navigate('/login')}
@@ -311,7 +329,7 @@ export default function Register_Page() {
           </div>
         </div>
 
-        <p className="text-center text-zinc-500 text-xs mt-8">
+        <p className={`text-center text-xs mt-8 ${isDarkMode ? 'text-zinc-500' : 'text-zinc-500'}`}>
           © 2025 N3T - Quản lý Kho. All rights reserved.
         </p>
       </div>

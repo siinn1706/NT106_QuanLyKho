@@ -112,7 +112,7 @@ export const AttachmentPreview: React.FC<AttachmentPreviewProps> = ({
   if (files.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap gap-2 p-2 bg-surface-2 dark:bg-surface-2 rounded-lg border border-border dark:border-border">
+    <div className="relative z-[60] flex flex-wrap gap-2 p-2 bg-surface-2 dark:bg-surface-2 rounded-lg border border-border dark:border-border shadow-lg">
       {files.map((file, index) => {
         const isImage = isImageMimeType(file.type);
         const progress = uploadProgress?.get(file.name);

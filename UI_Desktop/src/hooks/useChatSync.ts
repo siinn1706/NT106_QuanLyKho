@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useCallback, useRef } from 'react';
-import { useChatStore, type Message, type ReplyInfo } from '../state/chat_store';
+import { useChatStore, type Message, type ReplyInfo, type MessageReaction } from '../state/chat_store';
 import { useAuthStore } from '../state/auth_store';
 import {
   apiCreateChatMessage,
@@ -39,6 +39,15 @@ function fromApiMessage(api: {
   reactions: string[];
   created_at: string;
 }): Message {
+  // Convert string[] reactions from API to MessageReaction[] format
+  // For bot chat, we don't have userId info from backend, so use "unknown"
+  // This is a limitation - ideally backend should return full reaction objects
+  const reactionsArray: MessageReaction[] = api.reactions.map((emoji, index) => ({
+    userId: `unknown_${index}`, // Backend doesn't provide userId for bot chat reactions
+    emoji,
+    createdAt: api.created_at, // Use message timestamp as fallback
+  }));
+
   return {
     id: api.id,
     conversationId: api.conversation_id,
@@ -50,7 +59,7 @@ function fromApiMessage(api: {
       text: api.reply_to.text,
       sender: api.reply_to.sender,
     } : null,
-    reactions: api.reactions,
+    reactions: reactionsArray,
   };
 }
 
@@ -98,7 +107,7 @@ export function useChatSync({ conversationId, enabled = true }: UseChatSyncOptio
   }, [isAuthenticated]);
   
   // Function để update reactions lên server
-  const saveReactions = useCallback(async (messageId: string, reactions: string[]) => {
+  const saveReactions = useCallback(async (messageId: string, reactions: MessageReaction[]) => {
     if (!isAuthenticated) return;
     
     try {

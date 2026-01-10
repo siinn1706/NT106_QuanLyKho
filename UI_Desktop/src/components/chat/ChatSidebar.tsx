@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useThemeStore } from '../../theme/themeStore';
 import { useRTChatStore } from '../../state/rt_chat_store';
 import { useAuthStore } from '../../state/auth_store';
+import { getConversationPreview } from '../../utils/chatHelpers';
 import NewChatModal from '../realtime-chat/NewChatModal';
 import PendingConversationPreviewModal from '../realtime-chat/PendingConversationPreviewModal';
 import Icon from '../ui/Icon';
@@ -17,10 +18,11 @@ type ConversationSummary = {
   unreadCount?: number;
 };
 
-export default function ChatSidebar({ onSelect, activeId, onToggle }:{
+export default function ChatSidebar({ onSelect, activeId, onToggle, botConversationId }:{
   onSelect: (id: string)=>void;
   activeId: string | null;
   onToggle?: () => void;
+  botConversationId?: string;
 }) {
   const [botAvatar, setBotAvatar] = useState<string>("/bot-avatar.png");
   const [showNewChatModal, setShowNewChatModal] = useState(false);
@@ -120,10 +122,10 @@ export default function ChatSidebar({ onSelect, activeId, onToggle }:{
         <button
           className={`w-full flex items-center p-3 gap-4 transition ${
             isDarkMode
-              ? `hover:bg-zinc-800 ${activeId === "bot" ? "bg-zinc-800" : ""}`
-              : `hover:bg-zinc-200 ${activeId === "bot" ? "bg-zinc-200" : ""}`
+              ? `hover:bg-zinc-800 ${activeId === (botConversationId || "bot") ? "bg-zinc-800" : ""}`
+              : `hover:bg-zinc-200 ${activeId === (botConversationId || "bot") ? "bg-zinc-200" : ""}`
           }`}
-          onClick={() => onSelect("bot")}
+          onClick={() => onSelect(botConversationId || "bot")}
         >
           <img src={botAvatar} alt="Bot" className="w-12 h-12 rounded-full" />
           <div className="flex-1 text-left truncate">
@@ -146,7 +148,7 @@ export default function ChatSidebar({ onSelect, activeId, onToggle }:{
               const otherMember = conv.members.find(m => m.userId !== currentUser?.id);
               const avatarUrl = resolveMediaUrl(otherMember?.userAvatarUrl);
               const name = otherMember?.userDisplayName || otherMember?.userEmail || "User";
-              const preview = conv.lastMessage?.content || "Tin nhắn mới";
+              const preview = getConversationPreview(conv, currentUser?.id);
               
               return (
                 <button
@@ -193,7 +195,7 @@ export default function ChatSidebar({ onSelect, activeId, onToggle }:{
           const otherMember = conv.members.find(m => m.userId !== currentUser?.id);
           const avatarUrl = resolveMediaUrl(otherMember?.userAvatarUrl);
           const name = otherMember?.userDisplayName || otherMember?.userEmail || "User";
-          const preview = conv.lastMessage?.content || "Bắt đầu cuộc trò chuyện...";
+          const preview = getConversationPreview(conv, currentUser?.id);
           
           return (
             <button

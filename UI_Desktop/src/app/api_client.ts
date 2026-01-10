@@ -5,6 +5,7 @@
  */
 
 import { useAuthStore } from '../state/auth_store'; // Đã thêm: Import store
+import { type MessageReaction } from '../state/chat_store';
 
 export const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 console.log('[API Client] Using BASE_URL:', BASE_URL);
@@ -907,15 +908,26 @@ export async function apiCreateChatMessage(message: ChatMessageCreate): Promise<
 
 /**
  * API: PUT /chat/messages/{message_id}/reactions
- * Purpose: Cập nhật reactions của tin nhắn
+ * Purpose: Cập nhật reactions của tin nhắn chatbot
+ * Request (JSON): { "reactions": ["emoji1", "emoji2", ...] }
+ * Response (JSON) [200]: ChatMessage object with updated reactions
+ * Response Errors:
+ * - 400: { "detail": "Invalid request" }
+ * - 401: { "detail": "Unauthorized" }
+ * - 404: { "detail": "Message not found" }
+ * - 500: { "detail": "Internal Server Error" }
+ * Notes: Accepts array of emoji strings, backend stores as-is
  */
 export async function apiUpdateMessageReactions(
   messageId: string, 
-  reactions: string[]
+  reactions: MessageReaction[]
 ): Promise<ChatMessage> {
+  // Convert MessageReaction[] to string[] for backend API
+  const reactionsArray = reactions.map(r => r.emoji);
+  
   const res = await apiFetch(`${BASE_URL}/chat/messages/${messageId}/reactions`, {
     method: 'PUT',
-    body: JSON.stringify({ reactions }),
+    body: JSON.stringify({ reactions: reactionsArray }),
   });
   if (!res.ok) throw new Error("Không thể cập nhật reactions");
   return res.json();
