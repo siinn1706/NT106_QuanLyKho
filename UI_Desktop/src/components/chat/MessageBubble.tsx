@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useThemeStore } from "../../theme/themeStore";
 import { useRTChatStore } from "../../state/rt_chat_store";
+import { useAuthStore } from "../../state/auth_store";
 import ReactMarkdown from "react-markdown";
 import Icon from "../ui/Icon";
 import Popover, { PopoverItem, PopoverDivider } from "../ui/Popover";
@@ -37,6 +38,8 @@ export default function MessageBubble({
   conversationId,
   editedAt,
   deletedAt,
+  highlighted = false,
+  onImageClick,
 }: {
   messageId: string;
   text: string;
@@ -45,8 +48,8 @@ export default function MessageBubble({
   isLastInGroup?: boolean;
   replyTo?: ReplyInfo | null;
   onReply?: () => void;
-  initialReactions?: string[];
-  onReactionChange?: (messageId: string, reactions: string[]) => void;
+  initialReactions?: Array<{ userId: string; emoji: string; createdAt: string }>;
+  onReactionChange?: (messageId: string, emoji: string) => void;
   status?: 'pending' | 'sent' | 'delivered' | 'read';
   contentType?: ContentType;
   attachments?: Attachment[];
@@ -55,6 +58,8 @@ export default function MessageBubble({
   conversationId?: string;
   editedAt?: string;
   deletedAt?: string;
+  highlighted?: boolean;
+  onImageClick?: (imageUrl: string) => void;
 }) {
   const [showAction, setShowAction] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -63,10 +68,11 @@ export default function MessageBubble({
   const [showForwardModal, setShowForwardModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(text);
-  const [reactions, setReactions] = useState<string[]>(initialReactions);
+  const [reactions, setReactions] = useState<Array<{ userId: string; emoji: string; createdAt: string }>>(initialReactions);
   const [menuAnchorPos, setMenuAnchorPos] = useState<{ x: number; y: number } | undefined>();
   const isOpeningRef = useRef(false);
   const isDarkMode = useThemeStore((state) => state.isDarkMode);
+  const currentUser = useAuthStore((state) => state.user);
   const editMessage = useRTChatStore((state) => state.editMessage);
   const deleteMessage = useRTChatStore((state) => state.deleteMessage);
   const hideMessage = useRTChatStore((state) => state.hideMessage);
@@ -79,7 +85,7 @@ export default function MessageBubble({
 
   // Sync reactions khi initialReactions thay đổi (từ server)
   // Use useMemo to create stable reference for comparison
-  const reactionsKey = useMemo(() => JSON.stringify(initialReactions), [initialReactions.length, initialReactions.join(',')]);
+  const reactionsKey = useMemo(() => JSON.stringify(initialReactions), [initialReactions.length, initialReactions.map(r => r.userId + r.emoji).join(',')]);
   
   useEffect(() => {
     setReactions(initialReactions);
@@ -97,21 +103,32 @@ export default function MessageBubble({
   }, [showActionsMenu, showEmojiPicker]);
 
   const handleReaction = (emoji: string) => {
-    let newReactions: string[];
+    if (!currentUser) {
+      console.warn('[MessageBubble] Cannot react: no current user');
+      return;
+    }
     
-    if (reactions.includes(emoji)) {
-      // Remove reaction nếu đã có
-      newReactions = reactions.filter(r => r !== emoji);
+    // Toggle behavior: remove if user already reacted with this emoji, otherwise add
+    const hasReacted = reactions.some(r => r.userId === currentUser.id && r.emoji === emoji);
+    
+    let newReactions: Array<{ userId: string; emoji: string; createdAt: string }>;
+    
+    if (hasReacted) {
+      // Remove user's reaction with this emoji
+      newReactions = reactions.filter(r => !(r.userId === currentUser.id && r.emoji === emoji));
     } else {
-      // Thêm reaction (giữ unique)
-      newReactions = [...reactions, emoji];
+      // Add new reaction
+      newReactions = [
+        ...reactions,
+        { userId: currentUser.id, emoji, createdAt: new Date().toISOString() }
+      ];
     }
     
     setReactions(newReactions);
     setShowEmojiPicker(false);
     
-    // Callback để sync lên server
-    onReactionChange?.(messageId, newReactions);
+    // Callback to sync with server - just pass the emoji for toggle
+    onReactionChange?.(messageId, emoji);
   };
 
   const handleOpenActionsMenu = (e: React.MouseEvent) => {
@@ -247,7 +264,20 @@ export default function MessageBubble({
   };
   
   // Lấy reaction đầu tiên để hiển thị (hoặc null)
-  const displayReaction = reactions.length > 0 ? reactions[reactions.length - 1] : null;
+  // Display reactions: group by emoji, show most popular or first
+  const displayReaction = useMemo(() => {
+    if (reactions.length === 0) return null;
+    
+    // Group reactions by emoji
+    const emojiGroups = reactions.reduce((acc, r) => {
+      acc[r.emoji] = (acc[r.emoji] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    // Find most popular emoji
+    const mostPopular = Object.entries(emojiGroups).sort((a, b) => b[1] - a[1])[0];
+    return mostPopular ? mostPopular[0] : null;
+  }, [reactions]);
 
   // If message is deleted, show placeholder
   if (deletedAt) {
@@ -269,32 +299,38 @@ export default function MessageBubble({
   
   return (
     <div 
-      className={`flex flex-col ${mine ? "items-end" : "items-start"} mb-0.5`}
+      className={`flex flex-col ${mine ? "items-end" : "items-start"} mb-0.5 transition-all duration-200 ${
+        highlighted ? 'scale-[1.02]' : ''
+      }`}
       onMouseEnter={() => setShowAction(true)} 
       onMouseLeave={() => { 
-        // Don't hide actions if menu is open
         if (!showActionsMenu) {
           setShowAction(false);
         }
         setShowEmojiPicker(false);
       }}
     >
-      {/* Reply preview - hiện tin nhắn đang reply, style giống Messenger */}
+      {/* Reply preview - show reply icon + sender name + "đã trả lời bạn" + content */}
       {replyTo && (
-        <div className={`flex items-center gap-1.5 mb-1 text-xs ${
-          mine ? "flex-row-reverse" : "flex-row"
-        }`}>
-          <Icon name="reply" size="xs" className={isDarkMode ? "text-zinc-400" : "text-zinc-500"} />
-          <span className={isDarkMode ? "text-zinc-300" : "text-zinc-600"}>
-            {mine ? "Bạn" : "Bot"} đã trả lời {replyTo.sender}
-          </span>
-        </div>
-      )}
-
-      {/* Reply content preview - nền liquid glass, max 2 dòng */}
-      {replyTo && (
-        <div className={`flex mb-1 max-w-[260px] ${mine ? "justify-end" : "justify-start"}`}>
-          <div className={`px-3 py-2 rounded-xl border backdrop-blur-sm ${
+        <div className={`flex flex-col gap-1 mb-2 ${mine ? "items-end" : "items-start"}`}>
+          {/* Reply handle: icon + "Bạn/Name đã trả lời [sender]" */}
+          <div className={`flex items-center gap-1.5 ${
+            mine ? "flex-row-reverse" : "flex-row"
+          }`}>
+            <Icon 
+              name="reply" 
+              size="xs" 
+              className={isDarkMode ? "text-zinc-400" : "text-zinc-500"} 
+            />
+            <span className={`text-xs ${
+              isDarkMode ? "text-zinc-400" : "text-zinc-600"
+            }`}>
+              {mine ? "Bạn" : (senderName || "User")} đã trả lời {replyTo.sender}
+            </span>
+          </div>
+          
+          {/* Reply content preview with glass effect */}
+          <div className={`px-3 py-2 rounded-xl border backdrop-blur-sm max-w-[260px] ${
             isDarkMode 
               ? "border-white/20 bg-white/10" 
               : "border-black/10 bg-black/5"
@@ -307,7 +343,10 @@ export default function MessageBubble({
       )}
 
       {/* Hàng chính: action buttons + bong bóng */}
-      <div className={`flex items-end gap-1.5 ${mine ? "flex-row-reverse" : "flex-row"}`}>
+      {/* Add mb-6 when reactions present to prevent icon overlap */}
+      <div className={`flex items-end gap-1.5 ${mine ? "flex-row-reverse" : "flex-row"} ${
+        reactions.length > 0 ? "mb-4" : "mb-0"
+      }`}>
         {/* Bong bóng tin nhắn - dùng accent color cho tin của mình */}
         <div className="relative">
           <div 
@@ -317,6 +356,14 @@ export default function MessageBubble({
                 : isDarkMode
                   ? "bg-zinc-800 text-zinc-100 shadow-sm"
                   : "bg-gray-100 text-gray-900 shadow-sm"
+            } ${
+              highlighted
+                ? mine
+                  ? 'ring-2 ring-white/40 ring-offset-2 ring-offset-transparent'
+                  : isDarkMode
+                    ? 'ring-2 ring-blue-400/60 ring-offset-2 ring-offset-zinc-900'
+                    : 'ring-2 ring-blue-500/60 ring-offset-2 ring-offset-white'
+                : ''
             }`}
             style={mine ? { backgroundColor: 'var(--primary)' } : undefined}
           >
@@ -324,7 +371,7 @@ export default function MessageBubble({
             {attachments && attachments.length > 0 && (
               <div className="mb-2">
                 {contentType === 'image' ? (
-                  <ImageAttachments attachments={attachments} />
+                  <ImageAttachments attachments={attachments} onImageClick={onImageClick} />
                 ) : contentType === 'file' ? (
                   <FileAttachments attachments={attachments} mine={mine} isDarkMode={isDarkMode} />
                 ) : null}
@@ -587,17 +634,21 @@ export default function MessageBubble({
             backgroundColor: 'rgba(255, 255, 255, 0.15)'
           }}
         >
-          {QUICK_REACTIONS.map((emoji) => (
-            <button
-              key={emoji}
-              onClick={() => handleReaction(emoji)}
-              className={`text-base p-1 rounded-full transition-all duration-150 hover:scale-110 ${
-                reactions.includes(emoji) ? "bg-white/25 scale-105" : "hover:bg-white/20"
-              }`}
-            >
-              {emoji}
-            </button>
-          ))}
+          {QUICK_REACTIONS.map((emoji) => {
+            const hasReacted = currentUser && reactions.some(r => r.userId === currentUser.id && r.emoji === emoji);
+            
+            return (
+              <button
+                key={emoji}
+                onClick={() => handleReaction(emoji)}
+                className={`text-base p-1 rounded-full transition-all duration-150 hover:scale-110 ${
+                  hasReacted ? "bg-white/25 scale-105" : "hover:bg-white/20"
+                }`}
+              >
+                {emoji}
+              </button>
+            );
+          })}
         </div>,
         document.body
       )}
@@ -607,54 +658,29 @@ export default function MessageBubble({
 
 interface ImageAttachmentsProps {
   attachments: Attachment[];
+  onImageClick?: (imageUrl: string) => void;
 }
 
-const ImageAttachments: React.FC<ImageAttachmentsProps> = ({ attachments }) => {
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
-
+const ImageAttachments: React.FC<ImageAttachmentsProps> = ({ attachments, onImageClick }) => {
   return (
-    <>
-      <div className={`grid gap-1 ${
-        attachments.length === 1 ? 'grid-cols-1' : 
-        attachments.length === 2 ? 'grid-cols-2' : 
-        'grid-cols-2'
-      }`}>
-        {attachments.map((attachment, idx) => {
-          const imageUrl = resolveMediaUrl(attachment.url) || attachment.url;
-          return (
-            <img
-              key={attachment.file_id || idx}
-              src={imageUrl}
-              alt={attachment.name}
-              className="w-full h-auto rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-              onClick={() => setSelectedImage(imageUrl)}
-            />
-          );
-        })}
-      </div>
-
-      {selectedImage && (
-        <div 
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
-          onClick={() => setSelectedImage(null)}
-        >
+    <div className={`grid gap-1 ${
+      attachments.length === 1 ? 'grid-cols-1' : 
+      attachments.length === 2 ? 'grid-cols-2' : 
+      'grid-cols-2'
+    }`}>
+      {attachments.map((attachment, idx) => {
+        const imageUrl = resolveMediaUrl(attachment.url) || attachment.url;
+        return (
           <img
-            src={selectedImage}
-            alt="Full size"
-            className="max-w-full max-h-full rounded-lg"
-            onClick={(e) => e.stopPropagation()}
+            key={attachment.file_id || idx}
+            src={imageUrl}
+            alt={attachment.name}
+            className="w-full h-auto rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+            onClick={() => onImageClick?.(imageUrl)}
           />
-          <button
-            onClick={() => setSelectedImage(null)}
-            className="absolute top-4 right-4 p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
-          >
-            <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-      )}
-    </>
+        );
+      })}
+    </div>
   );
 };
 

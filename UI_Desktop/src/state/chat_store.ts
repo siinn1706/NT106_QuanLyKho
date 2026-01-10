@@ -1,7 +1,8 @@
 /** Chat Store - Zustand
- *  - Quản lý lịch sử chat theo conversationId
+ *  - Quản lý lịch sử chat theo conversationId (per-user isolation)
  *  - Persist vào localStorage để giữ lịch sử khi reload
  *  - Hỗ trợ reactions và reply
+ *  - Bot conversations use format: bot_{user_id} for isolation
  */
 
 import { create } from 'zustand';
@@ -14,6 +15,12 @@ export type ReplyInfo = {
   sender: string;
 };
 
+export type MessageReaction = {
+  userId: string;
+  emoji: string;
+  createdAt: string;
+};
+
 export type Message = {
   id: string;
   conversationId: string;
@@ -21,7 +28,7 @@ export type Message = {
   text: string;
   createdAt: string;
   replyTo?: ReplyInfo | null;
-  reactions?: string[];
+  reactions?: MessageReaction[];
   contentType?: ContentType;
   attachments?: Attachment[];
 };
@@ -34,7 +41,10 @@ interface ChatStore {
   addMessage: (message: Message) => void;
   
   // Cập nhật reactions của một message
-  updateMessageReactions: (messageId: string, reactions: string[]) => void;
+  updateMessageReactions: (messageId: string, reactions: MessageReaction[]) => void;
+  
+  // Toggle reaction for a message (add if not exists, remove if exists)
+  toggleMessageReaction: (messageId: string, emoji: string, userId: string) => void;
   
   // Lấy messages của một conversation
   getMessages: (conversationId: string) => Message[];
@@ -47,19 +57,17 @@ interface ChatStore {
   
   // Load messages từ server
   loadFromServer: (conversationId: string, messages: Message[]) => void;
+  
+  // Get bot conversation ID for current user (format: bot_{user_id})
+  getBotConversationId: (userId: string) => string;
+  
+  // Initialize bot conversation with welcome message if not exists
+  initBotConversation: (userId: string) => void;
 }
 
 const MOCK_INITIAL_MESSAGES: Record<string, Message[]> = {
-  bot: [
-    { 
-      id: "m1", 
-      conversationId: "bot", 
-      sender: "bot", 
-      text: "Xin chào! Tôi là trợ lý N3T. Tôi có thể giúp gì cho bạn về quản lý kho?", 
-      createdAt: new Date().toISOString(),
-      reactions: [],
-    },
-  ],
+  // Removed hardcoded "bot" key - will be initialized dynamically per user
+  // via initBotConversation(userId) method
 };
 
 export const useChatStore = create<ChatStore>()(
@@ -107,6 +115,48 @@ export const useChatStore = create<ChatStore>()(
           return { conversations: newConversations };
         });
       },
+
+      // Toggle reaction for a message (add if not exists, remove if exists)
+      toggleMessageReaction: (messageId, emoji, userId) => {
+        set((state) => {
+          const newConversations = { ...state.conversations };
+          
+          // Tìm message trong tất cả conversations
+          for (const convId of Object.keys(newConversations)) {
+            const messages = newConversations[convId];
+            const msgIndex = messages.findIndex(m => m.id === messageId);
+            
+            if (msgIndex !== -1) {
+              const message = messages[msgIndex];
+              const currentReactions = message.reactions || [];
+              
+              // Check if user already has this reaction
+              const existingIndex = currentReactions.findIndex(
+                r => r.userId === userId && r.emoji === emoji
+              );
+              
+              let updatedReactions: MessageReaction[];
+              if (existingIndex !== -1) {
+                // Remove existing reaction
+                updatedReactions = currentReactions.filter((_, i) => i !== existingIndex);
+              } else {
+                // Add new reaction
+                updatedReactions = [
+                  ...currentReactions,
+                  { userId, emoji, createdAt: new Date().toISOString() }
+                ];
+              }
+              
+              newConversations[convId] = messages.map((m, i) => 
+                i === msgIndex ? { ...m, reactions: updatedReactions } : m
+              );
+              break;
+            }
+          }
+          
+          return { conversations: newConversations };
+        });
+      },
       
       getMessages: (conversationId) => {
         const state = get();
@@ -116,18 +166,14 @@ export const useChatStore = create<ChatStore>()(
       clearConversation: (conversationId) => {
         set((state) => {
           const newConversations = { ...state.conversations };
-          // Reset về initial message nếu có
-          if (MOCK_INITIAL_MESSAGES[conversationId]) {
-            newConversations[conversationId] = MOCK_INITIAL_MESSAGES[conversationId];
-          } else {
-            delete newConversations[conversationId];
-          }
+          // Clear conversation (no MOCK fallback since we init dynamically)
+          delete newConversations[conversationId];
           return { conversations: newConversations };
         });
       },
       
       clearAll: () => {
-        set({ conversations: MOCK_INITIAL_MESSAGES });
+        set({ conversations: {} });
       },
       
       // Load messages từ server (merge với local, server wins)
@@ -151,6 +197,35 @@ export const useChatStore = create<ChatStore>()(
             },
           };
         });
+      },
+      
+      // Get bot conversation ID for current user (format: bot_{user_id})
+      getBotConversationId: (userId: string) => {
+        return `bot_${userId}`;
+      },
+      
+      // Initialize bot conversation with welcome message if not exists
+      initBotConversation: (userId: string) => {
+        const conversationId = `bot_${userId}`;
+        const state = get();
+        
+        if (!state.conversations[conversationId] || state.conversations[conversationId].length === 0) {
+          const welcomeMessage: Message = {
+            id: `${conversationId}_welcome`,
+            conversationId,
+            sender: "bot",
+            text: "Xin chào! Tôi là trợ lý N3T. Tôi có thể giúp gì cho bạn về quản lý kho?",
+            createdAt: new Date().toISOString(),
+            reactions: [],
+          };
+          
+          set((state) => ({
+            conversations: {
+              ...state.conversations,
+              [conversationId]: [welcomeMessage],
+            },
+          }));
+        }
       },
     }),
     {

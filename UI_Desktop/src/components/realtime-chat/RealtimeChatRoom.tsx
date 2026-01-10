@@ -4,7 +4,7 @@
  * Similar to ChatRoom but uses rt_chat_store instead of chat_store.
  */
 
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from "react";
 import { useThemeStore } from "../../theme/themeStore";
 import { useRTChatStore, MessageUI } from "../../state/rt_chat_store";
 import { useAuthStore } from "../../state/auth_store";
@@ -12,11 +12,14 @@ import { rtWSClient } from "../../services/rt_ws_client";
 import { AttachmentPicker, AttachmentPreview } from "../chat/AttachmentPicker";
 import { isImageMimeType, type Attachment, type UploadProgress } from "../../types/attachment";
 import { showError } from "../../utils/toast";
+import { isNearBottom } from "../../utils/chatHelpers";
 import ChatBackground from "../chat/ChatBackground";
 import DateSeparator from "../chat/DateSeparator";
 import ChatDatePicker from "../chat/ChatDatePicker";
 import MessageBubble from "../chat/MessageBubble";
 import TypingIndicator from "../chat/TypingIndicator";
+import PinnedMessageBar from "./PinnedMessageBar";
+import PinnedMessagesListModal from "./PinnedMessagesListModal";
 import Icon from "../ui/Icon";
 import { resolveMediaUrl, getInitials } from "../../utils/mediaUrl";
 
@@ -42,6 +45,7 @@ export default function RealtimeChatRoom({ conversationId, sidebarCollapsed, onE
   const sendMessage = useRTChatStore(state => state.sendMessage);
   const markRead = useRTChatStore(state => state.markRead);
   const uploadFile = useRTChatStore(state => state.uploadFile);
+  const toggleReaction = useRTChatStore(state => state.toggleReaction);
   
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -51,11 +55,17 @@ export default function RealtimeChatRoom({ conversationId, sidebarCollapsed, onE
   const [uploadProgress, setUploadProgress] = useState<Map<string, UploadProgress>>(new Map());
   const [uploadedAttachments, setUploadedAttachments] = useState<Attachment[]>([]);
   const [replyingTo, setReplyingTo] = useState<MessageUI | null>(null);
+  const [isUserNearBottom, setIsUserNearBottom] = useState(true);
+  const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
+  const [showPinnedList, setShowPinnedList] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const dateRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const typingTimeoutRef = useRef<number | null>(null);
+  const prevConversationIdRef = useRef<string | null>(null);
+  const highlightTimeoutRef = useRef<number | null>(null);
   const isDarkMode = useThemeStore(state => state.isDarkMode);
   
   const messagesGroupedByDate = useMemo(() => {
@@ -79,6 +89,21 @@ export default function RealtimeChatRoom({ conversationId, sidebarCollapsed, onE
     return groups;
   }, [messages]);
   
+  // Helper: Lookup reply info for a message
+  const getReplyInfo = (msg: MessageUI): { text: string; sender: string } | null => {
+    if (!msg.replyToId) return null;
+    
+    const repliedMsg = messages.find(m => m.id === msg.replyToId);
+    if (!repliedMsg) return null;
+    
+    return {
+      text: repliedMsg.content,
+      sender: repliedMsg.senderId === currentUser?.id 
+        ? 'Bạn' 
+        : (repliedMsg.senderDisplayName || repliedMsg.senderEmail || 'User')
+    };
+  };
+  
   const availableDates = useMemo(() => {
     return messagesGroupedByDate.map(g => g.date);
   }, [messagesGroupedByDate]);
@@ -92,18 +117,40 @@ export default function RealtimeChatRoom({ conversationId, sidebarCollapsed, onE
     }
   }, []);
   
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages.length]);
+  useLayoutEffect(() => {
+    if (conversationId !== prevConversationIdRef.current) {
+      prevConversationIdRef.current = conversationId;
+      requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+        setIsUserNearBottom(true);
+      });
+    }
+  }, [conversationId]);
+  
+  useLayoutEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container || messages.length === 0) return;
+    
+    const lastMessage = messages[messages.length - 1];
+    const isOwnMessage = lastMessage?.senderId === currentUser?.id;
+    
+    if (isOwnMessage || isUserNearBottom) {
+      requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      });
+    } else {
+      setShowScrollButton(true);
+    }
+  }, [messages.length, currentUser?.id]);
   
   useEffect(() => {
     const container = messagesContainerRef.current;
     if (!container) return;
     
     const handleScroll = () => {
-      const { scrollTop, scrollHeight, clientHeight } = container;
-      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
-      setShowScrollButton(!isNearBottom);
+      const nearBottom = isNearBottom(container, 60);
+      setIsUserNearBottom(nearBottom);
+      setShowScrollButton(!nearBottom);
     };
     
     container.addEventListener('scroll', handleScroll);
@@ -112,6 +159,7 @@ export default function RealtimeChatRoom({ conversationId, sidebarCollapsed, onE
   
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    setIsUserNearBottom(true);
   }, []);
   
   useEffect(() => {
@@ -177,16 +225,15 @@ export default function RealtimeChatRoom({ conversationId, sidebarCollapsed, onE
       ? (currentAttachments.every(att => isImageMimeType(att.mime_type)) ? 'image' : 'file')
       : 'text';
     
-    // TODO: Backend needs to support reply_to_id in payload
-    // For now, we'll add it to attachments metadata when backend ready
-    const messagePayload = {
-      content: inputValue.trim(),
-      contentType: contentType as any,
-      attachments: currentAttachments.length > 0 ? currentAttachments : undefined,
-      replyToId: replyingTo?.id
-    };
+    // Send message with replyToId if replying
+    sendMessage(
+      conversationId, 
+      inputValue.trim(), 
+      contentType as any, 
+      currentAttachments.length > 0 ? currentAttachments : undefined,
+      replyingTo?.id // Pass replyToId
+    );
     
-    sendMessage(conversationId, inputValue.trim(), contentType as any, currentAttachments.length > 0 ? currentAttachments : undefined);
     setInputValue("");
     setSelectedFiles([]);
     setUploadedAttachments([]);
@@ -216,6 +263,34 @@ export default function RealtimeChatRoom({ conversationId, sidebarCollapsed, onE
   const handleCancelReply = () => {
     setReplyingTo(null);
   };
+  
+  const handleScrollToPinnedMessage = (messageId: string) => {
+    const element = document.getElementById(`msg-${messageId}`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      
+      setHighlightedMessageId(messageId);
+      
+      if (highlightTimeoutRef.current) {
+        clearTimeout(highlightTimeoutRef.current);
+      }
+      
+      highlightTimeoutRef.current = window.setTimeout(() => {
+        setHighlightedMessageId(null);
+        highlightTimeoutRef.current = null;
+      }, 2000);
+    } else {
+      showError('Tin nhắn đã ghim không có trong lịch sử hiện tại');
+    }
+  };
+  
+  useEffect(() => {
+    return () => {
+      if (highlightTimeoutRef.current) {
+        clearTimeout(highlightTimeoutRef.current);
+      }
+    };
+  }, []);
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
@@ -250,24 +325,16 @@ export default function RealtimeChatRoom({ conversationId, sidebarCollapsed, onE
   
   // Auto-scroll when typing indicator appears if user is near bottom
   useEffect(() => {
-    if (isOtherTyping) {
-      const container = messagesContainerRef.current;
-      if (!container) return;
-      
-      const { scrollTop, scrollHeight, clientHeight } = container;
-      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
-      
-      if (isNearBottom) {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }
+    if (isOtherTyping && isUserNearBottom) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [isOtherTyping]);
+  }, [isOtherTyping, isUserNearBottom]);
   
   return (
     <ChatBackground className="flex-1 flex flex-col relative overflow-hidden">
       <div className={`flex items-center gap-3 px-5 py-3 border-b shrink-0 z-20 ${
-        isDarkMode ? "bg-zinc-900/80 border-zinc-700" : "bg-white/80 border-zinc-300"
-      } backdrop-blur-md`}>
+        isDarkMode ? "bg-zinc-950/50 border-white/10" : "bg-white/45 border-black/10"
+      } backdrop-blur-xl backdrop-saturate-150`}>
         {sidebarCollapsed && onExpandSidebar && (
           <button
             onClick={onExpandSidebar}
@@ -308,31 +375,40 @@ export default function RealtimeChatRoom({ conversationId, sidebarCollapsed, onE
         </div>
       </div>
       
+      <PinnedMessageBar 
+        conversationId={conversationId} 
+        onScrollToMessage={handleScrollToPinnedMessage}
+        onOpenPinnedList={() => setShowPinnedList(true)}
+      />
+      
       <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-5 z-10 relative">
         {messagesGroupedByDate.map((group) => (
           <div key={group.dateKey} ref={(el) => (dateRefs.current[group.dateKey] = el)}>
             <DateSeparator date={group.date} onClick={() => setShowDatePicker(true)} />
             {group.messages.map((msg, idx) => (
-              <MessageBubble
-                key={msg.id}
-                messageId={msg.id}
-                conversationId={conversationId}
-                text={msg.content}
-                time={new Date(msg.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
-                mine={msg.senderId === currentUser?.id}
-                isLastInGroup={idx === group.messages.length - 1 || group.messages[idx + 1]?.senderId !== msg.senderId}
-                replyTo={null}
-                initialReactions={[]}
-                onReactionChange={() => {}}
-                onReply={() => handleReply(msg)}
-                status={msg.status}
-                contentType={msg.contentType}
-                attachments={msg.attachments}
-                senderName={msg.senderDisplayName || msg.senderEmail}
-                senderAvatar={msg.senderAvatarUrl}
-                editedAt={msg.editedAt}
-                deletedAt={msg.deletedAt}
-              />
+              <div key={msg.id} id={`msg-${msg.id}`}>
+                <MessageBubble
+                  messageId={msg.id}
+                  conversationId={conversationId}
+                  text={msg.content}
+                  time={new Date(msg.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                  mine={msg.senderId === currentUser?.id}
+                  isLastInGroup={idx === group.messages.length - 1 || group.messages[idx + 1]?.senderId !== msg.senderId}
+                  replyTo={getReplyInfo(msg)}
+                  initialReactions={msg.reactions || []}
+                  onReactionChange={(messageId, emoji) => toggleReaction(conversationId, messageId, emoji)}
+                  onReply={() => handleReply(msg)}
+                  status={msg.status}
+                  contentType={msg.contentType}
+                  attachments={msg.attachments}
+                  senderName={msg.senderDisplayName || msg.senderEmail}
+                  senderAvatar={msg.senderAvatarUrl}
+                  editedAt={msg.editedAt}
+                  deletedAt={msg.deletedAt}
+                  highlighted={highlightedMessageId === msg.id}
+                  onImageClick={setLightboxImage}
+                />
+              </div>
             ))}
           </div>
         ))}
@@ -368,8 +444,8 @@ export default function RealtimeChatRoom({ conversationId, sidebarCollapsed, onE
       <form
         onSubmit={handleSend}
         className={`flex flex-col gap-2 border-t shrink-0 z-20 ${
-          isDarkMode ? "bg-zinc-900/80 border-zinc-700" : "bg-white/80 border-zinc-300"
-        } backdrop-blur-md`}
+          isDarkMode ? "bg-zinc-950/50 border-white/10" : "bg-white/45 border-black/10"
+        } backdrop-blur-xl backdrop-saturate-150`}
       >
         {/* Reply preview */}
         {replyingTo && (
@@ -442,6 +518,38 @@ export default function RealtimeChatRoom({ conversationId, sidebarCollapsed, onE
           </button>
         </div>
       </form>
+      
+      {/* Pinned Messages List Modal */}
+      {showPinnedList && (
+        <PinnedMessagesListModal
+          conversationId={conversationId}
+          onClose={() => setShowPinnedList(false)}
+          onScrollToMessage={handleScrollToPinnedMessage}
+        />
+      )}
+      
+      {/* Image Lightbox - rendered at ChatRoom level to be above all chat UI */}
+      {lightboxImage && (
+        <div 
+          className="absolute inset-0 bg-black/90 flex items-center justify-center p-4 z-[100]"
+          onClick={() => setLightboxImage(null)}
+        >
+          <img
+            src={lightboxImage}
+            alt="Full size"
+            className="max-w-full max-h-full rounded-lg object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button
+            onClick={() => setLightboxImage(null)}
+            className="absolute top-4 right-4 p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
+          >
+            <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
     </ChatBackground>
   );
 }

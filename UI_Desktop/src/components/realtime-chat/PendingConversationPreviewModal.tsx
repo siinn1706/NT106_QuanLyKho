@@ -33,6 +33,7 @@ export default function PendingConversationPreviewModal({
   const [error, setError] = useState<string | null>(null);
   const [showRejectConfirm, setShowRejectConfirm] = useState(false);
   const [showDeleteHistoryConfirm, setShowDeleteHistoryConfirm] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const isDarkMode = useThemeStore((state) => state.isDarkMode);
   const currentUser = useAuthStore((state) => state.user);
   const acceptConversation = useRTChatStore((state) => state.acceptConversation);
@@ -204,6 +205,7 @@ export default function PendingConversationPreviewModal({
                   idx === messages.length - 1 ||
                   messages[idx + 1]?.senderId !== msg.senderId
                 }
+                onImageClick={setLightboxImage}
               />
             ))}
         </div>
@@ -278,6 +280,29 @@ export default function PendingConversationPreviewModal({
         onCancel={() => handleDeleteHistory(false)}
         isDarkMode={isDarkMode}
       />
+
+      {/* Image Lightbox */}
+      {lightboxImage && (
+        <div 
+          className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-[9999]"
+          onClick={() => setLightboxImage(null)}
+        >
+          <img
+            src={lightboxImage}
+            alt="Full size"
+            className="max-w-full max-h-full rounded-lg object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button
+            onClick={() => setLightboxImage(null)}
+            className="absolute top-4 right-4 p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
+          >
+            <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
     </div>
   );
 }

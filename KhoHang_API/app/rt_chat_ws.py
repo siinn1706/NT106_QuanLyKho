@@ -20,7 +20,10 @@ from .database import (
     RTConversationModel,
     RTConversationMemberModel,
     RTMessageModel,
-    RTMessageReceiptModel
+    RTMessageReceiptModel,
+    RTMessageReactionModel,
+    RTPinnedMessageModel,
+    to_utc_iso  # Import timezone utility
 )
 from .security import verify_token
 
@@ -217,13 +220,14 @@ async def handle_conv_join(websocket: WebSocket, user_id: str, data: dict, db: S
 async def handle_msg_send(websocket: WebSocket, user_id: str, data: dict, db: Session):
     """
     Handle msg:send event.
-    Expected data: { conversationId, clientMessageId, content, contentType, attachments?, createdAtClient }
+    Expected data: { conversationId, clientMessageId, content, contentType, attachments?, replyToId?, createdAtClient }
     """
     conversation_id = data.get("conversationId")
     client_message_id = data.get("clientMessageId")
     content = data.get("content", "")
     content_type = data.get("contentType", "text")
     attachments = data.get("attachments")
+    reply_to_id = data.get("replyToId")  # NEW: Accept reply reference
     created_at_client = data.get("createdAtClient")
     req_id = data.get("_reqId")
     
@@ -282,7 +286,7 @@ async def handle_msg_send(websocket: WebSocket, user_id: str, data: dict, db: Se
                 "conversationId": conversation_id,
                 "clientMessageId": client_message_id,
                 "serverMessageId": existing_msg.id,
-                "createdAtServer": existing_msg.created_at.isoformat()
+                "createdAtServer": to_utc_iso(existing_msg.created_at)
             }
         })
         return
@@ -299,6 +303,7 @@ async def handle_msg_send(websocket: WebSocket, user_id: str, data: dict, db: Se
         content=content,
         content_type=content_type,
         attachments_json=attachments,
+        reply_to_id=reply_to_id,  # NEW: Store reply reference
         created_at=created_at_server
     )
     db.add(new_msg)
@@ -339,7 +344,7 @@ async def handle_msg_send(websocket: WebSocket, user_id: str, data: dict, db: Se
             "conversationId": conversation_id,
             "clientMessageId": client_message_id,
             "serverMessageId": server_message_id,
-            "createdAtServer": created_at_server.isoformat()
+            "createdAtServer": to_utc_iso(created_at_server)
         }
     })
     
@@ -352,7 +357,8 @@ async def handle_msg_send(websocket: WebSocket, user_id: str, data: dict, db: Se
         "content": content,
         "contentType": content_type,
         "attachments": attachments,
-        "createdAt": created_at_server.isoformat(),
+        "replyToId": reply_to_id,  # NEW: Include reply reference
+        "createdAt": to_utc_iso(created_at_server),
         "editedAt": None,
         "deletedAt": None,
         "senderEmail": sender.email if sender else None,
@@ -373,7 +379,7 @@ async def handle_msg_send(websocket: WebSocket, user_id: str, data: dict, db: Se
         members_dto.append({
             "userId": m.user_id,
             "role": m.role,
-            "joinedAt": m.joined_at.isoformat(),
+            "joinedAt": to_utc_iso(m.joined_at),
             "isAccepted": m.is_accepted,
             "userEmail": m.user.email if m.user else None,
             "userDisplayName": m.user.display_name if m.user else None,
@@ -384,7 +390,7 @@ async def handle_msg_send(websocket: WebSocket, user_id: str, data: dict, db: Se
         "id": server_message_id,
         "content": content,
         "senderId": user_id,
-        "createdAt": created_at_server.isoformat()
+        "createdAt": to_utc_iso(created_at_server)
     }
     
     # Calculate unreadCount for each member
@@ -410,8 +416,8 @@ async def handle_msg_send(websocket: WebSocket, user_id: str, data: dict, db: Se
             "title": conv.title,
             "relatedEntityType": conv.related_entity_type,
             "relatedEntityId": conv.related_entity_id,
-            "createdAt": conv.created_at.isoformat(),
-            "updatedAt": conv.updated_at.isoformat(),
+            "createdAt": to_utc_iso(conv.created_at),
+            "updatedAt": to_utc_iso(conv.updated_at),
             "members": members_dto,
             "lastMessage": last_message_dto,
             "unreadCount": unread
@@ -442,7 +448,7 @@ async def handle_msg_send(websocket: WebSocket, user_id: str, data: dict, db: Se
                         "conversationId": conversation_id,
                         "messageId": server_message_id,
                         "userId": member.user_id,
-                        "deliveredAt": receipt.delivered_at.isoformat()
+                        "deliveredAt": to_utc_iso(receipt.delivered_at)
                     }
                 })
 
@@ -498,7 +504,7 @@ async def handle_msg_read(websocket: WebSocket, user_id: str, data: dict, db: Se
                     "conversationId": conversation_id,
                     "messageId": msg.id,
                     "userId": user_id,
-                    "readAt": read_at.isoformat()
+                    "readAt": to_utc_iso(read_at)
                 }
             })
     
@@ -525,6 +531,158 @@ async def handle_typing(websocket: WebSocket, user_id: str, data: dict, db: Sess
             "isTyping": is_typing
         }
     }, exclude_ws=websocket)
+
+
+async def handle_msg_pin(websocket: WebSocket, user_id: str, data: dict, db: Session):
+    """
+    Handle msg:pin event - Pin a message in a conversation.
+    Expected data: { conversationId, messageId }
+    Broadcasts msg:pinned to all conversation members.
+    """
+    conversation_id = data.get("conversationId")
+    message_id = data.get("messageId")
+    req_id = data.get("_reqId")
+    
+    if not all([conversation_id, message_id]):
+        await manager.send_to_socket(websocket, {
+            "type": "error",
+            "reqId": req_id,
+            "data": {"code": "INVALID_REQUEST", "message": "conversationId and messageId required"}
+        })
+        return
+    
+    membership = db.query(RTConversationMemberModel).filter(
+        RTConversationMemberModel.conversation_id == conversation_id,
+        RTConversationMemberModel.user_id == user_id
+    ).first()
+    if not membership:
+        await manager.send_to_socket(websocket, {
+            "type": "error",
+            "reqId": req_id,
+            "data": {"code": "FORBIDDEN", "message": "Not a conversation member"}
+        })
+        return
+    
+    message = db.query(RTMessageModel).filter(
+        RTMessageModel.id == message_id,
+        RTMessageModel.conversation_id == conversation_id
+    ).first()
+    if not message:
+        await manager.send_to_socket(websocket, {
+            "type": "error",
+            "reqId": req_id,
+            "data": {"code": "NOT_FOUND", "message": "Message not found"}
+        })
+        return
+    
+    existing = db.query(RTPinnedMessageModel).filter(
+        RTPinnedMessageModel.conversation_id == conversation_id,
+        RTPinnedMessageModel.message_id == message_id
+    ).first()
+    if existing:
+        await manager.send_to_socket(websocket, {
+            "type": "msg:pin:ack",
+            "reqId": req_id,
+            "data": {"success": True, "alreadyPinned": True}
+        })
+        return
+    
+    pinned_at = datetime.now(timezone.utc)
+    pinned = RTPinnedMessageModel(
+        conversation_id=conversation_id,
+        message_id=message_id,
+        pinned_by=user_id,
+        pinned_at=pinned_at
+    )
+    db.add(pinned)
+    db.commit()
+    
+    await manager.send_to_socket(websocket, {
+        "type": "msg:pin:ack",
+        "reqId": req_id,
+        "data": {"success": True, "pinnedAt": to_utc_iso(pinned_at)}
+    })
+    
+    members = db.query(RTConversationMemberModel).filter(
+        RTConversationMemberModel.conversation_id == conversation_id
+    ).all()
+    
+    for member in members:
+        await manager.send_to_user(member.user_id, {
+            "type": "msg:pinned",
+            "data": {
+                "conversationId": conversation_id,
+                "messageId": message_id,
+                "pinnedBy": user_id,
+                "pinnedAt": to_utc_iso(pinned_at)
+            }
+        })
+
+
+async def handle_msg_unpin(websocket: WebSocket, user_id: str, data: dict, db: Session):
+    """
+    Handle msg:unpin event - Unpin a message from a conversation.
+    Expected data: { conversationId, messageId }
+    Broadcasts msg:unpinned to all conversation members.
+    """
+    conversation_id = data.get("conversationId")
+    message_id = data.get("messageId")
+    req_id = data.get("_reqId")
+    
+    if not all([conversation_id, message_id]):
+        await manager.send_to_socket(websocket, {
+            "type": "error",
+            "reqId": req_id,
+            "data": {"code": "INVALID_REQUEST", "message": "conversationId and messageId required"}
+        })
+        return
+    
+    membership = db.query(RTConversationMemberModel).filter(
+        RTConversationMemberModel.conversation_id == conversation_id,
+        RTConversationMemberModel.user_id == user_id
+    ).first()
+    if not membership:
+        await manager.send_to_socket(websocket, {
+            "type": "error",
+            "reqId": req_id,
+            "data": {"code": "FORBIDDEN", "message": "Not a conversation member"}
+        })
+        return
+    
+    pinned = db.query(RTPinnedMessageModel).filter(
+        RTPinnedMessageModel.conversation_id == conversation_id,
+        RTPinnedMessageModel.message_id == message_id
+    ).first()
+    if not pinned:
+        await manager.send_to_socket(websocket, {
+            "type": "msg:unpin:ack",
+            "reqId": req_id,
+            "data": {"success": True, "wasNotPinned": True}
+        })
+        return
+    
+    db.delete(pinned)
+    db.commit()
+    
+    await manager.send_to_socket(websocket, {
+        "type": "msg:unpin:ack",
+        "reqId": req_id,
+        "data": {"success": True}
+    })
+    
+    members = db.query(RTConversationMemberModel).filter(
+        RTConversationMemberModel.conversation_id == conversation_id
+    ).all()
+    
+    for member in members:
+        await manager.send_to_user(member.user_id, {
+            "type": "msg:unpinned",
+            "data": {
+                "conversationId": conversation_id,
+                "messageId": message_id,
+                "unpinnedBy": user_id
+            }
+        })
 
 
 async def handle_msg_edit(websocket: WebSocket, user_id: str, data: dict, db: Session):
@@ -602,8 +760,8 @@ async def handle_msg_edit(websocket: WebSocket, user_id: str, data: dict, db: Se
         "content": msg.content,
         "contentType": msg.content_type,
         "attachments": msg.attachments_json,
-        "createdAt": msg.created_at.isoformat(),
-        "editedAt": msg.edited_at.isoformat(),
+        "createdAt": to_utc_iso(msg.created_at),
+        "editedAt": to_utc_iso(msg.edited_at),
         "deletedAt": None,
         "senderEmail": sender.email if sender else None,
         "senderDisplayName": sender.display_name if sender else None,
@@ -617,7 +775,7 @@ async def handle_msg_edit(websocket: WebSocket, user_id: str, data: dict, db: Se
         "data": {
             "conversationId": conversation_id,
             "messageId": message_id,
-            "editedAt": msg.edited_at.isoformat()
+            "editedAt": to_utc_iso(msg.edited_at)
         }
     })
     
@@ -693,9 +851,9 @@ async def handle_msg_delete(websocket: WebSocket, user_id: str, data: dict, db: 
             "content": msg.content,
             "contentType": msg.content_type,
             "attachments": msg.attachments_json,
-            "createdAt": msg.created_at.isoformat(),
-            "editedAt": msg.edited_at.isoformat() if msg.edited_at else None,
-            "deletedAt": msg.deleted_at.isoformat(),
+            "createdAt": to_utc_iso(msg.created_at),
+            "editedAt": to_utc_iso(msg.edited_at),
+            "deletedAt": to_utc_iso(msg.deleted_at),
             "senderEmail": sender.email if sender else None,
             "senderDisplayName": sender.display_name if sender else None,
             "senderAvatarUrl": sender.avatar_url if sender else None
@@ -708,7 +866,7 @@ async def handle_msg_delete(websocket: WebSocket, user_id: str, data: dict, db: 
             "data": {
                 "conversationId": conversation_id,
                 "messageId": message_id,
-                "deletedAt": msg.deleted_at.isoformat()
+                "deletedAt": to_utc_iso(msg.deleted_at)
             }
         })
         
@@ -731,6 +889,118 @@ async def handle_msg_delete(websocket: WebSocket, user_id: str, data: dict, db: 
                 "conversationId": conversation_id,
                 "messageId": message_id,
                 "deleteForEveryone": False
+            }
+        })
+
+
+async def handle_msg_react(websocket: WebSocket, user_id: str, data: dict, db: Session):
+    """
+    Handle msg:react event - Add or toggle emoji reaction.
+    Expected data: { conversationId, messageId, emoji }
+    """
+    conversation_id = data.get("conversationId")
+    message_id = data.get("messageId")
+    emoji = data.get("emoji")
+    req_id = data.get("_reqId")
+    
+    if not all([conversation_id, message_id, emoji]):
+        await manager.send_to_socket(websocket, {
+            "type": "error",
+            "reqId": req_id,
+            "data": {"code": "INVALID_REQUEST", "message": "conversationId, messageId, and emoji required"}
+        })
+        return
+    
+    # Validate emoji length
+    if len(emoji) > 10:
+        await manager.send_to_socket(websocket, {
+            "type": "error",
+            "reqId": req_id,
+            "data": {"code": "INVALID_REQUEST", "message": "Emoji too long (max 10 chars)"}
+        })
+        return
+    
+    # Check message exists
+    msg = db.query(RTMessageModel).filter(
+        RTMessageModel.id == message_id,
+        RTMessageModel.conversation_id == conversation_id
+    ).first()
+    
+    if not msg:
+        await manager.send_to_socket(websocket, {
+            "type": "error",
+            "reqId": req_id,
+            "data": {"code": "NOT_FOUND", "message": "Message not found"}
+        })
+        return
+    
+    # Check membership
+    is_member = db.query(RTConversationMemberModel).filter(
+        RTConversationMemberModel.conversation_id == conversation_id,
+        RTConversationMemberModel.user_id == user_id
+    ).first()
+    
+    if not is_member:
+        await manager.send_to_socket(websocket, {
+            "type": "error",
+            "reqId": req_id,
+            "data": {"code": "FORBIDDEN", "message": "Not a member"}
+        })
+        return
+    
+    # Check if reaction already exists (toggle behavior)
+    existing = db.query(RTMessageReactionModel).filter(
+        RTMessageReactionModel.message_id == message_id,
+        RTMessageReactionModel.user_id == user_id,
+        RTMessageReactionModel.emoji == emoji
+    ).first()
+    
+    action = "removed" if existing else "added"
+    
+    if existing:
+        # Remove reaction
+        db.delete(existing)
+        db.commit()
+    else:
+        # Add reaction
+        reaction = RTMessageReactionModel(
+            message_id=message_id,
+            user_id=user_id,
+            emoji=emoji,
+            created_at=datetime.now(timezone.utc)
+        )
+        db.add(reaction)
+        db.commit()
+        db.refresh(reaction)
+    
+    # Send ACK to sender
+    await manager.send_to_socket(websocket, {
+        "type": "msg:react:ack",
+        "reqId": req_id,
+        "data": {
+            "conversationId": conversation_id,
+            "messageId": message_id,
+            "emoji": emoji,
+            "action": action,
+            "userId": user_id
+        }
+    })
+    
+    # Broadcast to all members in conversation
+    members = db.query(RTConversationMemberModel).filter(
+        RTConversationMemberModel.conversation_id == conversation_id
+    ).all()
+    
+    for member in members:
+        await manager.send_to_user(member.user_id, {
+            "type": "msg:react",
+            "data": {
+                "conversationId": conversation_id,
+                "messageId": message_id,
+                "emoji": emoji,
+                "userId": user_id,
+                "action": action,
+                "createdAt": datetime.now(timezone.utc).isoformat()
             }
         })
 
@@ -796,9 +1066,9 @@ async def handle_conv_sync(websocket: WebSocket, user_id: str, data: dict, db: S
             "content": msg.content,
             "contentType": msg.content_type,
             "attachments": msg.attachments_json,
-            "createdAt": msg.created_at.isoformat(),
-            "editedAt": msg.edited_at.isoformat() if msg.edited_at else None,
-            "deletedAt": msg.deleted_at.isoformat() if msg.deleted_at else None,
+            "createdAt": to_utc_iso(msg.created_at),
+            "editedAt": to_utc_iso(msg.edited_at),
+            "deletedAt": to_utc_iso(msg.deleted_at),
             "senderEmail": msg.sender.email if msg.sender else None,
             "senderDisplayName": msg.sender.display_name if msg.sender else None,
             "senderAvatarUrl": msg.sender.avatar_url if msg.sender else None
@@ -877,6 +1147,18 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(...)):
                         # NEW: Handle message delete
                         event_data["_reqId"] = req_id
                         await handle_msg_delete(websocket, user_id, event_data, db)
+                    elif event_type == "msg:react":
+                        # NEW: Handle emoji reaction
+                        event_data["_reqId"] = req_id
+                        await handle_msg_react(websocket, user_id, event_data, db)
+                    elif event_type == "msg:pin":
+                        # Handle pin message
+                        event_data["_reqId"] = req_id
+                        await handle_msg_pin(websocket, user_id, event_data, db)
+                    elif event_type == "msg:unpin":
+                        # Handle unpin message
+                        event_data["_reqId"] = req_id
+                        await handle_msg_unpin(websocket, user_id, event_data, db)
                     elif event_type == "msg:read":
                         await handle_msg_read(websocket, user_id, event_data, db)
                     elif event_type == "typing":

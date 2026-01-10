@@ -17,6 +17,12 @@ export interface MessageReceipt {
   readAt?: string;
 }
 
+export interface MessageReaction {
+  userId: string;
+  emoji: string;
+  createdAt: string;
+}
+
 export interface MessageUI {
   id: string;
   conversationId: string;
@@ -25,6 +31,7 @@ export interface MessageUI {
   content: string;
   contentType: ContentType;
   attachments?: Attachment[];
+  replyToId?: string; // ID of message being replied to
   createdAt: string;
   editedAt?: string;
   deletedAt?: string;
@@ -32,6 +39,7 @@ export interface MessageUI {
   senderDisplayName?: string;
   senderAvatarUrl?: string;
   receipts?: MessageReceipt[];
+  reactions?: MessageReaction[];
   status?: 'pending' | 'sent' | 'delivered' | 'read';
 }
 
@@ -82,7 +90,7 @@ interface RTChatState {
   acceptConversation: (conversationId: string) => Promise<void>;  // NEW
   rejectConversation: (conversationId: string, deleteHistory?: boolean) => Promise<void>;  // NEW
   joinConversation: (conversationId: string) => Promise<void>;
-  sendMessage: (conversationId: string, content: string, contentType?: MessageUI['contentType'], attachments?: any[]) => void;
+  sendMessage: (conversationId: string, content: string, contentType?: MessageUI['contentType'], attachments?: any[], replyToId?: string) => void;
   editMessage: (conversationId: string, messageId: string, newContent: string) => void;
   deleteMessage: (conversationId: string, messageId: string, deleteForEveryone: boolean) => void;
   hideMessage: (conversationId: string, messageId: string) => void;
@@ -93,19 +101,25 @@ interface RTChatState {
   syncConversation: (conversationId: string, afterMessageId?: string) => void;
   createDirectConversation: (email: string) => Promise<string>;
   uploadFile: (file: File) => Promise<Attachment>;
+  toggleReaction: (conversationId: string, messageId: string, emoji: string) => void;
   
   handleServerHello: (data: any) => void;
   handleMsgAck: (data: any) => void;
   handleMsgNew: (data: any) => void;
   handleMsgEdit: (data: any) => void;
   handleMsgDelete: (data: any) => void;
+  handleMsgReact: (data: any) => void;
+  handleMsgReactAck: (data: any) => void;
   handleMsgDelivered: (data: any) => void;
   handleMsgRead: (data: any) => void;
   handleTyping: (data: any) => void;
   handleConvSyncResult: (data: any) => void;
   handleConvUpsert: (data: any) => void;
-  handleConvRejected: (data: any) => void;  // NEW
+  handleConvRejected: (data: any) => void;
+  handleMsgPinned: (data: any) => void;
+  handleMsgUnpinned: (data: any) => void;
   handleError: (data: any) => void;
+  loadPinnedMessages: (conversationId: string) => Promise<void>;
 }
 
 export const useRTChatStore = create<RTChatState>()(
@@ -118,12 +132,16 @@ export const useRTChatStore = create<RTChatState>()(
         rtWSClient.on('msg:new', (msg) => get().handleMsgNew(msg.data));
         rtWSClient.on('msg:edit', (msg) => get().handleMsgEdit(msg.data));
         rtWSClient.on('msg:delete', (msg) => get().handleMsgDelete(msg.data));
+        rtWSClient.on('msg:react', (msg) => get().handleMsgReact(msg.data));
+        rtWSClient.on('msg:react:ack', (msg) => get().handleMsgReactAck(msg.data));
         rtWSClient.on('msg:delivered', (msg) => get().handleMsgDelivered(msg.data));
         rtWSClient.on('msg:read', (msg) => get().handleMsgRead(msg.data));
         rtWSClient.on('typing', (msg) => get().handleTyping(msg.data));
         rtWSClient.on('conv:sync:result', (msg) => get().handleConvSyncResult(msg.data));
         rtWSClient.on('conv:upsert', (msg) => get().handleConvUpsert(msg.data));
         rtWSClient.on('conv:rejected', (msg) => get().handleConvRejected(msg.data));
+        rtWSClient.on('msg:pinned', (msg) => get().handleMsgPinned(msg.data));
+        rtWSClient.on('msg:unpinned', (msg) => get().handleMsgUnpinned(msg.data));
         rtWSClient.on('error', (msg) => get().handleError(msg.data));
       };
       
@@ -363,6 +381,9 @@ export const useRTChatStore = create<RTChatState>()(
             )
           }));
           
+          // Load pinned messages from server (persisted pins)
+          get().loadPinnedMessages(conversationId);
+          
           // Sync to get any new messages (incremental from lastSync)
           get().syncConversation(conversationId);
           
@@ -376,14 +397,14 @@ export const useRTChatStore = create<RTChatState>()(
           }, 500);
         },
         
-        sendMessage: (conversationId, content, contentType = 'text', attachments) => {
+        sendMessage: (conversationId, content, contentType = 'text', attachments, replyToId) => {
           const currentUser = useAuthStore.getState().user;
           if (!currentUser) {
             console.error('[RT-Chat] Cannot send message: no current user');
             return;
           }
           
-          console.log('[RT-Chat] Sending message to:', conversationId, 'content:', content);
+          console.log('[RT-Chat] Sending message to:', conversationId, 'content:', content, 'replyToId:', replyToId);
           
           const clientMessageId = `${currentUser.id}-${Date.now()}-${Math.random()}`;
           const createdAtClient = new Date().toISOString();
@@ -396,6 +417,7 @@ export const useRTChatStore = create<RTChatState>()(
             content,
             contentType,
             attachments,
+            replyToId, // Include reply reference
             createdAt: createdAtClient,
             senderEmail: currentUser.email,
             senderDisplayName: currentUser.display_name,
@@ -444,6 +466,7 @@ export const useRTChatStore = create<RTChatState>()(
               content,
               contentType,
               attachments,
+              replyToId, // Send reply reference to backend
               createdAtClient
             }
           });
@@ -536,10 +559,8 @@ export const useRTChatStore = create<RTChatState>()(
             const updatedMessages = messages.filter(msg => msg.id !== messageId);
             
             const hiddenMessages = state.hiddenMessagesByConv[conversationId] || [];
-            const updatedHidden = hiddenMessages.includes(messageId) 
-              ? hiddenMessages 
-              : [...hiddenMessages, messageId];
-
+            const updatedHidden = [...hiddenMessages, messageId];
+            
             return {
               messagesByConv: {
                 ...state.messagesByConv,
@@ -553,20 +574,98 @@ export const useRTChatStore = create<RTChatState>()(
           });
         },
         
-        pinMessage: (conversationId, messageId) => {
+        toggleReaction: (conversationId, messageId, emoji) => {
+          /**
+           * API: WebSocket msg:react
+           * Purpose: Toggle emoji reaction on message (add if not exists, remove if exists)
+           * Request (JSON): { conversationId, messageId, emoji }
+           * Response (JSON): WS event msg:react broadcasted to all members
+           * Notes: Server handles toggle logic; optimistic update applied here
+           */
+          const currentUser = useAuthStore.getState().user;
+          if (!currentUser) {
+            console.error('[RT-Chat] Cannot react: no current user');
+            return;
+          }
+          
+          // Optimistic update - toggle reaction locally
           set((state) => {
-            const currentPinned = state.pinnedMessagesByConv[conversationId] || [];
-            if (currentPinned.includes(messageId)) return state;
+            const messages = state.messagesByConv[conversationId] || [];
+            const updatedMessages = messages.map(msg => {
+              if (msg.id === messageId) {
+                let reactions = msg.reactions || [];
+                const existingIndex = reactions.findIndex(
+                  r => r.userId === currentUser.id && r.emoji === emoji
+                );
+                
+                if (existingIndex >= 0) {
+                  // Remove reaction
+                  reactions = reactions.filter((_, i) => i !== existingIndex);
+                } else {
+                  // Add reaction
+                  reactions = [...reactions, {
+                    userId: currentUser.id,
+                    emoji,
+                    createdAt: new Date().toISOString()
+                  }];
+                }
+                
+                return { ...msg, reactions };
+              }
+              return msg;
+            });
+            
             return {
-              pinnedMessagesByConv: {
-                ...state.pinnedMessagesByConv,
-                [conversationId]: [...currentPinned, messageId],
-              },
+              messagesByConv: {
+                ...state.messagesByConv,
+                [conversationId]: updatedMessages
+              }
             };
+          });
+          
+          // Send WebSocket event
+          rtWSClient.send({
+            type: 'msg:react',
+            reqId: `react-${Date.now()}`,
+            data: {
+              conversationId,
+              messageId,
+              emoji
+            }
+          });
+        },
+
+        pinMessage: (conversationId, messageId) => {
+          /**
+           * API: WebSocket msg:pin
+           * Purpose: Pin a message in conversation (persisted in DB, synced to all clients)
+           * Request (JSON): { conversationId, messageId }
+           * Response: WS event msg:pinned broadcast to all members
+           */
+          const currentPinned = get().pinnedMessagesByConv[conversationId] || [];
+          if (currentPinned.includes(messageId)) return;
+          
+          set((state) => ({
+            pinnedMessagesByConv: {
+              ...state.pinnedMessagesByConv,
+              [conversationId]: [...currentPinned, messageId],
+            },
+          }));
+          
+          rtWSClient.send({
+            type: 'msg:pin',
+            reqId: `pin-${Date.now()}`,
+            data: { conversationId, messageId }
           });
         },
         
         unpinMessage: (conversationId, messageId) => {
+          /**
+           * API: WebSocket msg:unpin
+           * Purpose: Unpin a message from conversation (removed from DB, synced to all clients)
+           * Request (JSON): { conversationId, messageId }
+           * Response: WS event msg:unpinned broadcast to all members
+           */
           set((state) => {
             const currentPinned = state.pinnedMessagesByConv[conversationId] || [];
             return {
@@ -576,6 +675,45 @@ export const useRTChatStore = create<RTChatState>()(
               },
             };
           });
+          
+          rtWSClient.send({
+            type: 'msg:unpin',
+            reqId: `unpin-${Date.now()}`,
+            data: { conversationId, messageId }
+          });
+        },
+        
+        loadPinnedMessages: async (conversationId: string) => {
+          /**
+           * API: GET /rt/conversations/{conversationId}/pinned
+           * Purpose: Load persisted pinned messages for a conversation
+           * Request (JSON): null
+           * Response (JSON) [200]: [{ messageId, conversationId, pinnedBy, pinnedAt }]
+           */
+          try {
+            const token = useAuthStore.getState().token;
+            const response = await fetch(`${BASE_URL}/rt/conversations/${conversationId}/pinned`, {
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            });
+            
+            if (response.ok) {
+              const data = await response.json();
+              const pinnedIds = data.map((p: { messageId: string }) => p.messageId);
+              
+              set((state) => ({
+                pinnedMessagesByConv: {
+                  ...state.pinnedMessagesByConv,
+                  [conversationId]: pinnedIds
+                }
+              }));
+              
+              console.log(`[RT-Chat] Loaded ${pinnedIds.length} pinned messages for conversation ${conversationId}`);
+            }
+          } catch (e) {
+            console.error('[RT-Chat] Failed to load pinned messages:', e);
+          }
         },
         
         reportMessage: (conversationId, messageId, reason) => {
@@ -711,11 +849,36 @@ export const useRTChatStore = create<RTChatState>()(
               return msg;
             });
             
+            const pinnedMessages = state.pinnedMessagesByConv[conversationId] || [];
+            const updatedPinned = pinnedMessages.map(id => 
+              id === clientMessageId ? serverMessageId : id
+            );
+            
+            const updatedConversations = state.conversations.map(conv => {
+              if (conv.id === conversationId && conv.lastMessage?.id === clientMessageId) {
+                return {
+                  ...conv,
+                  lastMessage: {
+                    ...conv.lastMessage,
+                    id: serverMessageId,
+                    createdAt: createdAtServer
+                  },
+                  updatedAt: createdAtServer
+                };
+              }
+              return conv;
+            }).sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+            
             return {
               messagesByConv: {
                 ...state.messagesByConv,
                 [conversationId]: updatedMessages
-              }
+              },
+              pinnedMessagesByConv: {
+                ...state.pinnedMessagesByConv,
+                [conversationId]: updatedPinned
+              },
+              conversations: updatedConversations
             };
           });
         },
@@ -750,15 +913,17 @@ export const useRTChatStore = create<RTChatState>()(
                 lastMessage: {
                   id: message.id,
                   content: message.content,
-                  sender_id: message.senderId,
-                  created_at: message.createdAt
+                  senderId: message.senderId,
+                  contentType: message.contentType,
+                  attachments: message.attachments,
+                  createdAt: message.createdAt
                 },
                 unreadCount: isFromOther ? (conv.unreadCount || 0) + 1 : conv.unreadCount,
                 updatedAt: message.createdAt
               };
             }
             return conv;
-          });
+          }).sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
           set({ conversations: updatedConversations });
         },
 
@@ -780,11 +945,26 @@ export const useRTChatStore = create<RTChatState>()(
                 : msg
             );
 
+            const updatedConversations = state.conversations.map(conv => {
+              if (conv.id === conversationId && conv.lastMessage?.id === id) {
+                return {
+                  ...conv,
+                  lastMessage: {
+                    ...conv.lastMessage,
+                    content,
+                    editedAt
+                  }
+                };
+              }
+              return conv;
+            });
+
             return {
               messagesByConv: {
                 ...state.messagesByConv,
                 [conversationId]: updatedMessages
-              }
+              },
+              conversations: updatedConversations
             };
           });
         },
@@ -807,6 +987,59 @@ export const useRTChatStore = create<RTChatState>()(
                 : msg
             );
 
+            const updatedConversations = state.conversations.map(conv => {
+              if (conv.id === conversationId && conv.lastMessage?.id === id) {
+                return {
+                  ...conv,
+                  lastMessage: {
+                    ...conv.lastMessage,
+                    content: 'Tin nhắn đã bị thu hồi',
+                    deletedAt
+                  }
+                };
+              }
+              return conv;
+            });
+
+            return {
+              messagesByConv: {
+                ...state.messagesByConv,
+                [conversationId]: updatedMessages
+              },
+              conversations: updatedConversations
+            };
+          });
+        },
+        
+        handleMsgReact: (data) => {
+          /**
+           * Handle msg:react event from server (realtime broadcast)
+           * data: { conversationId, messageId, emoji, userId, action: 'added'|'removed', createdAt }
+           */
+          const { conversationId, messageId, emoji, userId, action, createdAt } = data;
+          
+          set((state) => {
+            const messages = state.messagesByConv[conversationId] || [];
+            const updatedMessages = messages.map(msg => {
+              if (msg.id === messageId) {
+                let reactions = msg.reactions || [];
+                
+                if (action === 'added') {
+                  // Add reaction if not exists
+                  const exists = reactions.some(r => r.userId === userId && r.emoji === emoji);
+                  if (!exists) {
+                    reactions = [...reactions, { userId, emoji, createdAt }];
+                  }
+                } else if (action === 'removed') {
+                  // Remove reaction
+                  reactions = reactions.filter(r => !(r.userId === userId && r.emoji === emoji));
+                }
+                
+                return { ...msg, reactions };
+              }
+              return msg;
+            });
+            
             return {
               messagesByConv: {
                 ...state.messagesByConv,
@@ -814,6 +1047,15 @@ export const useRTChatStore = create<RTChatState>()(
               }
             };
           });
+        },
+        
+        handleMsgReactAck: (data) => {
+          /**
+           * Handle msg:react:ack from server (ACK after sending reaction)
+           * data: { conversationId, messageId, emoji, action, userId }
+           */
+          console.log('[RT Store] Reaction ACK:', data);
+          // No state update needed - already handled by optimistic update in toggleReaction
         },
         
         handleMsgDelivered: (data) => {
@@ -1011,6 +1253,48 @@ export const useRTChatStore = create<RTChatState>()(
               detail: { conversationId, rejectedBy } 
             }));
           }
+        },
+
+        handleMsgPinned: (data) => {
+          /**
+           * Handle msg:pinned event from server.
+           * Another user (or self from another device) pinned a message.
+           * data: { conversationId, messageId, pinnedBy, pinnedAt }
+           */
+          const { conversationId, messageId } = data;
+          console.log('[RT-Chat] Message pinned:', messageId, 'in conversation:', conversationId);
+          
+          set((state) => {
+            const currentPinned = state.pinnedMessagesByConv[conversationId] || [];
+            if (currentPinned.includes(messageId)) return state;
+            
+            return {
+              pinnedMessagesByConv: {
+                ...state.pinnedMessagesByConv,
+                [conversationId]: [...currentPinned, messageId]
+              }
+            };
+          });
+        },
+
+        handleMsgUnpinned: (data) => {
+          /**
+           * Handle msg:unpinned event from server.
+           * Another user (or self from another device) unpinned a message.
+           * data: { conversationId, messageId, unpinnedBy }
+           */
+          const { conversationId, messageId } = data;
+          console.log('[RT-Chat] Message unpinned:', messageId, 'in conversation:', conversationId);
+          
+          set((state) => {
+            const currentPinned = state.pinnedMessagesByConv[conversationId] || [];
+            return {
+              pinnedMessagesByConv: {
+                ...state.pinnedMessagesByConv,
+                [conversationId]: currentPinned.filter(id => id !== messageId)
+              }
+            };
+          });
         }
       };
     },

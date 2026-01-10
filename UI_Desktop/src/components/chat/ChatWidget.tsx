@@ -5,6 +5,7 @@ import RealtimeChatRoom from "../realtime-chat/RealtimeChatRoom";
 import { useThemeStore } from "../../theme/themeStore";
 import { useRTChatStore } from "../../state/rt_chat_store";
 import { useAuthStore } from "../../state/auth_store";
+import { useChatStore } from "../../state/chat_store";
 import Icon from "../ui/Icon";
 import { BASE_URL } from "../../app/api_client";
 import { resolveMediaUrl, getInitials } from "../../utils/mediaUrl";
@@ -15,15 +16,6 @@ type MinimizedChat = {
   avatar?: string;
 };
 
-type DockState = {
-  edge: 'right' | 'bottom';
-  offset: number;
-};
-
-const STORAGE_KEY = 'chat-widget-dock-state';
-const EDGE_SNAP_THRESHOLD = 80;
-const DRAG_THRESHOLD = 8;
-
 export default function ChatWidget() {
   const [open, setOpen] = useState(false);
   const [minimized, setMinimized] = useState(false);
@@ -31,19 +23,18 @@ export default function ChatWidget() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [minimizedChats, setMinimizedChats] = useState<MinimizedChat[]>([]);
   const [botAvatar, setBotAvatar] = useState<string | null>(null);
-  const [dockState, setDockState] = useState<DockState>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      return saved ? JSON.parse(saved) : { edge: 'right', offset: 100 };
-    } catch {
-      return { edge: 'right', offset: 100 };
-    }
-  });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
   const isDarkMode = useThemeStore((state) => state.isDarkMode);
   const currentUser = useAuthStore(state => state.user);
   const conversations = useRTChatStore(state => state.conversations);
+  const { initBotConversation, getBotConversationId } = useChatStore();
+  
+  // Initialize bot conversation for current user on mount
+  useEffect(() => {
+    if (currentUser?.id) {
+      console.log('🔵 ChatWidget: Initializing bot conversation for user:', currentUser.id);
+      initBotConversation(currentUser.id.toString());
+    }
+  }, [currentUser?.id, initBotConversation]);
 
   // Load bot avatar từ API
   useEffect(() => {
@@ -63,9 +54,10 @@ export default function ChatWidget() {
       .catch(err => console.error('❌ Error loading bot avatar:', err));
   }, []);
 
-  // Mapping tên conversation
+  // Mapping tên conversation với dynamic bot ID
+  const botConversationId = currentUser ? getBotConversationId(currentUser.id.toString()) : 'bot';
   const conversationNames: Record<string, string> = {
-    bot: "Chatbot AI",
+    [botConversationId]: "Chatbot AI",
     user1: "Nguyễn Văn A",
     user2: "Lê Thị B",
   };
@@ -76,16 +68,23 @@ export default function ChatWidget() {
     let chatName = conversationNames[activeId] || activeId;
     let avatar: string | undefined = undefined;
     
-    if (activeId === "bot") {
+    if (activeId === botConversationId) {
       chatName = "Chatbot AI";
       avatar = botAvatar || undefined;
+      console.log('🔵 Minimize bot chat - avatar:', avatar);
     } else {
       const conversation = conversations.find(c => c.id === activeId);
+      console.log('🔵 Minimize user chat - conversation:', conversation);
       if (conversation && currentUser) {
         const otherMember = conversation.members.find(m => m.userId !== currentUser.id);
+        console.log('🔵 Other member:', otherMember);
         if (otherMember) {
           chatName = otherMember.userDisplayName || otherMember.userEmail || "User";
-          avatar = otherMember.userAvatarUrl ? resolveMediaUrl(otherMember.userAvatarUrl) || undefined : undefined;
+          // Resolve avatar URL properly
+          if (otherMember.userAvatarUrl) {
+            avatar = resolveMediaUrl(otherMember.userAvatarUrl) || undefined;
+          }
+          console.log('🔵 Resolved avatar URL:', avatar);
         }
       }
     }
@@ -93,6 +92,7 @@ export default function ChatWidget() {
     const existingIndex = minimizedChats.findIndex(c => c.id === activeId);
     
     if (existingIndex === -1 && minimizedChats.length < 3) {
+      console.log('🔵 Adding minimized chat:', { id: activeId, name: chatName, avatar });
       setMinimizedChats([...minimizedChats, { 
         id: activeId, 
         name: chatName,
@@ -117,91 +117,17 @@ export default function ChatWidget() {
     setMinimizedChats(minimizedChats.filter(c => c.id !== chatId));
   };
 
-  const handlePointerDown = (e: React.PointerEvent) => {
-    e.preventDefault();
-    setDragStart({ x: e.clientX, y: e.clientY });
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
-  };
-
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (!dragStart) return;
-
-    const deltaX = Math.abs(e.clientX - dragStart.x);
-    const deltaY = Math.abs(e.clientY - dragStart.y);
-
-    if (!isDragging && (deltaX > DRAG_THRESHOLD || deltaY > DRAG_THRESHOLD)) {
-      setIsDragging(true);
-    }
-
-    if (!isDragging) return;
-
-    const distanceFromBottom = window.innerHeight - e.clientY;
-    const shouldSnapToBottom = distanceFromBottom < EDGE_SNAP_THRESHOLD;
-
-    if (shouldSnapToBottom) {
-      const newOffset = Math.max(24, Math.min(e.clientX, window.innerWidth - 200));
-      setDockState({ edge: 'bottom', offset: newOffset });
-    } else {
-      const newOffset = Math.max(24, Math.min(e.clientY, window.innerHeight - 200));
-      setDockState({ edge: 'right', offset: newOffset });
-    }
-  };
-
-  const handlePointerUp = (e: React.PointerEvent) => {
-    (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-    
-    if (isDragging) {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(dockState));
-      } catch {}
-      setIsDragging(false);
-      setDragStart(null);
-    } else {
-      setDragStart(null);
-    }
-  };
-
-  const handleClick = (e: React.MouseEvent, chatId: string) => {
-    if (!isDragging) {
-      handleRestoreChat(chatId);
-    }
-  };
-
-  const getDockStyle = (): React.CSSProperties => {
-    if (dockState.edge === 'right') {
-      return {
-        position: 'fixed',
-        right: '24px',
-        top: `${dockState.offset}px`,
-        flexDirection: 'column-reverse',
-        gap: '12px',
-      };
-    } else {
-      return {
-        position: 'fixed',
-        bottom: '24px',
-        left: `${dockState.offset}px`,
-        flexDirection: 'row',
-        gap: '12px',
-      };
-    }
-  };
-
   return (
     <>
-      {/* Minimized chats - hiển thị dưới dạng avatar tròn, draggable dock */}
+      {/* Minimized chats - fixed position above main chat button */}
       {!open && minimizedChats.length > 0 && (
         <div 
-          className={`z-50 flex ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
-          style={getDockStyle()}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
+          className="fixed right-6 bottom-24 z-50 flex flex-col-reverse gap-3"
         >
           {minimizedChats.map((chat) => (
             <div key={chat.id} className="relative group">
               <button
-                onClick={(e) => handleClick(e as any, chat.id)}
+                onClick={() => handleRestoreChat(chat.id)}
                 className={`relative w-14 h-14 rounded-full shadow-ios flex items-center justify-center hover:scale-105 transition-all duration-200 overflow-hidden border-2 ${
                   chat.avatar ? "border-blue-500" : ""
                 } ${
@@ -217,18 +143,27 @@ export default function ChatWidget() {
                     src={chat.avatar} 
                     alt={chat.name}
                     className="w-full h-full object-cover"
+                    onError={(e) => {
+                      // Fallback to initials if image fails to load
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      const fallback = target.nextElementSibling as HTMLElement;
+                      if (fallback) fallback.style.display = 'flex';
+                    }}
                   />
-                ) : (
-                  <span className="text-xl font-bold bg-gradient-to-br from-primary to-purple-600 bg-clip-text text-transparent">
-                    {chat.name.charAt(0).toUpperCase()}
-                  </span>
-                )}
+                ) : null}
+                {/* Fallback initials - always rendered, hidden when avatar loads */}
+                <span 
+                  className={`absolute inset-0 flex items-center justify-center text-xl font-bold bg-gradient-to-br from-primary to-purple-600 bg-clip-text text-transparent ${chat.avatar ? 'hidden' : ''}`}
+                >
+                  {getInitials(chat.name)}
+                </span>
               </button>
               
-              {/* Green dot indicator with pulse - bên ngoài button */}
+              {/* Green dot indicator with pulse */}
               <span className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white animate-pulse z-10"></span>
               
-              {/* Close button on hover - bên ngoài button */}
+              {/* Close button on hover */}
               <button
                 onClick={(e) => handleRemoveMinimized(chat.id, e)}
                 className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-br from-red-500 to-red-600 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-200 flex items-center justify-center text-white text-xs shadow-lg hover:scale-110 z-10"
@@ -271,39 +206,20 @@ export default function ChatWidget() {
           {/* Button mở rộng sidebar khi collapsed */}
           {sidebarCollapsed && (
             <div className="absolute top-3 left-3 z-50">
+              {/* Icon 3 gạch - luôn hiển thị */}
               <button
                 onClick={() => {
                   console.log('🔵 Expand button clicked - expanding sidebar');
                   setSidebarCollapsed(false);
                 }}
-                className={`w-12 h-12 rounded-full shadow-lg hover:scale-110 transition-all duration-200 flex items-center justify-center ${
-                  activeId 
-                    ? "overflow-hidden border-2 border-blue-500 bg-white" 
-                    : isDarkMode 
-                      ? "liquid-glass-ui-dark text-white" 
-                      : "liquid-glass-ui text-gray-700"
+                className={`w-10 h-10 rounded-xl shadow-lg hover:scale-105 transition-all duration-200 flex items-center justify-center ${
+                  isDarkMode 
+                    ? "bg-zinc-800 text-zinc-200 hover:bg-zinc-700" 
+                    : "bg-white text-zinc-700 hover:bg-zinc-100 border border-zinc-200"
                 }`}
                 title="Mở danh sách chat"
               >
-                {activeId ? (
-                  // Hiển thị avatar của người đang chat
-                  activeId === "bot" && botAvatar ? (
-                    <img 
-                      src={botAvatar} 
-                      alt="Chatbot" 
-                      className="w-full h-full object-cover"
-                      onLoad={() => console.log('✅ Avatar collapsed button loaded')}
-                      onError={() => console.error('❌ Avatar collapsed button failed')}
-                    />
-                  ) : (
-                    <span className="text-xl font-bold bg-gradient-to-br from-primary to-purple-600 bg-clip-text text-transparent">
-                      {conversationNames[activeId]?.charAt(0).toUpperCase() || "U"}
-                    </span>
-                  )
-                ) : (
-                  // Hiển thị icon 3 gạch ngang khi chưa chọn người chat
-                  <Icon name="bars" size="lg" />
-                )}
+                <Icon name="bars" size="md" />
               </button>
             </div>
           )}
@@ -313,11 +229,12 @@ export default function ChatWidget() {
               onSelect={setActiveId} 
               activeId={activeId} 
               onToggle={() => setSidebarCollapsed(true)}
+              botConversationId={botConversationId}
             />
           )}
           <div className="flex-1 min-w-0 flex flex-col relative overflow-hidden">
             {activeId ? (
-              activeId === "bot" ? (
+              activeId === botConversationId ? (
                 <ChatRoom conversationId={activeId} sidebarCollapsed={sidebarCollapsed} onExpandSidebar={() => setSidebarCollapsed(false)} />
               ) : (
                 <RealtimeChatRoom conversationId={activeId} sidebarCollapsed={sidebarCollapsed} onExpandSidebar={() => setSidebarCollapsed(false)} />

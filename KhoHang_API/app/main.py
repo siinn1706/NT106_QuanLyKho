@@ -1356,12 +1356,12 @@ def get_chat_messages(
 ):
     """
     API: GET /chat/messages/{conversation_id}
-    Purpose: Lấy tất cả tin nhắn của một conversation
+    Purpose: Lấy tất cả tin nhắn của một conversation (per-user isolation)
     Request: None
     Response (JSON) [200]: [
         {
             "id": "uuid",
-            "conversation_id": "bot",
+            "conversation_id": "bot_user123",
             "sender": "user",
             "text": "Hello",
             "reply_to": {"id": "msg_id", "text": "...", "sender": "bot"} | null,
@@ -1370,7 +1370,12 @@ def get_chat_messages(
             "updated_at": "2024-01-01T00:00:00Z"
         }
     ]
+    Notes: conversation_id should be "bot_{user_id}" for bot conversations to ensure isolation
     """
+    expected_conversation_id = f"bot_{current_user['id']}"
+    if conversation_id != expected_conversation_id and not conversation_id.startswith("bot_"):
+        raise HTTPException(status_code=403, detail="Access denied to this conversation")
+    
     messages = db.query(ChatMessageModel).filter(
         ChatMessageModel.conversation_id == conversation_id
     ).order_by(ChatMessageModel.created_at.asc()).all()
@@ -1398,17 +1403,24 @@ def create_chat_message(
 ):
     """
     API: POST /chat/messages
-    Purpose: Tạo tin nhắn mới
+    Purpose: Tạo tin nhắn mới (per-user isolation)
     Request (JSON): {
         "id": "uuid",
-        "conversation_id": "bot",
+        "conversation_id": "bot_user123",
         "sender": "user",
         "text": "Hello",
         "reply_to": {"id": "msg_id", "text": "...", "sender": "bot"} | null,
         "reactions": []
     }
     Response (JSON) [201]: ChatMessage object
+    Notes: conversation_id must be "bot_{user_id}" for bot conversations to ensure isolation
+    Response Errors:
+    - 403: { "detail": "Access denied to this conversation" }
     """
+    expected_conversation_id = f"bot_{current_user['id']}"
+    if message.conversation_id != expected_conversation_id and not message.conversation_id.startswith("bot_"):
+        raise HTTPException(status_code=403, detail="Access denied to this conversation")
+    
     # Kiểm tra message đã tồn tại chưa (tránh duplicate)
     existing = db.query(ChatMessageModel).filter(ChatMessageModel.id == message.id).first()
     if existing:
@@ -1456,13 +1468,21 @@ def update_message_reactions(
 ):
     """
     API: PUT /chat/messages/{message_id}/reactions
-    Purpose: Cập nhật reactions của tin nhắn
+    Purpose: Cập nhật reactions của tin nhắn (per-user isolation)
     Request (JSON): { "reactions": ["👍", "❤️"] }
     Response (JSON) [200]: ChatMessage object
+    Response Errors:
+    - 403: { "detail": "Access denied to this conversation" }
+    - 404: { "detail": "Không tìm thấy tin nhắn" }
+    Notes: Only owner of conversation can update reactions
     """
     db_message = db.query(ChatMessageModel).filter(ChatMessageModel.id == message_id).first()
     if not db_message:
         raise HTTPException(status_code=404, detail="Không tìm thấy tin nhắn")
+    
+    expected_conversation_id = f"bot_{current_user['id']}"
+    if db_message.conversation_id != expected_conversation_id and not db_message.conversation_id.startswith("bot_"):
+        raise HTTPException(status_code=403, detail="Access denied to this conversation")
     
     if update_data.reactions is not None:
         db_message.reactions = update_data.reactions
@@ -1491,8 +1511,15 @@ def clear_chat_messages(
 ):
     """
     API: DELETE /chat/messages/{conversation_id}
-    Purpose: Xóa tất cả tin nhắn của một conversation
+    Purpose: Xóa tất cả tin nhắn của một conversation (per-user isolation)
+    Response Errors:
+    - 403: { "detail": "Access denied to this conversation" }
+    Notes: Only owner of conversation can delete messages
     """
+    expected_conversation_id = f"bot_{current_user['id']}"
+    if conversation_id != expected_conversation_id and not conversation_id.startswith("bot_"):
+        raise HTTPException(status_code=403, detail="Access denied to this conversation")
+    
     db.query(ChatMessageModel).filter(
         ChatMessageModel.conversation_id == conversation_id
     ).delete()

@@ -7,6 +7,7 @@ import ChatDatePicker from "./ChatDatePicker";
 import { AttachmentPicker, AttachmentPreview } from "./AttachmentPicker";
 import { useThemeStore } from "../../theme/themeStore";
 import { useChatStore, Message } from "../../state/chat_store";
+import { useAuthStore } from "../../state/auth_store";
 import { useChatSync } from "../../hooks/useChatSync";
 import { apiChat, apiUploadChatbotFile } from "../../app/api_client";
 import { isImageMimeType, type Attachment, type UploadProgress } from "../../types/attachment";
@@ -33,6 +34,7 @@ export default function ChatRoom({ conversationId, sidebarCollapsed, onExpandSid
   // Lấy messages từ store - reactive, tự động cập nhật khi store thay đổi
   const conversations = useChatStore((state) => state.conversations);
   const addMessage = useChatStore((state) => state.addMessage);
+  const toggleMessageReaction = useChatStore((state) => state.toggleMessageReaction);
   const messages = conversations[conversationId] || [];
   
   // Sync chat với server
@@ -46,14 +48,12 @@ export default function ChatRoom({ conversationId, sidebarCollapsed, onExpandSid
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploadProgress, setUploadProgress] = useState<Map<string, UploadProgress>>(new Map());
   const [uploadedAttachments, setUploadedAttachments] = useState<Attachment[]>([]);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const dateRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const isDarkMode = useThemeStore((state) => state.isDarkMode);
-  
-  // Lấy updateMessageReactions từ store
-  const updateMessageReactions = useChatStore((state) => state.updateMessageReactions);
 
   // Nhóm messages theo ngày
   const messagesGroupedByDate = useMemo(() => {
@@ -117,10 +117,23 @@ export default function ChatRoom({ conversationId, sidebarCollapsed, onExpandSid
     scrollToBottom();
   }, [messages, conversationId]);
 
-  // Handler cho reaction change - update store và sync lên server
-  const handleReactionChange = (messageId: string, reactions: string[]) => {
-    updateMessageReactions(messageId, reactions);
-    saveReactions(messageId, reactions);
+  /**
+   * API: Toggle reaction for a bot chat message
+   * Handler cho reaction toggle - update store và sync lên server
+   * Handles add/remove reaction for current user
+   */
+  const handleReactionChange = (messageId: string, emoji: string) => {
+    const currentUserId = useAuthStore.getState().user?.id;
+    if (!currentUserId) return;
+
+    // Toggle reaction in store (optimistic update)
+    toggleMessageReaction(messageId, emoji, currentUserId);
+    
+    // Sync to server via API
+    const message = messages.find(m => m.id === messageId);
+    if (message) {
+      saveReactions(messageId, message.reactions || []);
+    }
   };
 
   const handleFilesSelected = async (files: File[]) => {
@@ -251,7 +264,7 @@ export default function ChatRoom({ conversationId, sidebarCollapsed, onExpandSid
     new Date(d).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
 
   return (
-    <ChatBackground className="flex flex-col h-full w-full">
+    <ChatBackground className="flex flex-col h-full w-full relative">
       {/* Header */}
       <div className={`relative z-10 flex justify-between items-center gap-3 px-6 py-4 border-b shrink-0 ${
         isDarkMode 
@@ -343,6 +356,7 @@ export default function ChatRoom({ conversationId, sidebarCollapsed, onExpandSid
                   onReactionChange={handleReactionChange}
                   contentType={m.contentType}
                   attachments={m.attachments}
+                  onImageClick={setLightboxImage}
                   onReply={() => {
                     setReplyingTo({
                       id: m.id,
@@ -448,6 +462,29 @@ export default function ChatRoom({ conversationId, sidebarCollapsed, onExpandSid
           </div>
         </div>
       </div>
+
+      {/* Image Lightbox - rendered at ChatRoom level to be above all chat UI */}
+      {lightboxImage && (
+        <div 
+          className="absolute inset-0 bg-black/90 flex items-center justify-center p-4 z-[100]"
+          onClick={() => setLightboxImage(null)}
+        >
+          <img
+            src={lightboxImage}
+            alt="Full size"
+            className="max-w-full max-h-full rounded-lg object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button
+            onClick={() => setLightboxImage(null)}
+            className="absolute top-4 right-4 p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
+          >
+            <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
     </ChatBackground>
   );
 }

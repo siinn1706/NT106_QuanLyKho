@@ -52,6 +52,42 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 # =============================================================
+# TIMEZONE UTILITIES
+# =============================================================
+
+def ensure_utc(dt: datetime | None) -> datetime | None:
+    """
+    Ensure datetime has UTC timezone info.
+    SQLite returns naive datetime, so we need to force UTC timezone.
+    
+    Args:
+        dt: datetime object (naive or aware) or None
+    
+    Returns:
+        datetime with UTC timezone or None if input is None
+    """
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        # Naive datetime from SQLite - assume it's UTC and attach timezone
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
+
+def to_utc_iso(dt: datetime | None) -> str | None:
+    """
+    Convert datetime to ISO8601 string with UTC timezone.
+    
+    Args:
+        dt: datetime object or None
+    
+    Returns:
+        ISO8601 string with +00:00 suffix or None if input is None
+    """
+    if dt is None:
+        return None
+    return ensure_utc(dt).isoformat()
+
+# =============================================================
 # DATABASE MODELS (GIỮ NGUYÊN NHƯ CŨ)
 # =============================================================
 
@@ -303,6 +339,7 @@ class RTMessageModel(Base):
     content = Column(Text, nullable=False)
     content_type = Column(String, default="text")  # 'text', 'image', 'file', 'system'
     attachments_json = Column(JSON, nullable=True)
+    reply_to_id = Column(String, ForeignKey("rt_messages.id"), nullable=True)  # Message being replied to
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
     edited_at = Column(DateTime, nullable=True)
     deleted_at = Column(DateTime, nullable=True)
@@ -322,6 +359,33 @@ class RTMessageReceiptModel(Base):
     read_at = Column(DateTime, nullable=True)
     
     message = relationship("RTMessageModel", back_populates="receipts")
+    user = relationship("UserModel")
+
+
+class RTMessageReactionModel(Base):
+    """Message reactions (emoji) for realtime chat"""
+    __tablename__ = "rt_message_reactions"
+    
+    message_id = Column(String, ForeignKey("rt_messages.id"), primary_key=True)
+    user_id = Column(String, ForeignKey("users.id"), primary_key=True)
+    emoji = Column(String, primary_key=True)  # Support multiple reactions per user
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    
+    message = relationship("RTMessageModel", backref="reactions")
+    user = relationship("UserModel")
+
+
+class RTPinnedMessageModel(Base):
+    """Pinned messages per conversation - persists across sessions"""
+    __tablename__ = "rt_pinned_messages"
+    
+    conversation_id = Column(String, ForeignKey("rt_conversations.id"), primary_key=True)
+    message_id = Column(String, ForeignKey("rt_messages.id"), primary_key=True)
+    pinned_by = Column(String, ForeignKey("users.id"), nullable=False)
+    pinned_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    
+    conversation = relationship("RTConversationModel")
+    message = relationship("RTMessageModel")
     user = relationship("UserModel")
 
 
