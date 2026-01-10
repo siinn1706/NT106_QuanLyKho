@@ -210,7 +210,10 @@ async def create_stock_in_record(db: Session, data: schemas.StockInBatchCreate, 
     actor_id = current_user.get("id") if current_user else None
     items_payload = []
     try:
-        for item in data.items:
+        # DEADLOCK FIX: Sort items by item_id to ensure consistent locking order across transactions
+        sorted_items = sorted(data.items, key=lambda x: x.item_id if x.item_id else x.item_code or "")
+        
+        for item in sorted_items:
             db_item = resolve_item_by_identifier(db, item.item_id, item.item_code, for_update=True)
             db_item.quantity = (db_item.quantity or 0) + item.quantity  # type: ignore
             db_item.updated_at = now  # type: ignore
@@ -272,7 +275,10 @@ async def create_stock_out_record(db: Session, data: schemas.StockOutBatchCreate
     price_audit_notes = []  # Track price validation warnings for audit trail
     
     try:
-        for item in data.items:
+        # DEADLOCK FIX: Sort items by item_id to ensure consistent locking order across transactions
+        sorted_items = sorted(data.items, key=lambda x: x.item_id if x.item_id else x.item_code or "")
+        
+        for item in sorted_items:
             db_item = resolve_item_by_identifier(db, item.item_id, item.item_code, for_update=True)
             available = db_item.quantity or 0
             if not (available >= item.quantity):  # type: ignore
@@ -383,7 +389,12 @@ async def cancel_stock_in_record(db: Session, record: StockInRecordModel, actor_
     try:
         # ENHANCEMENT: Validate all items before any updates (atomic operation)
         removal_items = []
-        for item in record.items or []:
+        # DEADLOCK FIX: Sort items by item_id to ensure consistent locking order across transactions
+        sorted_items = sorted(
+            record.items or [], 
+            key=lambda x: _get_attr(x, "item_id") or _get_attr(x, "item_code") or ""
+        )
+        for item in sorted_items:
             qty = int(_get_attr(item, "quantity", 0))
             price_per_unit = float(_get_attr(item, "price", 0))
             item_name = _get_attr(item, "item_name", "Unknown")
@@ -494,7 +505,12 @@ async def cancel_stock_out_record(db: Session, record: StockOutRecordModel, acto
     try:
         # ENHANCEMENT: Collect all items first to validate capacity before any updates
         restock_items = []
-        for item in record.items or []:
+        # DEADLOCK FIX: Sort items by item_id to ensure consistent locking order across transactions
+        sorted_items = sorted(
+            record.items or [], 
+            key=lambda x: _get_attr(x, "item_id") or _get_attr(x, "item_code") or ""
+        )
+        for item in sorted_items:
             qty = int(_get_attr(item, "quantity", 0))
             cost_per_unit = float(_get_attr(item, "cost", 0))
             item_name = _get_attr(item, "item_name", "Unknown")
