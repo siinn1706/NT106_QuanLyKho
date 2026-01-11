@@ -167,7 +167,7 @@ export default function Change_Passkey_Page() {
         {/* Logo & Brand */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-20 h-20 mb-4 bg-white/5 rounded-2xl p-2 border border-white/10">
-            <img src="/src/resources/logo.png" alt="N3T Logo" className="w-full h-full object-contain" />
+            <img src="/logo.png" alt="N3T Logo" className="w-full h-full object-contain" />
           </div>
           <h1 className="text-3xl font-bold text-white mb-2">
             {step === 1 ? 'Đổi Passkey' : 'Xác thực OTP'}
