@@ -181,20 +181,16 @@ export default function MessageBubble({
 
   const handleDeleteForEveryone = () => {
     if (!conversationId) return;
-    if (window.confirm('Bạn có chắc muốn thu hồi tin nhắn này với mọi người?')) {
-      deleteMessage(conversationId, messageId, true);
-      setShowActionsMenu(false);
-      showToast.success('Đã thu hồi tin nhắn');
-    }
+    deleteMessage(conversationId, messageId, true);
+    setShowActionsMenu(false);
+    showToast.success('Đã thu hồi tin nhắn');
   };
 
   const handleDeleteForMe = () => {
     if (!conversationId) return;
-    if (window.confirm('Bạn có chắc muốn xoá tin nhắn này chỉ ở phía bạn?')) {
-      hideMessage(conversationId, messageId);
-      setShowActionsMenu(false);
-      showToast.success('Đã xoá tin nhắn');
-    }
+    hideMessage(conversationId, messageId);
+    setShowActionsMenu(false);
+    showToast.success('Đã xoá tin nhắn');
   };
 
   const handleForward = () => {
