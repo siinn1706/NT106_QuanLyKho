@@ -1187,7 +1187,7 @@ export default function SettingsModal({ isOpen, onClose, initialTab = 'general' 
                 {/* App Info */}
                 <div className="p-4 rounded-xl border text-center bg-[var(--surface-2)] border-[var(--border)]">
                   <div className="w-28 h-28 flex items-center justify-center mx-auto mb-4">
-                    <img src="/src/resources/logo.png" alt="N3T Logo" className="w-full h-full object-contain" />
+                    <img src="/logo.png" alt="N3T Logo" className="w-full h-full object-contain" />
                   </div>
                   <h3 className="text-xl font-bold mb-2">Quản Lý Kho N3T</h3>
                   <p className="text-sm mb-1 text-[var(--text-2)]">

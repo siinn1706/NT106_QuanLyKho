@@ -15,6 +15,9 @@ import {
 
 // Convert frontend Message sang API format
 function toApiMessage(msg: Message): ChatMessageCreate {
+  // Convert MessageReaction[] to string[] (emoji only) for API compatibility
+  const reactionsAsStrings = (msg.reactions || []).map(r => r.emoji);
+  
   return {
     id: msg.id,
     conversation_id: msg.conversationId,
@@ -25,7 +28,7 @@ function toApiMessage(msg: Message): ChatMessageCreate {
       text: msg.replyTo.text,
       sender: msg.replyTo.sender,
     } : null,
-    reactions: msg.reactions || [],
+    reactions: reactionsAsStrings,
   };
 }
 

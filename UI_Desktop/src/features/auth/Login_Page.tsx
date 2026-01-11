@@ -70,7 +70,7 @@ export default function Login_Page() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-20 h-20 mb-4 liquid-glass rounded-2xl p-2 border border-[var(--glass-btn-border)]">
-            <img src="/src/resources/logo.png" alt="N3T Logo" className="w-full h-full object-contain" />
+            <img src="/logo.png" alt="N3T Logo" className="w-full h-full object-contain" />
           </div>
           <h1 className="text-3xl font-bold text-[var(--text-1)] mb-2">Đăng nhập</h1>
           <p className="text-[var(--text-2)]">Chào mừng trở lại! Vui lòng đăng nhập để tiếp tục</p>

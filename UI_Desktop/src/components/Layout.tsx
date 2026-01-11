@@ -175,7 +175,7 @@ export default function Layout({ children }: LayoutProps) {
           {!isSidebarCollapsed && (
             <div className="flex items-center gap-2">
               <div className="w-10 h-10 flex items-center justify-center flex-shrink-0">
-                <img src="/src/resources/logo.png" alt="N3T Logo" className="w-full h-full object-contain" />
+                <img src="/logo.png" alt="N3T Logo" className="w-full h-full object-contain" />
               </div>
               <span className="font-semibold text-lg whitespace-nowrap">Quản lý Kho</span>
             </div>

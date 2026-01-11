@@ -54,7 +54,7 @@ export default function ForgotPassword_Page() {
           <div className={`inline-flex items-center justify-center w-20 h-20 mb-4 rounded-2xl p-2 border ${
             isDarkMode ? 'bg-white/5 border-white/10' : 'bg-zinc-100 border-zinc-200'
           }`}>
-            <img src="/src/resources/logo.png" alt="N3T Logo" className="w-full h-full object-contain" />
+            <img src="/logo.png" alt="N3T Logo" className="w-full h-full object-contain" />
           </div>
           <h1 className={`text-3xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-zinc-900'}`}>Quên mật khẩu</h1>
           <p className={isDarkMode ? 'text-zinc-400' : 'text-zinc-600'}>Nhập email để nhận liên kết đặt lại mật khẩu</p>
